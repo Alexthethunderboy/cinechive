@@ -7,17 +7,60 @@ import { FeedEntity } from '@/lib/api/MediaFetcher';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
-import { archiveMediaAction } from '@/lib/actions';
+import { archiveMediaAction, getDeepEntityAction } from '@/lib/actions';
+import { useEffect } from 'react';
+import { posterUrl } from '@/lib/api/tmdb';
 
 interface DiscoveryCardProps {
   media: FeedEntity;
   index: number;
 }
 
-export function DiscoveryCard({ media, index }: DiscoveryCardProps) {
+export function DiscoveryCard({ media: initialMedia, index }: DiscoveryCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [media, setMedia] = useState<FeedEntity>(initialMedia);
+  const [isFetchingDeep, setIsFetchingDeep] = useState(false);
+
+  useEffect(() => {
+    // If expanded and we don't have enough details, fetch them
+    if (isExpanded && (!media.cast || media.cast.length === 0) && media.type !== 'anime') {
+      const fetchDeep = async () => {
+        setIsFetchingDeep(true);
+        try {
+          const detail = await getDeepEntityAction(media.id, media.type as 'movie' | 'tv');
+          
+          // Map deep detail to FeedEntity shape
+          const trailer = detail.videos?.results?.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
+          
+          setMedia(prev => ({
+            ...prev,
+            overview: detail.overview || prev.overview,
+            director: detail.credits?.crew?.find((c: any) => c.job === 'Director')?.name || prev.director,
+            ep: detail.credits?.crew?.find((c: any) => c.job === 'Executive Producer')?.name || prev.ep,
+            dp: detail.credits?.crew?.find((c: any) => c.job === 'Director of Photography')?.name || prev.dp,
+            cast: detail.credits?.cast?.slice(0, 10).map((c: any) => ({
+              id: String(c.id),
+              name: c.name,
+              role: c.character,
+              profileUrl: c.profile_path ? posterUrl(c.profile_path, 'w185') : null
+            })) || [],
+            trailerUrl: trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : prev.trailerUrl,
+            business: detail.budget || detail.revenue ? {
+              budget: detail.budget || 0,
+              revenue: detail.revenue || 0
+            } : prev.business
+          }));
+        } catch (err) {
+          console.error("Deep fetch failed:", err);
+        } finally {
+          setIsFetchingDeep(false);
+        }
+      };
+      fetchDeep();
+    }
+  }, [isExpanded, media.id, media.type, media.cast?.length]);
 
   const handleSaveToVault = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -165,8 +208,14 @@ export function DiscoveryCard({ media, index }: DiscoveryCardProps) {
               <ChevronDown className="w-5 h-5" />
             </button>
 
-            <div className="space-y-6 pt-2">
-              {/* Creator Info */}
+            {isFetchingDeep ? (
+              <div className="flex-1 flex flex-col items-center justify-center py-20 gap-4 text-accent/50">
+                <Loader2 className="w-8 h-8 animate-spin" />
+                <span className="font-data text-[10px] uppercase tracking-[0.3em]">Deep Fetching Registry...</span>
+              </div>
+            ) : (
+              <div className="space-y-6 pt-2">
+                {/* Creator Info */}
               <div className="flex flex-col gap-1">
                 <span className="text-[10px] uppercase tracking-widest text-vibe-cyan/70 font-semibold font-mono">
                   {media.type === 'movie' ? 'Director' : 'Executive Producer'}
@@ -252,6 +301,7 @@ export function DiscoveryCard({ media, index }: DiscoveryCardProps) {
               </div>
 
             </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

@@ -1,5 +1,5 @@
 
-import { searchMedia, getMovieDetails, getTvDetails, getPersonDetails, TMDBMedia } from '../api/tmdb';
+import { searchMedia, getMovieDetails, getTvDetails, getPersonDetails, TMDBMedia, enrichWithDirector } from '../api/tmdb';
 import { mapTMDBToUnified, UnifiedMedia } from '../api/mapping';
 
 export class SearchService {
@@ -56,7 +56,15 @@ export class SearchService {
         knownFor: p.known_for_department,
       }));
 
-    return { movies, tv, people };
+    // Enrich top 5 of each for a more "robust" feel in the initial dropdown
+    const enrichedMovies = await enrichWithDirector(movies.slice(0, 5));
+    const enrichedTv = await enrichWithDirector(tv.slice(0, 5));
+
+    return { 
+      movies: [...enrichedMovies, ...movies.slice(5)], 
+      tv: [...enrichedTv, ...tv.slice(5)], 
+      people 
+    };
   }
 
   /**

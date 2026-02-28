@@ -23,7 +23,21 @@ export default function EverythingBar({ onLocalSearch }: EverythingBarProps = {}
   const [showFilters, setShowFilters] = useState(false);
   const [selectedMood, setSelectedMood] = useState<ClassificationName | null>(null);
   const [hiddenGems, setHiddenGems] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>([]);
+  const [isFocused, setIsFocused] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    const saved = localStorage.getItem('recentSearches');
+    if (saved) setRecentSearches(JSON.parse(saved));
+  }, []);
+
+  const saveRecentSearch = (q: string) => {
+    if (!q.trim()) return;
+    const updated = [q, ...recentSearches.filter(s => s !== q)].slice(0, 5);
+    setRecentSearches(updated);
+    localStorage.setItem('recentSearches', JSON.stringify(updated));
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -55,15 +69,31 @@ export default function EverythingBar({ onLocalSearch }: EverythingBarProps = {}
   return (
     <div className="relative w-full max-w-4xl mx-auto z-50">
       <div className="flex flex-col gap-2">
-        <GlassPanel className="flex items-center gap-4 px-6 py-4 border-white/10 bg-white/5 focus-within:border-accent/40 transition-all group overflow-hidden">
-          <Search className={cn("text-muted transition-colors", query && "text-white")} size={22} />
+        <GlassPanel className="flex items-center gap-4 px-6 py-4 border-white/10 bg-white/5 focus-within:border-accent/40 transition-all group overflow-hidden relative">
+          <button 
+            disabled={!query.trim()}
+            onClick={() => {
+              saveRecentSearch(query);
+              router.push(`/search?q=${encodeURIComponent(query)}`);
+            }}
+            className={cn(
+              "p-2 -ml-2 rounded-full transition-all group/btn",
+              query ? "bg-accent/10 border-accent/20 text-accent hover:bg-accent/20" : "text-muted"
+            )}
+          >
+            <Search className="transition-transform group-hover/btn:scale-110" size={20} />
+          </button>
+          
           <input 
             type="text"
             placeholder="Search movies, tv, people, collections..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setTimeout(() => setIsFocused(false), 200)}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && query.length >= 2) {
+                saveRecentSearch(query);
                 router.push(`/search?q=${encodeURIComponent(query)}`);
               }
             }}
@@ -154,6 +184,35 @@ export default function EverythingBar({ onLocalSearch }: EverythingBarProps = {}
           )}
         </AnimatePresence>
       </div>
+
+      {/* Recent Searches Dropdown */}
+      <AnimatePresence>
+        {isFocused && !query && recentSearches.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="absolute top-full left-0 right-0 mt-4 z-50 p-4 glass rounded-3xl border border-white/10 shadow-2xl"
+          >
+            <div className="flex items-center gap-2 mb-4 px-2">
+              <Activity size={14} className="text-accent" />
+              <span className="font-data text-[10px] uppercase tracking-widest text-muted">Recent Enquiries</span>
+            </div>
+            <div className="flex flex-col gap-1">
+              {recentSearches.map((sq, i) => (
+                <button
+                  key={i}
+                  onClick={() => setQuery(sq)}
+                  className="w-full text-left px-4 py-3 rounded-xl hover:bg-white/5 text-white/60 hover:text-white transition-all font-heading truncate flex items-center justify-between group"
+                >
+                  {sq}
+                  <Search size={14} className="opacity-0 group-hover:opacity-100 transition-opacity text-accent" />
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {debouncedQuery.length >= 2 && results && (

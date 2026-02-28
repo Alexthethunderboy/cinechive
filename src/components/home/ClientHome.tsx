@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Flame, Activity, LayoutGrid, Search, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -23,6 +23,30 @@ export interface ClientHomeProps {
 
 export default function ClientHome({ user, userLogs, pulseFeed }: ClientHomeProps) {
   const [activeView, setActiveView] = useState<DiscoveryMode>('broadcast');
+  const [isVisible, setIsVisible] = useState(true);
+  const lastScrollY = useRef(0);
+
+  useEffect(() => {
+    const scrollContainer = document.querySelector('main');
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      const currentScrollY = scrollContainer.scrollTop;
+      
+      // Show if scrolling up, hide if scrolling down
+      // Only hide if we've scrolled past a small threshold
+      if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
+        setIsVisible(false);
+      } else {
+        setIsVisible(true);
+      }
+      
+      lastScrollY.current = currentScrollY;
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
     <div>
@@ -41,20 +65,28 @@ export default function ClientHome({ user, userLogs, pulseFeed }: ClientHomeProp
             CINECHIVE <br />
             <span className="text-white/40 not-italic">COLLECTIVE</span>
           </h1>
-          <p className="mt-4 text-muted text-base md:text-lg font-heading max-w-xl leading-relaxed opacity-60">
+          <p className="mt-2 text-muted text-base md:text-lg font-heading max-w-xl leading-relaxed opacity-60">
              Curating the world's moving images. An editorial-grade library for the dedicated cinephile.
           </p>
         </motion.div>
       </header>
  
       {/* Cinematic Insights */}
-      <section className="px-6 md:px-10 mb-8">
+      <section className="px-6 md:px-10 mb-8 hidden">
          <RandomFactWidget />
       </section>
 
       {/* Discovery Perspective Toggle */}
-      <div className="flex justify-center mb-12 px-6 sticky top-24 z-50">
-        <div className="glass p-1.5 rounded-full border border-white/10 flex items-center gap-1 shadow-2xl relative overflow-hidden group pointer-events-auto">
+      <motion.div 
+        initial={{ y: 0, opacity: 1 }}
+        animate={{ 
+          y: isVisible ? 0 : -100,
+          opacity: isVisible ? 1 : 0
+        }}
+        transition={{ duration: 0.3, ease: "easeInOut" }}
+        className="flex justify-center mb-6 md:mb-12 px-6 sticky top-24 z-50 pointer-events-none"
+      >
+        <div className="glass p-1 md:p-1.5 rounded-full border border-white/10 flex items-center gap-1 shadow-2xl relative overflow-hidden group pointer-events-auto">
           <div className="absolute inset-0 bg-linear-to-tr from-accent/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
           
           {(['broadcast', 'registries'] as const).map((mode) => {
@@ -66,7 +98,7 @@ export default function ClientHome({ user, userLogs, pulseFeed }: ClientHomeProp
                 key={mode}
                 onClick={() => setActiveView(mode)}
                 className={cn(
-                  "relative flex items-center gap-3 px-8 py-3 rounded-full transition-all duration-500 z-10",
+                  "relative flex items-center gap-2 md:gap-3 px-4 py-2 md:px-8 md:py-3 rounded-full transition-all duration-500 z-10",
                   isActive ? "text-white" : "text-white/30 hover:text-white/60"
                 )}
               >
@@ -79,12 +111,12 @@ export default function ClientHome({ user, userLogs, pulseFeed }: ClientHomeProp
                 )}
                 
                 {mode === 'registries' ? (
-                  <LayoutGrid size={16} className={isActive ? "text-accent scale-110" : "scale-100"} />
+                  <LayoutGrid size={14} className={cn("md:w-4 md:h-4", isActive ? "text-accent scale-110" : "scale-100")} />
                 ) : (
-                  <Flame size={16} className={isActive ? "text-rose-400 scale-110" : "scale-100"} />
+                  <Flame size={14} className={cn("md:w-4 md:h-4", isActive ? "text-rose-400 scale-110" : "scale-100")} />
                 )}
 
-                <span className="font-data text-[8px] md:text-[10px] uppercase tracking-[0.2em] font-bold">
+                <span className="font-data text-[7px] md:text-[10px] uppercase tracking-[0.2em] font-bold">
                   {label}
                 </span>
 
@@ -98,7 +130,7 @@ export default function ClientHome({ user, userLogs, pulseFeed }: ClientHomeProp
             );
           })}
         </div>
-      </div>
+      </motion.div>
 
       <div className="relative z-10">
         {activeView === 'registries' ? (
