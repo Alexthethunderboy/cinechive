@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, Loader2, X, Settings2, Sparkles, Filter } from 'lucide-react';
+import { Search, Loader2, X, Settings2, Sparkles, Filter, Activity } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GlassPanel from '@/components/ui/GlassPanel';
 import { cn } from '@/lib/utils';
