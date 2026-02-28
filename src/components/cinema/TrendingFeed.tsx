@@ -106,7 +106,7 @@ export function TrendingFeed() {
   }, [allItems, localQuery, animationFilters, activeTab]);
 
   return (
-    <div className="w-full flex flex-col min-h-screen">
+    <div className="flex flex-col">
       
       {/* Global Search / Local Filter Unified */}
       <div className="px-6 md:px-10 mb-6 z-50 relative flex gap-4">
@@ -116,7 +116,7 @@ export function TrendingFeed() {
       </div>
 
       {/* Top Controls */}
-      <div className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-white/10 p-4 flex flex-col md:flex-row items-center justify-between gap-4">
+      <div className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-white/10 p-4 flex flex-col md:flex-row items-center justify-between gap-4 overflow-hidden max-w-full">
         <div className="flex bg-white/10 p-1 rounded-full border border-white/5 relative overflow-x-auto max-w-full scrollbar-hide">
           {/* Static rendering of tabs to avoid complex layout calc bugs across 4 items, keeping it simple */}
           <button
@@ -197,7 +197,7 @@ export function TrendingFeed() {
                   No matches found in the current stream for "{localQuery}".
                </div>
             ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
                 {filteredItems.map((item, i) => (
                   <div key={`${item.id}-${i}`}>
                     {(activeTab === 'anime' || activeTab === 'animation') 

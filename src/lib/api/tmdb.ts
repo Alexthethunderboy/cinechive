@@ -23,6 +23,7 @@ export interface TMDBMedia {
   release_date?: string;
   first_air_date?: string;
   vote_average: number;
+  vote_count: number;
   genre_ids?: number[];
 }
 
@@ -54,6 +55,22 @@ export async function searchMedia(query: string, page = 1): Promise<TMDBSearchRe
   return res.json();
 }
 
+export async function discoverMedia(params: Record<string, any> = {}): Promise<TMDBSearchResult> {
+  const url = getUrl('/discover/movie', { 
+    ...params, 
+    include_adult: false,
+    sort_by: 'popularity.desc'
+  });
+  const res = await fetch(url, { next: { revalidate: 3600 } });
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error(`TMDB discover failed [${res.status}]: ${errorText}`);
+    throw new Error(`TMDB discover failed: ${res.status}`);
+  }
+  return res.json();
+}
+
 export async function getTrending(
   timeWindow: 'day' | 'week' = 'week'
 ): Promise<TMDBSearchResult> {
@@ -76,7 +93,7 @@ export async function getTrending(
 
 export async function getMovieDetails(id: number) {
   const url = getUrl(`/movie/${id}`, { 
-    append_to_response: 'credits,videos,images,recommendations,release_dates,keywords' 
+    append_to_response: 'credits,videos,images,recommendations,release_dates,keywords,external_ids' 
   });
   const res = await fetch(url, {
     next: { revalidate: 86400 },
@@ -97,7 +114,7 @@ export async function getPersonDetails(id: number) {
 
 export async function getTvDetails(id: number) {
   const url = getUrl(`/tv/${id}`, { 
-    append_to_response: 'credits,videos,images,recommendations,keywords' 
+    append_to_response: 'credits,videos,images,recommendations,keywords,external_ids' 
   });
   const res = await fetch(url, {
     next: { revalidate: 86400 },

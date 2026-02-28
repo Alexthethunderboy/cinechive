@@ -27,7 +27,7 @@ export default function ClientCollections({ initialEntries }: ClientCollectionsP
   });
 
   return (
-    <div className="min-h-screen py-10 md:py-16 px-6 md:px-10">
+    <div className="py-10 md:py-16 px-6 md:px-10">
       <header className="mb-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
           <motion.div
@@ -35,27 +35,27 @@ export default function ClientCollections({ initialEntries }: ClientCollectionsP
             animate={{ opacity: 1, x: 0 }}
           >
             <div className="flex items-center gap-3 mb-4">
-              <Archive className="text-white/60" size={24} />
+              <Sparkles className="text-white/60" size={24} />
               <span className="font-data text-xs uppercase tracking-[0.3em] font-bold text-white/60">
-                Secure Repository
+                Cinema Library
               </span>
             </div>
             <h1 className="font-display text-5xl md:text-7xl tracking-tighter leading-none">
-               MY <span className="text-muted italic">COLLECTIONS</span>
+               MY <span className="text-muted italic">CINEMATHEQUE</span>
             </h1>
             <p className="text-muted mt-6 max-w-xl font-heading text-lg opacity-80">
-              Your personal frequency repository. A high-order collection of cinema, audio, and visual resonance captured across the global enterprise.
+              Your personal film library. A high-order curation of cinema, audio, and visual experiences collected across the global network.
             </p>
           </motion.div>
 
           <div className="flex gap-4">
             <GlassPanel className="px-8 py-6 bg-white/5 border-white/5 flex flex-col items-center">
                <span className="font-display text-3xl text-white">{initialEntries.length}</span>
-               <span className="font-data text-[10px] text-muted uppercase tracking-widest mt-1">Total Logs</span>
+               <span className="font-data text-[10px] text-muted uppercase tracking-widest mt-1">Total Films</span>
             </GlassPanel>
             <GlassPanel className="px-8 py-6 bg-white/5 border-white/5 flex flex-col items-center">
                 <span className="font-display text-3xl text-accent">{new Set(initialEntries.map(e => e.classification)).size}</span>
-                <span className="font-data text-[10px] text-muted uppercase tracking-widest mt-1">Classification Nodes</span>
+                <span className="font-data text-[10px] text-muted uppercase tracking-widest mt-1">Style Categories</span>
             </GlassPanel>
           </div>
         </div>
@@ -161,7 +161,7 @@ export default function ClientCollections({ initialEntries }: ClientCollectionsP
                               </div>
                               <div className="text-right">
                                  <span className="font-data text-[10px] text-muted block">{new Date(entry.created_at).toLocaleDateString()}</span>
-                                 <span className="font-data text-[10px] text-white/60 uppercase tracking-widest mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Analyze Frequency</span>
+                                 <span className="font-data text-[10px] text-white/60 uppercase tracking-widest mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Examine Details</span>
                               </div>
                            </GlassPanel>
                          </Link>
@@ -173,15 +173,15 @@ export default function ClientCollections({ initialEntries }: ClientCollectionsP
          ) : (
             <div className="py-32 flex flex-col items-center justify-center text-center opacity-30">
                <FolderLock size={64} className="mb-6" />
-               <h3 className="font-display text-2xl mb-2">COLLECTIONS EMPTY</h3>
-               <p className="font-heading text-muted">No high-order resonance captured yet.</p>
+               <h3 className="font-display text-2xl mb-2">CINEMATHEQUE EMPTY</h3>
+               <p className="font-heading text-muted">No cinematic works collected yet.</p>
                <Link href="/">
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className="mt-8 px-8 py-3 rounded-card bg-white text-black font-data text-xs uppercase font-bold tracking-widest"
                   >
-                     Explore Frequencies
+                     Explore Cinema
                   </motion.button>
                </Link>
             </div>
@@ -198,11 +198,11 @@ export default function ClientCollections({ initialEntries }: ClientCollectionsP
          >
             <Sparkles className="mx-auto text-white/60 opacity-50" size={32} />
             <p className="font-display text-3xl md:text-5xl tracking-tighter leading-tight italic text-muted">
-              "The archive does not merely store; it remembers. It is the persistent echo of everything that mattered."
+              "Cinema does not merely show; it evokes. It is the persistent echo of everything that mattered."
             </p>
             <div className="h-12 w-px bg-accent/30 mx-auto" />
             <span className="font-data text-[10px] uppercase tracking-[0.5em] text-accent/60 font-bold">
-              CINECHIVE HIGH-ORDER PROTOCOL // V2.0
+              CINECHIVE CINEMATIC PROTOCOL // V2.0
             </span>
          </motion.div>
       </footer>

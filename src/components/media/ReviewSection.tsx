@@ -100,7 +100,7 @@ export default function ReviewSection({ mediaId, mediaType }: ReviewSectionProps
               <p className="font-heading text-white/40 italic">
                 {activeTab === 'friends' 
                   ? "None of your friends have shared their thoughts on this yet." 
-                  : "Be the first to share your frequency on this media."}
+                  : "Be the first to share your cinematic perspective on this work."}
               </p>
             </motion.div>
           )}

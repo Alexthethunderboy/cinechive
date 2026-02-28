@@ -23,7 +23,7 @@ export default function SearchPage() {
   });
 
   return (
-    <div className="min-h-screen pt-24 pb-20 px-6 md:px-16 space-y-12">
+    <div className="pt-10 pb-20 px-6 md:px-16 space-y-12">
       <div className="max-w-4xl mx-auto space-y-4">
         <EverythingBar />
         {query && (

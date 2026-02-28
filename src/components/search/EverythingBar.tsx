@@ -59,7 +59,7 @@ export default function EverythingBar({ onLocalSearch }: EverythingBarProps = {}
           <Search className={cn("text-muted transition-colors", query && "text-white")} size={22} />
           <input 
             type="text"
-            placeholder="Search movies, tv, people, archives..."
+            placeholder="Search movies, tv, people, collections..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -112,8 +112,8 @@ export default function EverythingBar({ onLocalSearch }: EverythingBarProps = {}
               exit={{ opacity: 0, y: -10 }}
               className="px-2"
             >
-              <h2 className="font-display text-2xl md:text-3xl tracking-tighter mb-2 italic text-white uppercase">Archive Index</h2>
-              <p className="text-muted text-sm md:text-base opacity-40 mb-4">Query the collective cinema record.</p>
+              <h2 className="font-display text-2xl md:text-3xl tracking-tighter mb-2 italic text-white uppercase">Cinema Index</h2>
+              <p className="text-muted text-sm md:text-base opacity-40 mb-4">Explore the cinematic landscape.</p>
               <GlassPanel className="p-4 bg-black/40 border-white/5 flex flex-col items-start gap-6">
                 <div className="flex flex-col gap-4 w-full">
                   <span className="font-data text-[10px] uppercase tracking-widest text-muted">Classification</span>

@@ -25,10 +25,10 @@ export default function TriviaModule({ trivia }: TriviaModuleProps) {
       <div className="flex items-center justify-between">
         <h3 className="font-display text-3xl uppercase italic tracking-tighter flex items-center gap-3">
           <Lightbulb className="text-accent" />
-          The Archive Insights
+          Cinematic Insights
         </h3>
         <span className="font-data text-[10px] text-muted uppercase tracking-[0.3em]">
-          Classified Intel
+          Producer Notes
         </span>
       </div>
 
@@ -63,7 +63,7 @@ export default function TriviaModule({ trivia }: TriviaModuleProps) {
 
                 <div className="pt-4 border-t border-white/5 flex items-center justify-between">
                   <span className="font-data text-[8px] text-muted uppercase tracking-widest">
-                    Source: Archive/IMDb
+                    Source: CineChive / IMDb
                   </span>
                   <div className="flex gap-1">
                     <div className="w-1 h-1 rounded-full bg-accent/40" />

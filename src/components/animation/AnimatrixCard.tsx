@@ -136,7 +136,7 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
                  "p-1.5 rounded-md backdrop-blur-md transition-all flex items-center justify-center border hover:scale-110",
                  isSaved ? "bg-accent/20 border-accent/40 text-accent" : "bg-black/40 border-white/10 text-white/80 hover:text-white"
                )}
-               title="Add to Collections"
+               title="Collect Film"
              >
                {isSaving ? (
                  <Loader2 className="w-3.5 h-3.5 animate-spin" />

@@ -76,10 +76,10 @@ export function DiscoveryCard({ media, index }: DiscoveryCardProps) {
         {/* Top Badges */}
         <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-10">
           <div className="flex flex-col gap-2">
-            {media.rating.showBadge && (
+            {media.rating?.showBadge && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10">
                 <Star className="text-vibe-yellow w-3.5 h-3.5 fill-current" />
-                <span className="text-white font-mono text-xs font-bold">{media.rating.average.toFixed(1)}</span>
+                <span className="text-white font-mono text-xs font-bold">{media.rating?.average?.toFixed(1)}</span>
               </div>
             )}
             {media.releaseLabel && (
@@ -100,7 +100,7 @@ export function DiscoveryCard({ media, index }: DiscoveryCardProps) {
                  "p-1.5 rounded-md backdrop-blur-md transition-all flex items-center justify-center border",
                  isSaved ? "bg-accent/20 border-accent/40 text-accent" : "bg-black/40 border-white/10 text-white/50 hover:text-white"
                )}
-               title="Add to Collections"
+               title="Collect Film"
              >
                {isSaving ? (
                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -129,7 +129,7 @@ export function DiscoveryCard({ media, index }: DiscoveryCardProps) {
           </h2>
           <div className="flex items-center gap-2 md:gap-3 text-white/70 text-xs md:text-sm font-sans">
             {media.releaseYear && <span>{media.releaseYear}</span>}
-            {media.genres.length > 0 && (
+            {media.genres?.length > 0 && (
                <>
                  <span className="w-1 h-1 rounded-full bg-white/30"></span>
                  <span className="truncate">{media.genres[0]}</span>
@@ -182,7 +182,7 @@ export function DiscoveryCard({ media, index }: DiscoveryCardProps) {
               </div>
 
               {/* Cast */}
-              {media.cast.length > 0 && (
+              {media.cast && media.cast.length > 0 && (
                 <div className="space-y-2">
                   <span className="text-[10px] uppercase tracking-widest text-white/40 font-semibold font-mono flex items-center gap-1.5">
                     <Users className="w-3 h-3" /> Cast
@@ -217,7 +217,7 @@ export function DiscoveryCard({ media, index }: DiscoveryCardProps) {
                 </div>
               )}
 
-              {/* Business Data (Movies Only) */}
+              {/* Production Figures (Movies Only) */}
               {media.business && (
                 <div className="grid grid-cols-2 gap-3 pb-2">
                   <div className="bg-white/5 rounded-lg p-3">
@@ -244,7 +244,7 @@ export function DiscoveryCard({ media, index }: DiscoveryCardProps) {
                      <Play className="w-4 h-4 fill-current"/> Full Details
                   </div>
                 </Link>
-                {media.providers.slice(0, 1).map(p => (
+                {media.providers?.slice(0, 1).map(p => (
                    <button key={p.provider_id} className="flex-1 bg-vibe-dark/50 border border-white/10 text-white py-3 rounded-full font-medium text-sm hover:bg-vibe-dark/80 transition-colors flex items-center justify-center gap-2">
                      Watch on {p.provider_name}
                    </button>

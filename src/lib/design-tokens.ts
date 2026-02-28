@@ -44,7 +44,7 @@ export const MEDIA_TYPE_LABELS = {
 } as const;
 
 export const NAV_ITEMS = [
-  { label: 'Archive', href: '/', icon: 'home' },
+  { label: 'Cinema', href: '/', icon: 'home' },
   { label: 'Pulse', href: '/pulse', icon: 'activity' },
-  { label: 'Collections', href: '/collections', icon: 'archive' },
+  { label: 'Library', href: '/collections', icon: 'archive' },
 ] as const;

@@ -2,13 +2,12 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Sidebar, BottomNav } from "@/components/layout/Navigation";
 import MeshGradient from "@/components/ui/MeshGradient";
+import QueryProvider from "@/components/providers/QueryProvider";
 
 export const metadata: Metadata = {
-  title: "CineChive | Entertainment Archive",
-  description: "Exquisite tracking for Movies, TV, and Music.",
+  title: "CineChive | Cinematic Library",
+  description: "Exquisite curation for Movies, TV, and Cinema.",
 };
-
-import QueryProvider from "@/components/providers/QueryProvider";
 
 export default function RootLayout({
   children,
@@ -17,18 +16,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark">
-      <body className="antialiased overflow-x-hidden selection:bg-vibe-violet/30 selection:text-white">
+      <body className="antialiased selection:bg-vibe-violet/30 selection:text-white h-screen overflow-hidden">
         <QueryProvider>
-          <div className="flex min-h-screen">
+          <div className="flex h-full">
             <Sidebar />
-            
-            <main className="flex-1 relative pb-24 md:pb-0">
+
+            <main className="flex-1 overflow-y-auto overflow-x-hidden relative pb-24 md:pb-0">
               <MeshGradient />
               <div className="relative z-10 w-full">
                 {children}
               </div>
             </main>
-            
+
             <BottomNav />
           </div>
         </QueryProvider>
@@ -36,3 +35,4 @@ export default function RootLayout({
     </html>
   );
 }
+

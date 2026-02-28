@@ -32,7 +32,7 @@ export default function ScriptViewer({ tmdbId, title, scripts }: ScriptViewerPro
           The Final Draft
         </h3>
         <span className="font-data text-[10px] text-muted uppercase tracking-[0.3em]">
-          Screenplay Protocol
+          Screenplay Library
         </span>
       </div>
 
@@ -43,7 +43,7 @@ export default function ScriptViewer({ tmdbId, title, scripts }: ScriptViewerPro
 
         <div className="relative z-10 space-y-6">
           <div className="max-w-xl">
-            <h4 className="font-heading text-xl text-white mb-2">Original Screenplay Archive</h4>
+            <h4 className="font-heading text-xl text-white mb-2">Director's Script Vault</h4>
             <p className="text-muted text-sm leading-relaxed">
               Explore the blueprint of the narrative. Study the structure, dialogue, and pacing as envisioned by the creators.
             </p>
@@ -93,7 +93,7 @@ export default function ScriptViewer({ tmdbId, title, scripts }: ScriptViewerPro
 
           <div className="pt-4 flex items-center gap-4 text-[10px] font-data text-muted/60 uppercase tracking-widest">
             <span className="flex items-center gap-1"><div className="w-1 h-1 rounded-full bg-accent" /> PDF FORMAT</span>
-            <span className="flex items-center gap-1"><div className="w-1 h-1 rounded-full bg-accent" /> ARCHIVE GRADE</span>
+            <span className="flex items-center gap-1"><div className="w-1 h-1 rounded-full bg-accent" /> STUDIO EDITION</span>
             <span className="flex items-center gap-1"><div className="w-1 h-1 rounded-full bg-accent" /> ENTHUSIAST ONLY</span>
           </div>
         </div>

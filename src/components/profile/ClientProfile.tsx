@@ -21,7 +21,7 @@ interface ClientProfileProps {
 
 export default function ClientProfile({ user, profile, stats, recentEntries }: ClientProfileProps) {
   return (
-    <div className="min-h-screen py-10 md:py-16 px-6 md:px-10 max-w-6xl mx-auto">
+    <div className="py-10 md:py-16 px-6 md:px-10 max-w-6xl mx-auto">
       {/* Profile Header */}
       <header className="mb-16">
         <div className="flex flex-col md:flex-row gap-10 items-start md:items-end">
@@ -54,7 +54,7 @@ export default function ClientProfile({ user, profile, stats, recentEntries }: C
                      {profile.display_name || profile.username.toUpperCase()}
                   </h1>
                   <span className="font-data text-xs text-muted uppercase tracking-[0.3em] font-bold mt-2 block">
-                    Level 1 Archivist — @{profile.username}
+                    Cinema Curator — @{profile.username}
                   </span>
                 </div>
                 
@@ -96,14 +96,14 @@ export default function ClientProfile({ user, profile, stats, recentEntries }: C
          <GlassPanel className="p-8 flex flex-col items-center justify-center text-center bg-white/5 border-white/5">
             <Archive className="text-white/60 mb-4" size={32} />
             <span className="font-display text-4xl mb-1">{stats.entriesCount}</span>
-            <span className="font-data text-[10px] text-muted uppercase tracking-widest">Total Captures</span>
+            <span className="font-data text-[10px] text-muted uppercase tracking-widest">Films Collected</span>
          </GlassPanel>
 
          <GlassPanel className="p-8 col-span-1 md:col-span-3 bg-white/5 border-white/5 relative overflow-hidden group">
             <div className="relative z-10 flex flex-col h-full">
                <div className="flex items-center gap-3 mb-6">
                   <Activity className="text-vibe-cyan" size={20} />
-                  <span className="font-data text-[10px] text-muted uppercase tracking-widest">Vibe Resonance Distribution</span>
+                  <span className="font-data text-[10px] text-muted uppercase tracking-widest">Cinematic Mood Distribution</span>
                </div>
                
                <div className="flex-1 flex items-end gap-2 h-20">
@@ -130,7 +130,7 @@ export default function ClientProfile({ user, profile, stats, recentEntries }: C
       {/* Content Tabs */}
       <section>
          <div className="flex items-center gap-8 border-b border-white/5 mb-10 overflow-x-auto pb-4 scrollbar-hide">
-            {['RECENT LOGS', 'ARCHIVED MEDIA', 'NETWORK PULSE'].map((tab, i) => (
+            {['RECENT ENTRIES', 'FILM LIBRARY', 'CINEMA PULSE'].map((tab, i) => (
               <button key={tab} className={cn(
                 "font-data text-[10px] uppercase font-bold tracking-[0.2em] whitespace-nowrap transition-all relative pb-2",
                 i === 0 ? "text-white" : "text-muted hover:text-white"
@@ -174,7 +174,7 @@ export default function ClientProfile({ user, profile, stats, recentEntries }: C
               </motion.div>
             )) : (
               <div className="col-span-full py-20 text-center opacity-30 border-2 border-dashed border-white/5 rounded-card">
-                 <p className="font-heading text-xl italic text-muted">No resonance captures yet.</p>
+                 <p className="font-heading text-xl italic text-muted">No cinema entries yet.</p>
               </div>
             )}
          </div>

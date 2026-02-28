@@ -109,6 +109,43 @@ export class MediaFetcher {
     };
   }
 
+  static async getCuratedCollections(): Promise<{ title: string, description: string, movies: FeedEntity[] }[]> {
+    const collections = [
+      {
+        title: 'Noir Shadows',
+        description: 'Hard-boiled crime, moody atmosphere, and grey morality.',
+        params: { with_genres: '80,9648,53', 'vote_average.gte': 7 }
+      },
+      {
+        title: 'Neon Dreams',
+        description: 'Vibrant Sci-Fi explorations and futuristic aesthetics.',
+        params: { with_genres: '878,28', 'vote_average.gte': 7 }
+      },
+      {
+        title: 'Hidden Gems',
+        description: 'Masterpieces that flew under the mainstream radar.',
+        params: { 'vote_average.gte': 7.5, 'vote_count.lte': 500 }
+      },
+      {
+        title: 'Essential Legacy',
+        description: 'The foundation of modern cinema. Golden Age classics.',
+        params: { 'release_date.lte': '1980-01-01', 'vote_average.gte': 8 }
+      }
+    ];
+
+    const results = await Promise.all(collections.map(async (col) => {
+      const data = await this.fetchWithRateLimit(this.getUrl('/discover/movie', col.params));
+      const normalized = data.results.slice(0, 10).map((item: any) => this.normalizeData(item, 'movie'));
+      return {
+        title: col.title,
+        description: col.description,
+        movies: normalized
+      };
+    }));
+
+    return results;
+  }
+
   static async getDeepDetails(id: number, type: 'movie' | 'tv'): Promise<FeedEntity | null> {
     try {
       const url = this.getUrl(`/${type}/${id}`, {

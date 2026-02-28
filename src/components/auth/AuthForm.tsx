@@ -55,11 +55,11 @@ export default function AuthForm({ mode }: AuthFormProps) {
               animate={{ scale: 1 }}
               className="text-3xl font-display italic tracking-tighter bg-linear-to-r from-vibe-violet to-vibe-cyan bg-clip-text text-transparent mb-2"
             >
-              {mode === 'login' ? 'WELCOME BACK' : 'JOIN THE ARCHIVE'}
+              {mode === 'login' ? 'WELCOME BACK' : 'JOIN THE CINEMATHEQUE'}
             </motion.h1>
             <p className="text-muted text-sm font-heading">
               {mode === 'login' 
-                ? 'Enter your credentials to access the vault' 
+                ? 'Enter your credentials to access the library' 
                 : 'Create an account to start your collection'}
             </p>
           </header>
@@ -73,7 +73,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
                   name="username"
                   type="text"
                   required
-                  placeholder="thearchivist"
+                  placeholder="thecurator"
                   className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-white/20 focus:outline-hidden focus:ring-2 focus:ring-vibe-violet/50 focus:border-vibe-violet/50 transition-all font-heading"
                 />
               </div>
@@ -158,7 +158,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
 
           <div className="mt-8 text-center pt-6 border-t border-white/5">
             <p className="text-muted text-sm font-heading">
-              {mode === 'login' ? "Don't have an archive yet?" : "Already an archivist?"}
+              {mode === 'login' ? "No library yet?" : "Already a curator?"}
               {' '}
               <Link 
                 href={mode === 'login' ? '/signup' : '/login'}

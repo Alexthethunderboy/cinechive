@@ -71,13 +71,13 @@ export default function CatalogExplorer({ person, works }: CatalogExplorerProps)
                 Dossier
               </h2>
               <p className="text-lg text-muted leading-relaxed font-heading opacity-90">
-                {person.biography || "Archive records for this individual are currently being indexed. Biography data pending."}
+                {person.biography || "Cinema records for this individual are currently being curated. Biography data pending."}
               </p>
            </div>
 
            <div className="grid grid-cols-3 gap-4">
-              <Stat value={works.length} label="Entities" />
-              <Stat value="Top 1%" label="Archive Rank" />
+              <Stat value={works.length} label="Works" />
+              <Stat value="Top 1%" label="Curatory Stature" />
               <Stat value={<Award size={20} />} label="Distinction" />
            </div>
         </div>

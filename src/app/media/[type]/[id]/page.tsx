@@ -6,6 +6,8 @@ import { getMediaEntryForUser } from '@/lib/actions';
 import CatalogExplorer from '@/components/cinema/CatalogExplorer';
 import { SearchService } from '@/lib/services/SearchService';
 import { AniListFetcher } from '@/lib/api/anilist';
+import { DeepDataService } from '@/lib/services/DeepDataService';
+import { ScriptService } from '@/lib/services/ScriptService';
 
 interface PageProps {
   params: Promise<{
@@ -28,7 +30,7 @@ export default async function MediaDetailPage({ params }: PageProps) {
       const uniqueWorks: UnifiedMedia[] = Array.from(new Map(works.map((w: UnifiedMedia) => [w.id, w])).values()) as UnifiedMedia[];
 
       return (
-        <div className="min-h-screen py-20 px-6 md:px-16">
+        <div className="py-20 px-6 md:px-16">
           <CatalogExplorer 
             person={{
               name: person.name,
@@ -59,6 +61,21 @@ export default async function MediaDetailPage({ params }: PageProps) {
       
       // Add extra deep links (cinema focused)
       media.composers = data.composers;
+
+      // Fetch Deep Metadata (Trivia, Technical Lab, Scripts)
+      const imdbId = data.external_ids?.imdb_id;
+      const [trivia, scripts] = await Promise.all([
+        imdbId ? DeepDataService.fetchTrivia(id, imdbId) : Promise.resolve([]),
+        ScriptService.findScript(media.title, imdbId)
+      ]);
+
+      const techSpecs = DeepDataService.getTechnicalSpecs(data);
+
+      (media as any).deepData = {
+        trivia,
+        specs: techSpecs,
+        scripts
+      };
     } else if (type === 'anime') {
       const data = await AniListFetcher.getAnimeDetails(Number(id));
       media = mapAniListDetailToUnified(data);
@@ -73,5 +90,5 @@ export default async function MediaDetailPage({ params }: PageProps) {
   // Fetch user-specific archive entry if it exists
   const userEntry = await getMediaEntryForUser(id, type);
 
-  return <ClientMediaDetail media={media} initialUserEntry={userEntry} />;
+  return <ClientMediaDetail media={media} initialUserEntry={userEntry} deepData={(media as any).deepData} />;
 }

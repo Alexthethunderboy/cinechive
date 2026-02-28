@@ -5,11 +5,19 @@ import { deriveClassification } from '../classification-utils';
 export interface UnifiedMedia {
   id: string;
   title: string;
+  displayName: string; // Alias for title
   type: 'movie' | 'tv' | 'documentary' | 'anime';
   posterUrl: string | null;
   year?: number;
+  releaseYear?: number; // Alias for year
   classification: ClassificationName;
   director?: string;
+  rating?: {
+    average: number;
+    count: number;
+    showBadge: boolean;
+  };
+  genres: string[];
 }
 
 export interface DetailedMedia extends UnifiedMedia {
@@ -38,13 +46,22 @@ export function mapTMDBToUnified(item: TMDBMedia): UnifiedMedia {
     ? new Date(item.release_date || item.first_air_date!).getFullYear() 
     : undefined;
 
+  const title = item.title || item.name || 'Untitled';
   return {
     id: String(item.id),
-    title: item.title || item.name || 'Untitled',
+    title,
+    displayName: title,
     type,
     posterUrl: posterUrl(item.poster_path),
     year,
+    releaseYear: year,
     classification: deriveClassification(type, item) as ClassificationName,
+    rating: {
+      average: item.vote_average || 0,
+      count: item.vote_count || 0,
+      showBadge: (item.vote_count || 0) > 100,
+    },
+    genres: [],
   };
 }
 
@@ -56,13 +73,18 @@ export function mapTMDBDetailToUnified(data: any, type: 'movie' | 'tv'): Detaile
   const isMovie = type === 'movie';
   const trailer = data.videos?.results?.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
   
+  const title = data.title || data.name;
+  const year = new Date(data.release_date || data.first_air_date).getFullYear();
+
   return {
     id: String(data.id),
-    title: data.title || data.name,
+    title,
+    displayName: title,
     type: data.genres?.some((g: any) => g.id === 99) ? 'documentary' : type,
     posterUrl: posterUrl(data.poster_path),
     backdropUrl: backdropUrl(data.backdrop_path),
-    year: new Date(data.release_date || data.first_air_date).getFullYear(),
+    year,
+    releaseYear: year,
     description: data.overview,
     classification: deriveClassification(type, data),
     genres: data.genres?.map((g: any) => g.name) || [],
@@ -98,13 +120,22 @@ export function mapTMDBPersonCreditToUnified(credit: any): UnifiedMedia {
     ? new Date(credit.release_date || credit.first_air_date!).getFullYear() 
     : undefined;
 
+  const title = credit.title || credit.name || 'Untitled';
   return {
     id: String(credit.id),
-    title: credit.title || credit.name || 'Untitled',
+    title,
+    displayName: title,
     type,
-    posterUrl: posterUrl(credit.poster_path),
+    posterUrl: credit.poster_path ? posterUrl(credit.poster_path) : null,
     year,
+    releaseYear: year,
     classification: deriveClassification(type, credit),
+    rating: {
+      average: credit.vote_average || 0,
+      count: credit.vote_count || 0,
+      showBadge: (credit.vote_count || 0) > 100,
+    },
+    genres: [],
   };
 }
 
@@ -113,13 +144,18 @@ export function mapAniListDetailToUnified(data: any): DetailedMedia {
     ? `https://www.youtube.com/watch?v=${data.trailer.id}` 
     : undefined;
     
+  const title = data.title?.english || data.title?.romaji || 'Unknown Anime';
+  const year = data.startDate?.year || undefined;
+
   return {
     id: String(data.id),
-    title: data.title?.english || data.title?.romaji || 'Unknown Anime',
+    title,
+    displayName: title,
     type: 'anime',
     posterUrl: data.coverImage?.extraLarge || data.coverImage?.large || null,
     backdropUrl: data.bannerImage || null,
-    year: data.startDate?.year || undefined,
+    year,
+    releaseYear: year,
     description: data.description?.replace(/<[^>]*>?/gm, '') || '',
     classification: 'Atmospheric',
     genres: data.genres || [],
@@ -136,6 +172,11 @@ export function mapAniListDetailToUnified(data: any): DetailedMedia {
       { label: 'Score', value: data.averageScore ? `${data.averageScore}%` : 'N/A' },
       { label: 'Format', value: data.format || 'TV' },
       { label: 'Status', value: data.status },
-    ]
+    ],
+    rating: {
+      average: (data.averageScore || 0) / 10,
+      count: data.popularity || 0,
+      showBadge: (data.popularity || 0) > 1000,
+    }
   };
 }

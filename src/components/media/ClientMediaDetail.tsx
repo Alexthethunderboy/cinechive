@@ -13,13 +13,19 @@ import { DetailedMedia } from '@/lib/api/mapping';
 import { archiveMediaAction } from '@/lib/actions';
 import ReviewSection from './ReviewSection';
 import MusicSection from './MusicSection';
+import DeepDiveSection from './DeepDiveSection';
 
 interface ClientMediaDetailProps {
   media: DetailedMedia;
   initialUserEntry?: any;
+  deepData?: {
+    trivia: any[];
+    specs: any;
+    scripts: any[];
+  };
 }
 
-export default function ClientMediaDetail({ media, initialUserEntry }: ClientMediaDetailProps) {
+export default function ClientMediaDetail({ media, initialUserEntry, deepData }: ClientMediaDetailProps) {
   const router = useRouter();
   const [selectedClassification, setSelectedClassification] = useState<ClassificationName | undefined>(initialUserEntry?.classification);
   const [comment, setComment] = useState(initialUserEntry?.notes || '');
@@ -54,7 +60,7 @@ export default function ClientMediaDetail({ media, initialUserEntry }: ClientMed
   }
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className="pb-20">
       {/* Hero Header with Shared Layout Transition */}
       <section className="relative h-[60vh] md:h-[70vh] w-full overflow-hidden">
         <motion.div 
@@ -233,13 +239,13 @@ export default function ClientMediaDetail({ media, initialUserEntry }: ClientMed
                             src={person.profilePath}
                             alt={person.name}
                             fill
-                            className="object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+                            className="object-cover group-hover:scale-110 transition-all duration-500"
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-white/10 bg-white/5">
                             <div className="flex flex-col items-center gap-2 opacity-20">
                               <Users size={32} />
-                              <span className="font-data text-[8px] uppercase tracking-widest">Broken Intel</span>
+                              <span className="font-data text-[8px] uppercase tracking-widest">Still Image</span>
                             </div>
                           </div>
                         )}
@@ -280,7 +286,7 @@ export default function ClientMediaDetail({ media, initialUserEntry }: ClientMed
                             src={person.profilePath}
                             alt={person.name}
                             fill
-                            className="object-cover grayscale transition-all duration-500"
+                            className="object-cover transition-all duration-500"
                           />
                         ) : (
                           <div className="w-full h-full flex items-center justify-center text-white/5 bg-white/5">
@@ -317,7 +323,7 @@ export default function ClientMediaDetail({ media, initialUserEntry }: ClientMed
               </div>
               <GlassPanel className="p-8 border-dashed border-white/10 bg-white/5">
                  <div className="prose prose-invert max-w-none font-sans opacity-70">
-                    <h4 className="font-heading text-white">Your Findings</h4>
+                    <h4 className="font-heading text-white">Your Impression</h4>
                     {initialUserEntry?.notes ? (
                       <div className="space-y-4">
                         {initialUserEntry.rating && (
@@ -339,6 +345,15 @@ export default function ClientMediaDetail({ media, initialUserEntry }: ClientMed
            <div className="pt-12 border-t border-white/5">
              <ReviewSection mediaId={media.id} mediaType={media.type} />
            </div>
+
+           {/* Deep Dive Explorer */}
+           {deepData && (
+             <DeepDiveSection 
+               tmdbId={media.id} 
+               title={media.title} 
+               data={deepData} 
+             />
+           )}
         </div>
 
         <div className="lg:col-span-4 space-y-8">
@@ -380,7 +395,7 @@ export default function ClientMediaDetail({ media, initialUserEntry }: ClientMed
                  </div>
 
                  <div>
-                    <label className="font-data text-[10px] uppercase tracking-widest text-muted mb-4 block">State of Mind</label>
+                    <label className="font-data text-[10px] uppercase tracking-widest text-muted mb-4 block">Cinematic Mode</label>
                     <ClassificationMeter 
                      selected={currentClassification}
                      onSelect={setSelectedClassification}
@@ -398,7 +413,7 @@ export default function ClientMediaDetail({ media, initialUserEntry }: ClientMed
                     >
                       <span className="text-4xl">{[currentClassification]}</span>
                       <span className="font-heading text-lg" style={{ color: classificationColor }}>{currentClassification.toUpperCase()}</span>
-                      <span className="font-data text-[10px] text-muted uppercase tracking-widest">Locked In</span>
+                      <span className="font-data text-[10px] text-muted uppercase tracking-widest">Captured</span>
                     </div>
                  </div>
 

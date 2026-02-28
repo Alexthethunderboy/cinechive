@@ -2,9 +2,10 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
-import { getTrending, searchMedia, enrichWithDirector } from './api/tmdb';
+import { getTrending, searchMedia, enrichWithDirector, getMovieDetails } from './api/tmdb';
 import { ClassificationName, CLASSIFICATION_COLORS } from './design-tokens';
 import { mapTMDBToUnified, UnifiedMedia, DetailedMedia } from './api/mapping';
+import { MediaFetcher } from './api/MediaFetcher';
 
 /**
  * Unified Search Server Action
@@ -42,7 +43,7 @@ export async function archiveMediaAction(data: {
   const supabase = await createClient();
   
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Authentication required to archive.");
+  if (!user) throw new Error("Authentication required to collect film.");
 
   // Resolve vibe string to mood_tag_id
   const { data: mood } = await (supabase
@@ -64,7 +65,7 @@ export async function archiveMediaAction(data: {
   });
 
   if (error) {
-    console.error("Archive failed:", error);
+    console.error("Collection failed:", error);
     throw new Error(error.message);
   }
 
@@ -317,5 +318,45 @@ export async function getFriendReviews(externalId: string, mediaType: string) {
   }
 
   return data as any[];
+}
+
+/**
+ * Dashboard Actions
+ */
+import { DeepDataService } from './services/DeepDataService';
+
+export async function getRandomTriviaAction() {
+  const entries = await getVaultEntries();
+  const movies = entries.filter(e => e.media_type === 'movie');
+  
+  if (movies.length === 0) return null;
+  
+  const randomMovie = movies[Math.floor(Math.random() * movies.length)];
+  
+  try {
+    const details = await getMovieDetails(parseInt(randomMovie.media_id));
+    const imdbId = details.external_ids?.imdb_id;
+    
+    if (!imdbId) return null;
+    
+    const trivia = await DeepDataService.fetchTrivia(randomMovie.media_id, imdbId);
+    if (trivia.length === 0) return null;
+    
+    const randomTrivia = trivia[Math.floor(Math.random() * trivia.length)];
+    
+    return {
+      movieTitle: randomMovie.title,
+      trivia: randomTrivia,
+      mediaId: randomMovie.media_id,
+      mediaType: randomMovie.media_type
+    };
+  } catch (error) {
+    console.error("Failed to fetch random trivia:", error);
+    return null;
+  }
+}
+
+export async function getCuratedCollectionsAction() {
+  return MediaFetcher.getCuratedCollections();
 }
 

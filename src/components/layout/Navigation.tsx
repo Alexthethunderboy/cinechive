@@ -38,7 +38,9 @@ export function Sidebar() {
   }, [supabase.auth]);
 
   return (
-    <aside className="hidden md:flex flex-col w-64 h-screen glass border-r border-border-glass sticky top-0 z-50">
+    <aside
+      className="hidden md:flex flex-col w-64 h-full shrink-0 glass border-r border-border-glass z-50"
+    >
       <div className="p-8">
         <h1 className="font-display text-2xl tracking-tighter text-white italic">
           CINECHIVE

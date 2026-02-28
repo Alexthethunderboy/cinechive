@@ -20,21 +20,21 @@ export default function ClientPulse({ initialFeed }: ClientPulseProps) {
         originalEntryId: originalId,
         classification: classification
       });
-      alert("Successfully re-archived to your archive.");
+      alert("Successfully added to your library.");
     } catch (error) {
-      console.error("Re-archive failed:", error);
-      alert("Archive authentication required.");
+      console.error("Collection failed:", error);
+      alert("Authentication required.");
     }
   }
 
   return (
-    <div className="min-h-screen py-10 md:py-16 max-w-3xl mx-auto px-6">
+    <div className="py-10 md:py-16 max-w-3xl mx-auto px-6">
       <header className="mb-12 flex items-center justify-between">
         <div>
           <h1 className="font-display text-4xl md:text-5xl tracking-tighter mb-2 italic">COLLECTIVE <span className="text-accent underline decoration-accent/30 underline-offset-8">PULSE</span></h1>
           <p className="text-muted text-sm flex items-center gap-2">
              <span className="w-2 h-2 rounded-full bg-accent opacity-20" />
-             Real-time archive activity from your collective
+             Real-time cinematic activity from your collective
           </p>
         </div>
         
@@ -58,7 +58,7 @@ export default function ClientPulse({ initialFeed }: ClientPulseProps) {
                {post.activity_type === 're_archive' && (
                  <div className="absolute -top-3 left-6 px-3 py-1 rounded-pill bg-accent text-black font-data text-[8px] uppercase font-bold tracking-[0.2em] flex items-center gap-2 elevation">
                     <Repeat2 size={10} />
-                    Re-Archived
+                    Collected
                  </div>
                )}
 
@@ -88,7 +88,7 @@ export default function ClientPulse({ initialFeed }: ClientPulseProps) {
                      {/* Post Header */}
                      <div className="flex items-center justify-between">
                         <div>
-                           <span className="font-heading text-white block leading-none">{post.username || 'Archivist'}</span>
+                           <span className="font-heading text-white block leading-none">{post.username || 'Cinephile'}</span>
                            <span className="font-data text-[10px] text-muted">{formatDate(post.created_at)}</span>
                         </div>
                         <div 
@@ -165,7 +165,7 @@ export default function ClientPulse({ initialFeed }: ClientPulseProps) {
         )) : (
           <div className="py-20 text-center opacity-30">
              <Activity className="mx-auto mb-4" size={48} />
-             <p className="font-heading text-lg">The pulse is silent. Start archiving to project your frequency.</p>
+             <p className="font-heading text-lg">The pulse is silent. Start collecting to project your frequency.</p>
           </div>
         )}
       </div>

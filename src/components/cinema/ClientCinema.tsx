@@ -48,7 +48,7 @@ export default function ClientCinema({ initialTrending }: ClientCinemaProps) {
   }, [query]);
 
   return (
-    <div className="min-h-screen py-10 md:py-16 px-6 md:px-10 pb-24 md:pb-16 max-w-7xl mx-auto">
+    <div className="py-10 md:py-16 px-6 md:px-10 pb-24 md:pb-16 max-w-7xl mx-auto">
       <header className="mb-12">
         <motion.div
            initial={{ opacity: 0, x: -20 }}
@@ -59,7 +59,7 @@ export default function ClientCinema({ initialTrending }: ClientCinemaProps) {
             CINEMA <span className="text-white/60 italic">& TV</span>
           </h1>
           <p className="text-muted max-w-xl">
-             The archive of visual storytelling. From blockbuster cinema to high-order television and deep-dive documentaries.
+             The library of visual storytelling. From blockbuster cinema to high-order television and deep-dive documentaries.
           </p>
         </motion.div>
 
