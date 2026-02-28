@@ -44,7 +44,7 @@ export function DiscoveryCard({ media: initialMedia, index }: DiscoveryCardProps
               id: String(c.id),
               name: c.name,
               role: c.character,
-              profileUrl: c.profile_path ? posterUrl(c.profile_path, 'w185') : null
+              profileUrl: c.profile_path ? posterUrl(c.profile_path, 'w342') : null
             })) || [],
             trailerUrl: trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : prev.trailerUrl,
             business: detail.budget || detail.revenue ? {
