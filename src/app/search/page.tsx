@@ -1,18 +1,17 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { globalSearchAction } from '@/lib/actions';
 import { motion } from 'framer-motion';
 import EverythingBar from '@/components/search/EverythingBar';
 import { DiscoveryCard } from '@/components/cinema/DiscoveryCard';
-import GlassPanel from '@/components/ui/GlassPanel';
 import { Film, Tv, Users, Loader2, Search } from 'lucide-react';
-import { FeedEntity } from '@/lib/api/MediaFetcher';
 import Link from 'next/link';
 import Image from 'next/image';
 
-export default function SearchPage() {
+function SearchContent() {
   const searchParams = useSearchParams();
   const query = searchParams.get('q') || '';
 
@@ -123,5 +122,18 @@ export default function SearchPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full flex flex-col items-center justify-center py-24 opacity-50 space-y-6">
+        <Loader2 className="w-12 h-12 animate-spin text-accent" />
+        <p className="font-display text-2xl tracking-tighter italic uppercase text-white/40">Querying Cinema Graph...</p>
+      </div>
+    }>
+      <SearchContent />
+    </Suspense>
   );
 }
