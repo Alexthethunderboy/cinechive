@@ -1,10 +1,10 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { User, Settings, MapPin, Calendar, Archive, Activity, Sparkles, ExternalLink, LogOut } from 'lucide-react';
+import { User, Settings, MapPin, Calendar, Layers, Activity, Sparkles, ExternalLink, LogOut } from 'lucide-react';
 import GlassPanel from '@/components/ui/GlassPanel';
 import { ClassificationName, CLASSIFICATION_COLORS,  } from '@/lib/design-tokens';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatUsername } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
 import { signOut } from '@/app/auth/actions';
@@ -14,14 +14,42 @@ interface ClientProfileProps {
   profile: any;
   stats: {
     entriesCount: number;
+    topCinematographer?: string;
+    topComposer?: string;
+    mostLoggedSound?: string;
+    formatPreference?: string;
     vibeDistribution?: Record<ClassificationName, number>;
   };
   recentEntries: any[];
+  pinnedMedia?: any[];
 }
 
-export default function ClientProfile({ user, profile, stats, recentEntries }: ClientProfileProps) {
+export default function ClientProfile({ user, profile, stats, recentEntries, pinnedMedia = [] }: ClientProfileProps) {
+  // Cinematic Aura logic: Determine dominant vibe for background
+  const dominantVibe = useMemo(() => {
+    if (stats.vibeDistribution) {
+      return Object.entries(stats.vibeDistribution).sort((a,b) => b[1] - a[1])[0]?.[0] as ClassificationName;
+    }
+    return recentEntries[0]?.classification as ClassificationName || 'Chill';
+  }, [stats.vibeDistribution, recentEntries]);
+
+  const auraColor = CLASSIFICATION_COLORS[dominantVibe] || '#8B5CF6';
+
   return (
-    <div className="py-10 md:py-16 px-6 md:px-10 max-w-6xl mx-auto">
+    <div className="relative min-h-screen overflow-hidden">
+       {/* Cinematic Aura Background */}
+       <motion.div 
+         initial={{ opacity: 0 }}
+         animate={{ 
+           opacity: [0.1, 0.2, 0.1],
+           scale: [1, 1.1, 1],
+           backgroundColor: auraColor 
+         }}
+         transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+         className="absolute -top-1/4 -left-1/4 w-[150%] h-[150%] blur-[120px] rounded-full -z-10 pointer-events-none"
+       />
+
+       <div className="py-10 md:py-16 px-6 md:px-10 max-w-6xl mx-auto relative z-10">
       {/* Profile Header */}
       <header className="mb-16">
         <div className="flex flex-col md:flex-row gap-10 items-start md:items-end">
@@ -51,10 +79,10 @@ export default function ClientProfile({ user, profile, stats, recentEntries }: C
              <div className="flex items-center justify-between">
                 <div>
                   <h1 className="font-display text-4xl md:text-6xl tracking-tighter leading-none italic">
-                     {profile.display_name || profile.username.toUpperCase()}
+                     {profile.display_name || formatUsername(profile.username).toUpperCase()}
                   </h1>
                   <span className="font-data text-xs text-muted uppercase tracking-[0.3em] font-bold mt-2 block">
-                    Cinema Curator — @{profile.username}
+                    Cinema Curator — @{formatUsername(profile.username)}
                   </span>
                 </div>
                 
@@ -94,37 +122,74 @@ export default function ClientProfile({ user, profile, stats, recentEntries }: C
       {/* Stats Grid */}
       <section className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-16">
          <GlassPanel className="p-8 flex flex-col items-center justify-center text-center bg-white/5 border-white/5">
-            <Archive className="text-white/60 mb-4" size={32} />
+            <Layers className="text-white/60 mb-4" size={32} />
             <span className="font-display text-4xl mb-1">{stats.entriesCount}</span>
             <span className="font-data text-[10px] text-muted uppercase tracking-widest">Films Collected</span>
          </GlassPanel>
 
-         <GlassPanel className="p-8 col-span-1 md:col-span-3 bg-white/5 border-white/5 relative overflow-hidden group">
-            <div className="relative z-10 flex flex-col h-full">
-               <div className="flex items-center gap-3 mb-6">
-                  <Activity className="text-vibe-cyan" size={20} />
-                  <span className="font-data text-[10px] text-muted uppercase tracking-widest">Cinematic Mood Distribution</span>
-               </div>
-               
-               <div className="flex-1 flex items-end gap-2 h-20">
-                  {/* Mock bar chart for vibes - could be tied to real data if calculated */}
-                  {['Mind-Expanding', 'Hype', 'Melancholic', 'Chill', 'Nostalgic', 'Chaotic', 'Euphoric', 'Dark'].map((vibe, i) => (
-                    <div key={vibe} className="flex-1 flex flex-col items-center gap-2 group/bar">
-                       <motion.div 
-                        initial={{ height: 0 }}
-                        animate={{ height: `${20 + Math.random() * 60}%` }}
-                        className="w-full rounded-t-sm transition-all group-hover/bar:brightness-125"
-                        style={{ backgroundColor: CLASSIFICATION_COLORS[vibe as ClassificationName] }}
-                       />
-                       <span className="text-lg opacity-40 group-hover/bar:opacity-100 transition-opacity">{[vibe as ClassificationName]}</span>
-                    </div>
-                  ))}
-               </div>
-            </div>
-            
-            {/* Background Glow */}
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-linear-to-r from-vibe-violet/5 to-vibe-cyan/5 blur-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
+         <GlassPanel className="p-8 flex flex-col items-center justify-center text-center bg-white/10 border-white/10 border shadow-2xl">
+            <Activity className="text-accent mb-4" size={32} />
+            <span className="font-display text-xl mb-1 truncate w-full">{stats.topCinematographer || 'Roger Deakins'}</span>
+            <span className="font-data text-[10px] text-muted uppercase tracking-widest">Top Cinematographer</span>
          </GlassPanel>
+
+         <GlassPanel className="p-8 flex flex-col items-center justify-center text-center bg-white/5 border-white/5">
+            <Sparkles className="text-vibe-cyan mb-4" size={32} />
+            <span className="font-display text-xl mb-1">{stats.mostLoggedSound || 'Dolby Atmos'}</span>
+            <span className="font-data text-[10px] text-muted uppercase tracking-widest">Most Logged Sound</span>
+         </GlassPanel>
+
+         <GlassPanel className="p-8 flex flex-col items-center justify-center text-center bg-white/5 border-white/5">
+            <MapPin className="text-vibe-violet mb-4" size={32} />
+            <span className="font-display text-xl mb-1">{stats.formatPreference || '70mm IMAX'}</span>
+            <span className="font-data text-[10px] text-muted uppercase tracking-widest">Format Preference</span>
+         </GlassPanel>
+      </section>
+
+      {/* 35mm Vault: Pinned Media */}
+      <section className="mb-20">
+         <div className="flex items-center justify-between mb-8">
+            <h2 className="font-display text-3xl italic tracking-tighter uppercase">The 35mm Vault</h2>
+            <div className="h-px flex-1 bg-white/5 ml-6" />
+         </div>
+
+         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {(pinnedMedia.length > 0 ? pinnedMedia : recentEntries.slice(0, 4)).map((media, i) => (
+              <motion.div
+                key={media.id}
+                whileHover={{ scale: 1.05, y: -10 }}
+                className="relative group"
+              >
+                <Link href={`/media/${media.media_type}/${media.media_id}`}>
+                  <div className="relative aspect-2/3 rounded-card overflow-hidden border border-white/20 shadow-2xl glass-card">
+                    {media.poster_url && (
+                      <Image 
+                        src={media.poster_url} 
+                        alt={media.title} 
+                        fill 
+                        className="object-cover transition-transform duration-700 group-hover:scale-110" 
+                      />
+                    )}
+                    <div className="absolute inset-0 bg-linear-to-t from-black via-black/20 to-transparent" />
+                    
+                    {/* Technical Format Tag */}
+                    <div className="absolute top-3 right-3 px-2 py-1 rounded-inner bg-black/60 border border-white/10 backdrop-blur-md">
+                       <span className="font-data text-[8px] font-bold text-white uppercase tracking-widest">
+                          {i % 2 === 0 ? '70MM' : 'IMAX'}
+                       </span>
+                    </div>
+
+                    <div className="absolute bottom-4 left-4 right-4">
+                       <h3 className="font-display text-xl italic text-white line-clamp-2 leading-tight">{media.title}</h3>
+                    </div>
+                  </div>
+                </Link>
+                
+                {/* Custom Glassmorphism Border */}
+                <div className="absolute -inset-px rounded-[21px] bg-linear-to-br from-white/30 to-transparent -z-10 group-hover:from-white/60 transition-all" />
+              </motion.div>
+            ))}
+         </div>
       </section>
 
       {/* Content Tabs */}
@@ -180,7 +245,9 @@ export default function ClientProfile({ user, profile, stats, recentEntries }: C
          </div>
       </section>
     </div>
+    </div>
   );
 }
 
 import { cn } from '@/lib/utils';
+import { useMemo } from 'react';

@@ -14,19 +14,19 @@ export type ClassificationName =
   | 'Noir';
 
 export const CLASSIFICATION_COLORS: Record<ClassificationName, string> = {
-  'Essential': '#D4AF37', // Soft Gold
-  'Avant-Garde': '#A1A1AA',
-  'Melancholic': '#71717A',
-  'Atmospheric': '#52525B',
-  'Legacy': '#D4AF37',   // Soft Gold
-  'Provocative': '#E5E7EB',
-  'Visceral': '#F3F4F6',
-  'Noir': '#18181B',
+  'Essential': '#FFFFFF', // Pure White
+  'Avant-Garde': '#D4D4D8',
+  'Melancholic': '#A1A1AA',
+  'Atmospheric': '#71717A',
+  'Legacy': '#E4E4E7',
+  'Provocative': '#F4F4F5',
+  'Visceral': '#FAFAFA',
+  'Noir': '#3F3F46',
 } as const;
 
 export const BRAND_COLORS = {
-  background: '#0A0A0B', // Deep Charcoal
-  accent: '#D4AF37',     // Soft Gold
+  background: '#000000', // Pure Black
+  accent: '#FFFFFF',     // White Accent
   muted: '#71717A',
 } as const;
 
@@ -38,13 +38,30 @@ export const SPRING_CONFIG = {
 };
 
 export const MEDIA_TYPE_LABELS = {
-  movie: 'Cinema',
-  tv: 'Television',
-  documentary: 'Documentary',
+  movie: 'Movies',
+  tv: 'TV Shows',
+  documentary: 'Documentaries',
 } as const;
 
 export const NAV_ITEMS = [
-  { label: 'Cinema', href: '/', icon: 'home' },
-  { label: 'Pulse', href: '/pulse', icon: 'activity' },
-  { label: 'Library', href: '/collections', icon: 'archive' },
+  { label: 'Movies', href: '/', icon: 'home' },
+  { label: 'Pulse', href: '/pulse', icon: 'zap' },
+  { label: 'Activity', href: '/activity', icon: 'bell' },
+  { label: 'Discover', href: '/discover', icon: 'globe' },
+  { label: 'Library', href: '/vault', icon: 'layers' },
 ] as const;
+
+export const MOBILE_PADDINGS = {
+  gutter: '1.25rem', // 20px
+  sectionGap: '2.5rem', // 40px
+  cardRadius: '12px',
+} as const;
+
+export const TYPOGRAPHY = {
+  fluid: {
+    h1: 'clamp(2.5rem, 8vw, 4.5rem)',
+    h2: 'clamp(2rem, 6vw, 3.5rem)',
+    h3: 'clamp(1.5rem, 4vw, 2.5rem)',
+    body: 'max(16px, 1rem)', // Prevent iOS zoom
+  }
+} as const;

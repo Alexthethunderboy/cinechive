@@ -11,7 +11,7 @@ interface CatalogExplorerProps {
   person: {
     name: string;
     biography: string;
-    profilePath: string | null;
+    profileUrl: string | null;
     knownFor: string;
     birthday?: string;
     placeOfBirth?: string;
@@ -30,9 +30,9 @@ export default function CatalogExplorer({ person, works }: CatalogExplorerProps)
             animate={{ opacity: 1, scale: 1 }}
             className="relative aspect-3/4 rounded-card overflow-hidden border-2 border-white/5 shadow-2x-vibe-violet"
           >
-            {person.profilePath ? (
+            {person.profileUrl ? (
               <img 
-                src={`https://image.tmdb.org/t/p/w780${person.profilePath}`} 
+                src={person.profileUrl} 
                 alt={person.name} 
                 className="w-full h-full object-cover"
               />
@@ -71,7 +71,7 @@ export default function CatalogExplorer({ person, works }: CatalogExplorerProps)
                 Dossier
               </h2>
               <p className="text-lg text-muted leading-relaxed font-heading opacity-90">
-                {person.biography || "Cinema records for this individual are currently being curated. Biography data pending."}
+                {person.biography || "Information for this individual is currently being curated. Biography data pending."}
               </p>
            </div>
 
@@ -101,7 +101,12 @@ export default function CatalogExplorer({ person, works }: CatalogExplorerProps)
                   transition={{ delay: idx * 0.05 }}
                   className="w-full h-full"
                 >
-                  <MediaCard {...work} />
+                  <MediaCard 
+                    {...work} 
+                    title={work.displayTitle} 
+                    year={work.releaseYear || undefined}
+                    director={work.director || undefined}
+                  />
                 </motion.div>
               </BentoItem>
             );

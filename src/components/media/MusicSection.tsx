@@ -15,7 +15,7 @@ interface MusicSectionProps {
   composers?: {
     id: string;
     name: string;
-    profilePath: string | null;
+    profileUrl: string | null;
   }[];
 }
 
@@ -41,9 +41,9 @@ export default function MusicSection({ soundtrack, composers }: MusicSectionProp
             >
               <GlassPanel className="p-4 flex items-center gap-4 bg-white/5 border-white/10">
                 <div className="relative w-16 h-16 rounded-inner overflow-hidden border border-white/5">
-                  {composer.profilePath ? (
+                  {composer.profileUrl ? (
                     <img
-                      src={composer.profilePath}
+                      src={composer.profileUrl}
                       alt={composer.name}
                       className="w-full h-full object-cover"
                     />

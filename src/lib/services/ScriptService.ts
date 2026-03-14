@@ -8,7 +8,9 @@ export class ScriptService {
   /**
    * Predicts script locations based on movie title and external IDs
    */
-  static async findScript(title: string, imdbId?: string): Promise<ScriptInfo[]> {
+  static async findScript(title?: string, imdbId?: string): Promise<ScriptInfo[]> {
+    if (!title) return [];
+    
     const slugDashes = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     const slugUnderscores = title.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/(^_|_$)/g, '');
     const slugNoSpaces = title.replace(/\s+/g, '');

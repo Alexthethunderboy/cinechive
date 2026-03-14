@@ -13,10 +13,10 @@ async function verifySearch() {
   // Test 2: Deep Entity Details
   if (results.movies.length > 0) {
     const movie = results.movies[0];
-    console.log(`\nTesting Deep Entity Details for "${movie.title}" (ID: ${movie.id})...`);
-    const details = await SearchService.getDeepEntityDetails(movie.id, 'movie');
-    console.log(`Soundtrack albums found: ${details.soundtrack?.length || 0}`);
-    console.log(`Composers identified: ${details.composers?.map((c: any) => c.name).join(', ') || 'None'}`);
+    console.log(`\nTesting Deep Entity Details for "${movie.displayTitle}" (ID: ${movie.id})...`);
+    const details = (await SearchService.getDeepEntityDetails(movie.id, 'movie')) as any;
+    console.log(`Soundtrack albums found: ${details.media?.soundtrack?.length || 0}`);
+    console.log(`Composers identified: ${details.media?.composers?.map((c: any) => c.name).join(', ') || 'None'}`);
   }
 
   // Test 3: Catalog for Person

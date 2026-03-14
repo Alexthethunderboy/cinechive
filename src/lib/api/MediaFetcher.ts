@@ -1,29 +1,6 @@
-import { TMDBMedia, posterUrl, backdropUrl } from './tmdb';
+import { UniversalMedia, UniversalTransformer } from './UniversalTransformer';
 
-export interface FeedEntity {
-  id: string;
-  type: 'movie' | 'tv' | 'anime';
-  displayName: string;
-  posterUrl: string | null;
-  backdropUrl: string | null;
-  releaseYear: number | null;
-  releaseLabel: string | null;
-  overview: string;
-  rating: {
-    average: number;
-    count: number;
-    showBadge: boolean;
-  };
-  genres: string[];
-  director: string | null;
-  dp: string | null; // Director of Photography
-  ep: string | null; // Executive Producer for TV
-  cast: { id: string; name: string; role: string; profileUrl: string | null }[];
-  trailerUrl: string | null;
-  recommendations: { id: string; title: string; posterUrl: string | null; type: 'movie' | 'tv' }[];
-  providers: { provider_id: number; provider_name: string; logo_path: string | null }[];
-  business?: { budget: number; revenue: number };
-}
+export type FeedEntity = UniversalMedia;
 
 // Simple rate limiter implementation
 class RateLimiter {
@@ -31,7 +8,6 @@ class RateLimiter {
   private tokens: number;
   private maxTokens: number;
   private refillRateMs: number;
-  private checkInterval: NodeJS.Timeout | null = null;
 
   constructor(maxRequests: number, perTimeWindowMs: number) {
     this.maxTokens = maxRequests;
@@ -67,7 +43,7 @@ class RateLimiter {
 }
 
 // 40 requests per 10 seconds is the TMDB limit
-const tmdbRateLimiter = new RateLimiter(38, 10000); // Leave a small buffer
+const tmdbRateLimiter = new RateLimiter(38, 10000); 
 
 export class MediaFetcher {
   private static TMDB_BASE = 'https://api.themoviedb.org/3';
@@ -92,7 +68,7 @@ export class MediaFetcher {
     return res.json();
   }
 
-  static async getTrendingFeed(type: 'movie' | 'tv', page: number = 1): Promise<{ results: FeedEntity[], totalPages: number }> {
+  static async getTrendingFeed(type: 'movie' | 'tv', page: number = 1): Promise<{ results: UniversalMedia[], totalPages: number }> {
     const url = this.getUrl(`/trending/${type}/day`, { page });
     const trendingData = await this.fetchWithRateLimit(url);
     
@@ -101,7 +77,7 @@ export class MediaFetcher {
     const detailedResults = await Promise.all(deepFetchPromises);
 
     // Filter out any failed deep fetches
-    const validResults = detailedResults.filter(Boolean) as FeedEntity[];
+    const validResults = detailedResults.filter(Boolean) as UniversalMedia[];
 
     return {
       results: validResults,
@@ -109,34 +85,64 @@ export class MediaFetcher {
     };
   }
 
-  static async getCuratedCollections(): Promise<{ title: string, description: string, movies: FeedEntity[] }[]> {
-    const collections = [
-      {
-        title: 'Noir Shadows',
-        description: 'Hard-boiled crime, moody atmosphere, and grey morality.',
-        params: { with_genres: '80,9648,53', 'vote_average.gte': 7 }
-      },
-      {
-        title: 'Neon Dreams',
-        description: 'Vibrant Sci-Fi explorations and futuristic aesthetics.',
-        params: { with_genres: '878,28', 'vote_average.gte': 7 }
-      },
-      {
-        title: 'Hidden Gems',
-        description: 'Masterpieces that flew under the mainstream radar.',
-        params: { 'vote_average.gte': 7.5, 'vote_count.lte': 500 }
-      },
-      {
-        title: 'Essential Legacy',
-        description: 'The foundation of modern cinema. Golden Age classics.',
-        params: { 'release_date.lte': '1980-01-01', 'vote_average.gte': 8 }
-      }
-    ];
+  // Canonical selection slugs and their TMDB discover params
+  static readonly SELECTIONS: { slug: string; title: string; description: string; params: Record<string, any> }[] = [
+    {
+      slug: 'noir-shadows',
+      title: 'Noir Shadows',
+      description: 'Hard-boiled crime, moody atmosphere, and grey morality.',
+      params: { with_genres: '80,9648,53', 'vote_average.gte': 7 }
+    },
+    {
+      slug: 'neon-dreams',
+      title: 'Neon Dreams',
+      description: 'Vibrant Sci-Fi explorations and futuristic aesthetics.',
+      params: { with_genres: '878,28', 'vote_average.gte': 7 }
+    },
+    {
+      slug: 'hidden-gems',
+      title: 'Hidden Gems',
+      description: 'Masterpieces that flew under the mainstream radar.',
+      params: { 'vote_average.gte': 7.5, 'vote_count.lte': 500 }
+    },
+    {
+      slug: 'essential-legacy',
+      title: 'Essential Legacy',
+      description: 'The foundation of modern cinema. Golden Age classics.',
+      params: { 'release_date.lte': '1980-01-01', 'vote_average.gte': 8 }
+    },
+    {
+      slug: 'slow-burn',
+      title: 'Slow Burn',
+      description: 'Patient, deliberate cinema that rewards your full attention.',
+      params: { with_genres: '18,9648', 'vote_average.gte': 7.5, sort_by: 'vote_average.desc' }
+    },
+    {
+      slug: 'world-cinema',
+      title: 'World Cinema',
+      description: 'stories told in other tongues — equally universal, more alive.',
+      params: { with_original_language: 'ko|ja|fr|it|es|de|zh', 'vote_average.gte': 7.5, sort_by: 'vote_average.desc' }
+    },
+    {
+      slug: 'edge-of-tomorrow',
+      title: 'Edge of Tomorrow',
+      description: 'High-concept stories that bend time, reality, and consequence.',
+      params: { with_genres: '878,53,9648', 'vote_average.gte': 7, sort_by: 'popularity.desc' }
+    },
+    {
+      slug: 'human-condition',
+      title: 'Human Condition',
+      description: 'Unflinching portraits of grief, connection, and what it means to be alive.',
+      params: { with_genres: '18', 'vote_average.gte': 7.8, sort_by: 'vote_average.desc' }
+    },
+  ];
 
-    const results = await Promise.all(collections.map(async (col) => {
+  static async getCuratedCollections(): Promise<{ slug: string; title: string; description: string; movies: UniversalMedia[] }[]> {
+    const results = await Promise.all(this.SELECTIONS.map(async (col) => {
       const data = await this.fetchWithRateLimit(this.getUrl('/discover/movie', col.params));
-      const normalized = data.results.slice(0, 10).map((item: any) => this.normalizeData(item, 'movie'));
+      const normalized = data.results.slice(0, 10).map((item: any) => UniversalTransformer.fromTMDB(item, 'movie'));
       return {
+        slug: col.slug,
         title: col.title,
         description: col.description,
         movies: normalized
@@ -146,109 +152,134 @@ export class MediaFetcher {
     return results;
   }
 
-  static async getDeepDetails(id: number, type: 'movie' | 'tv'): Promise<FeedEntity | null> {
+  // Canonical archetype → TMDB genre ID mapping
+  static readonly ARCHETYPE_MAP: Record<string, { label: string; description: string; genreIds: number[]; tvGenreIds?: number[] }> = {
+    'essential': {
+      label: 'Essential',
+      description: 'Monumental achievements that redefined the art form.',
+      genreIds: [16, 99, 10402],
+      tvGenreIds: [16, 99]
+    },
+    'avant-garde': {
+      label: 'Avant-Garde',
+      description: 'Reality-bending films that shatter conventions and genre itself.',
+      genreIds: [878, 14, 12, 9648],
+      tvGenreIds: [878, 10765, 9648]
+    },
+    'melancholic': {
+      label: 'Melancholic',
+      description: 'Evocative stories exploring grief, love, and the human condition.',
+      genreIds: [18, 10749],
+      tvGenreIds: [18]
+    },
+    'atmospheric': {
+      label: 'Atmospheric',
+      description: 'Immersive worlds where the setting becomes the story.',
+      genreIds: [35, 10402, 36],
+      tvGenreIds: [35, 10402]
+    },
+    'noir': {
+      label: 'Noir',
+      description: 'Shadowy crime, moral ambiguity, and darkness without apology.',
+      genreIds: [80, 27, 10752],
+      tvGenreIds: [80, 27]
+    },
+    'visceral': {
+      label: 'Visceral',
+      description: 'High-octane cinema built to be felt in your chest.',
+      genreIds: [28, 12],
+      tvGenreIds: [10759]
+    },
+    'legacy': {
+      label: 'Legacy',
+      description: 'Timeless stories of history, heritage, and the frontier.',
+      genreIds: [36, 10751, 37, 10770],
+      tvGenreIds: [10751, 36, 37]
+    },
+    'provocative': {
+      label: 'Provocative',
+      description: 'Tense, gripping narratives designed to unsettle and challenge.',
+      genreIds: [53, 9648, 80],
+      tvGenreIds: [9648, 80]
+    },
+  };
+
+  static async getByArchetype(slug: string, page: number = 1): Promise<{ movies: { results: UniversalMedia[], totalPages: number }; tv: { results: UniversalMedia[], totalPages: number } }> {
+    const archetype = this.ARCHETYPE_MAP[slug];
+    if (!archetype) return { movies: { results: [], totalPages: 0 }, tv: { results: [], totalPages: 0 } };
+
+    const genreStr = archetype.genreIds.join('|');
+    const tvGenreStr = (archetype.tvGenreIds || archetype.genreIds).join('|');
+
+    const [movieData, tvData] = await Promise.all([
+      this.fetchWithRateLimit(this.getUrl('/discover/movie', {
+        with_genres: genreStr,
+        'vote_average.gte': 7,
+        sort_by: 'popularity.desc',
+        page: page,
+      })),
+      this.fetchWithRateLimit(this.getUrl('/discover/tv', {
+        with_genres: tvGenreStr,
+        'vote_average.gte': 7,
+        sort_by: 'popularity.desc',
+        page: page,
+      })),
+    ]);
+
+    return {
+      movies: {
+        results: movieData.results.map((item: any) => UniversalTransformer.fromTMDB(item, 'movie')),
+        totalPages: movieData.total_pages
+      },
+      tv: {
+        results: tvData.results.map((item: any) => UniversalTransformer.fromTMDB(item, 'tv')),
+        totalPages: tvData.total_pages
+      }
+    };
+  }
+
+  static async getByGenre(genreId: number, type: 'movie' | 'tv' = 'movie', page: number = 1): Promise<{ results: UniversalMedia[]; totalPages: number }> {
+    const data = await this.fetchWithRateLimit(this.getUrl(`/discover/${type}`, {
+      with_genres: genreId,
+      sort_by: 'popularity.desc',
+      page: page,
+    }));
+    return {
+      results: data.results.map((item: any) => UniversalTransformer.fromTMDB(item, type)),
+      totalPages: data.total_pages,
+    };
+  }
+
+  static async getBySelection(slug: string, page: number = 1): Promise<{ title: string; description: string; movies: { results: UniversalMedia[], totalPages: number } } | null> {
+    const selection = this.SELECTIONS.find(s => s.slug === slug);
+    if (!selection) return null;
+
+    const data = await this.fetchWithRateLimit(this.getUrl('/discover/movie', {
+      ...selection.params,
+      page: page,
+    }));
+
+    return {
+      title: selection.title,
+      description: selection.description,
+      movies: {
+        results: data.results.map((item: any) => UniversalTransformer.fromTMDB(item, 'movie')),
+        totalPages: data.total_pages
+      }
+    };
+  }
+
+  static async getDeepDetails(id: number, type: 'movie' | 'tv'): Promise<UniversalMedia | null> {
     try {
       const url = this.getUrl(`/${type}/${id}`, {
         append_to_response: 'credits,videos,images,recommendations,watch/providers'
       });
       const data = await this.fetchWithRateLimit(url);
-      return this.normalizeData(data, type);
+      return UniversalTransformer.fromTMDB(data, type);
     } catch (error) {
       console.error(`Failed to fetch deep details for ${type} ${id}:`, error);
       return null;
     }
   }
-
-  private static normalizeData(data: any, type: 'movie' | 'tv'): FeedEntity {
-    // Determine release date and label
-    let releaseDateStr = type === 'movie' ? data.release_date : data.first_air_date;
-    let releaseYear = releaseDateStr ? new Date(releaseDateStr).getFullYear() : null;
-    let releaseLabel = data.status || null;
-
-    if (type === 'movie' && data.status) {
-      if (data.status === 'Released') releaseLabel = 'Now Playing';
-      if (data.status === 'Post Production' || data.status === 'Planned') releaseLabel = 'Coming Soon';
-    } else if (type === 'tv' && data.status) {
-        if (data.status === 'Ended') releaseLabel = 'Completed';
-        if (data.status === 'Returning Series') releaseLabel = 'Returning';
-    }
-
-    // Credits
-    const cast = (data.credits?.cast || []).slice(0, 5).map((c: any) => ({
-      id: String(c.id),
-      name: c.name,
-      role: c.character,
-      profileUrl: posterUrl(c.profile_path, 'w500'), // Or a specialized profile url
-    }));
-
-    const crew = data.credits?.crew || [];
-    let director = null;
-    let dp = null;
-    let ep = null;
-
-    if (type === 'movie') {
-      director = crew.find((c: any) => c.job === 'Director')?.name || null;
-      dp = crew.find((c: any) => c.job === 'Director of Photography')?.name || null;
-    } else {
-      ep = crew.find((c: any) => c.job === 'Executive Producer')?.name || null;
-      director = data.created_by?.[0]?.name || null; // Creator for TV
-    }
-
-    // Trailer
-    const videos = data.videos?.results || [];
-    const trailer = videos.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube' && v.official) 
-      || videos.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
-    const trailerUrl = trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : null;
-
-    // Recommendations
-    const recommendations = (data.recommendations?.results || []).slice(0, 5).map((r: any) => ({
-      id: String(r.id),
-      title: r.title || r.name,
-      posterUrl: posterUrl(r.poster_path, 'w500'),
-      type: r.media_type || type,
-    }));
-
-    // Providers (US region default for now, can be parameterized)
-    const providersData = data['watch/providers']?.results?.US;
-    const allProviders = [...(providersData?.flatrate || []), ...(providersData?.buy || []), ...(providersData?.rent || [])];
-    
-    // Deduplicate providers by ID
-    const uniqueProviders = Array.from(new Map(allProviders.map(item => [item.provider_id, item])).values()).map((p: any) => ({
-      provider_id: p.provider_id,
-      provider_name: p.provider_name,
-      logo_path: posterUrl(p.logo_path, 'original') // Use original or w500 depending on needs
-    }));
-
-    // Vote metrics
-    const voteCount = data.vote_count || 0;
-    const voteAverage = data.vote_average || 0;
-
-    return {
-      id: String(data.id),
-      type,
-      displayName: data.title || data.name || 'Untitled',
-      posterUrl: posterUrl(data.poster_path, 'w500'),
-      backdropUrl: backdropUrl(data.backdrop_path, 'original'),
-      releaseYear,
-      releaseLabel,
-      overview: data.overview || '',
-      rating: {
-        average: voteAverage,
-        count: voteCount,
-        showBadge: voteCount > 100,
-      },
-      genres: (data.genres || []).map((g: any) => g.name),
-      director,
-      dp,
-      ep,
-      cast,
-      trailerUrl,
-      recommendations,
-      providers: uniqueProviders,
-      business: type === 'movie' && (data.budget > 0 || data.revenue > 0) ? {
-        budget: data.budget || 0,
-        revenue: data.revenue || 0,
-      } : undefined,
-    };
-  }
 }
+

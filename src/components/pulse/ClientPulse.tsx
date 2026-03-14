@@ -4,10 +4,11 @@ import { motion } from 'framer-motion';
 import { Activity, MessageSquare, Repeat2, Heart, ExternalLink } from 'lucide-react';
 import GlassPanel from '@/components/ui/GlassPanel';
 import { ClassificationName, CLASSIFICATION_COLORS, MEDIA_TYPE_LABELS } from '@/lib/design-tokens';
-import { cn, formatDate } from '@/lib/utils';
+import { cn, formatDate, formatUsername } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
 import { reArchiveMediaAction } from '@/lib/actions';
+import { toast } from 'sonner';
 
 interface ClientPulseProps {
   initialFeed: any[];
@@ -16,25 +17,26 @@ interface ClientPulseProps {
 export default function ClientPulse({ initialFeed }: ClientPulseProps) {
   async function handleReArchive(originalId: string, classification: ClassificationName) {
     try {
-      await reArchiveMediaAction({
+      const result = await reArchiveMediaAction({
         originalEntryId: originalId,
         classification: classification
       });
-      alert("Successfully added to your library.");
+      // The action throws an error right now, but we can catch it or if it returns an object we handle it
+      toast.success("Added to library");
     } catch (error) {
       console.error("Collection failed:", error);
-      alert("Authentication required.");
+      toast.error("Authentication required");
     }
   }
 
   return (
-    <div className="py-10 md:py-16 max-w-3xl mx-auto px-6">
+    <div className="py-10 md:py-16 max-w-3xl mx-auto px-4 md:px-10">
       <header className="mb-12 flex items-center justify-between">
         <div>
-          <h1 className="font-display text-4xl md:text-5xl tracking-tighter mb-2 italic">COLLECTIVE <span className="text-accent underline decoration-accent/30 underline-offset-8">PULSE</span></h1>
-          <p className="text-muted text-sm flex items-center gap-2">
-             <span className="w-2 h-2 rounded-full bg-accent opacity-20" />
-             Real-time cinematic activity from your collective
+          <h1 className="font-heading text-4xl md:text-7xl tracking-tighter mb-2 italic uppercase">COLLECTIVE <span className="text-white/40">PULSE</span></h1>
+          <p className="text-white/60 font-metadata text-xs flex items-center gap-2 uppercase tracking-widest">
+             <span className="w-2 h-2 rounded-full bg-accent opacity-50" />
+             Real-time cinematic activity from your network
           </p>
         </div>
         
@@ -53,16 +55,22 @@ export default function ClientPulse({ initialFeed }: ClientPulseProps) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.1, duration: 0.6 }}
           >
-            <GlassPanel className="p-6 border-white/10 hover:border-white/20 transition-all bg-accent/5 relative group overflow-visible">
-               {/* Activity Type Badge */}
+            <GlassPanel className="p-4 md:p-6 border-white/10 hover:border-white/20 transition-all bg-accent/5 relative group overflow-visible">
                {post.activity_type === 're_archive' && (
-                 <div className="absolute -top-3 left-6 px-3 py-1 rounded-pill bg-accent text-black font-data text-[8px] uppercase font-bold tracking-[0.2em] flex items-center gap-2 elevation">
+                 <div className="absolute -top-3 left-6 px-3 py-1 rounded-full bg-accent text-black font-metadata text-[8px] uppercase font-bold tracking-[0.2em] flex items-center gap-2 shadow-xl border border-accent/20">
                     <Repeat2 size={10} />
                     Collected
                  </div>
                )}
 
-               <div className="flex gap-6">
+               {post.activity_type === 'echo' && (
+                 <div className="absolute -top-3 left-6 px-3 py-1 rounded-full bg-vibe-cyan text-black font-metadata text-[8px] uppercase font-bold tracking-[0.2em] flex items-center gap-2 shadow-xl border border-vibe-cyan/20">
+                    <MessageSquare size={10} />
+                    Echoed from Deep Dive
+                 </div>
+               )}
+
+               <div className="flex gap-4 md:gap-6">
                   {/* User Avatar */}
                   <div className="shrink-0">
                      <div className="relative w-12 h-12">
@@ -75,7 +83,7 @@ export default function ClientPulse({ initialFeed }: ClientPulseProps) {
                           />
                         ) : (
                           <div className="w-full h-full rounded-full bg-surface-hover border-2 border-white/10 flex items-center justify-center font-bold text-muted">
-                            {post.username?.[0]?.toUpperCase() || '?'}
+                            {formatUsername(post.username)?.[0]?.toUpperCase() || '?'}
                           </div>
                         )}
                         <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-background border border-white/10 flex items-center justify-center text-[10px]">
@@ -88,7 +96,7 @@ export default function ClientPulse({ initialFeed }: ClientPulseProps) {
                      {/* Post Header */}
                      <div className="flex items-center justify-between">
                         <div>
-                           <span className="font-heading text-white block leading-none">{post.username || 'Cinephile'}</span>
+                           <span className="font-heading text-white text-sm md:text-base block leading-none">{post.username || 'Cinephile'}</span>
                            <span className="font-data text-[10px] text-muted">{formatDate(post.created_at)}</span>
                         </div>
                         <div 
@@ -104,7 +112,13 @@ export default function ClientPulse({ initialFeed }: ClientPulseProps) {
                      </div>
 
                      {/* Content */}
-                     {post.comment && (
+                     {post.activity_type === 'echo' ? (
+                       <div className="relative p-4 rounded-inner bg-accent/5 border border-accent/20 italic text-white/90 font-heading leading-relaxed">
+                          <span className="absolute -top-3 -left-2 text-4xl text-accent/20">"</span>
+                          {post.content}
+                          <span className="absolute -bottom-6 -right-2 text-4xl text-accent/20 rotate-180">"</span>
+                       </div>
+                     ) : post.comment && (
                        <p className="text-white/80 font-heading leading-relaxed">
                           {post.comment}
                        </p>
@@ -114,7 +128,7 @@ export default function ClientPulse({ initialFeed }: ClientPulseProps) {
                      <Link href={`/media/${post.media_type}/${post.media_id}`}>
                       <div className="flex gap-4 p-3 rounded-inner bg-accent/5 border border-white/5 hover:border-white/20 transition-all cursor-pointer group/media">
                           <motion.div 
-                            layoutId={`media-${post.media_id}`}
+                            layoutId={`poster-${post.id}-${post.media_id}`}
                             className="relative w-16 aspect-2/3 shrink-0 rounded-sm overflow-hidden bg-surface"
                           >
                             {post.poster_url && (
@@ -163,9 +177,12 @@ export default function ClientPulse({ initialFeed }: ClientPulseProps) {
             </GlassPanel>
           </motion.div>
         )) : (
-          <div className="py-20 text-center opacity-30">
-             <Activity className="mx-auto mb-4" size={48} />
-             <p className="font-heading text-lg">The pulse is silent. Start collecting to project your frequency.</p>
+          <div className="py-20 text-center flex flex-col items-center">
+             <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-6">
+                <Activity className="text-white/20" size={32} />
+             </div>
+             <p className="font-heading text-2xl tracking-tighter italic uppercase text-white/50 mb-2">The pulse is silent</p>
+             <p className="font-metadata text-xs text-white/30 uppercase tracking-widest">Start collecting to project your frequency.</p>
           </div>
         )}
       </div>

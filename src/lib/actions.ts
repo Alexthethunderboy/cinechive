@@ -43,7 +43,7 @@ export async function archiveMediaAction(data: {
   const supabase = await createClient();
   
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error("Authentication required to collect film.");
+  if (!user) return { error: "Authentication required to collect film." };
 
   // Resolve vibe string to mood_tag_id
   const { data: mood } = await (supabase
@@ -161,6 +161,42 @@ export async function reArchiveMediaAction(data: {
 }
 
 /**
+ * Echo Trivia Action
+ */
+export async function echoTriviaAction(data: {
+  mediaId: string;
+  mediaType: string;
+  mediaTitle: string;
+  posterUrl: string | null;
+  triviaId: string;
+  triviaText: string;
+  category?: string;
+}) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Authentication required.");
+
+  const { error } = await (supabase.from('echoes') as any).insert({
+    user_id: user.id,
+    media_id: data.mediaId,
+    media_type: data.mediaType,
+    media_title: data.mediaTitle,
+    poster_url: data.posterUrl,
+    trivia_id: data.triviaId,
+    trivia_text: data.triviaText,
+    category: data.category || 'general'
+  });
+
+  if (error) {
+    console.error("Echo failed:", error);
+    throw new Error(error.message);
+  }
+
+  revalidatePath('/pulse');
+  return { success: true };
+}
+
+/**
  * Profile Actions
  */
 export async function getCurrentUser() {
@@ -223,6 +259,10 @@ export async function getMediaEntryForUser(externalId: string, mediaType: string
  * Advanced Search & Discovery Actions
  */
 import { SearchService } from './services/SearchService';
+
+export async function getSeasonEpisodesAction(tvId: number, seasonNumber: number) {
+  return SearchService.getSeason(tvId, seasonNumber);
+}
 
 export async function globalSearchAction(query: string, options?: { mood?: string; hiddenGems?: boolean }) {
   return SearchService.globalSearch(query, options);
@@ -360,3 +400,14 @@ export async function getCuratedCollectionsAction() {
   return MediaFetcher.getCuratedCollections();
 }
 
+export async function getArchetypePageAction(slug: string, page: number = 1) {
+  return MediaFetcher.getByArchetype(slug, page);
+}
+
+export async function getGenrePageAction(genreId: number, type: 'movie' | 'tv' = 'movie', page: number = 1) {
+  return MediaFetcher.getByGenre(genreId, type, page);
+}
+
+export async function getSelectionPageAction(slug: string, page: number = 1) {
+  return MediaFetcher.getBySelection(slug, page);
+}

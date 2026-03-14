@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
+import { useState } from 'react';
+import { motion } from 'framer-motion';
 import GlassPanel from './GlassPanel';
 import { ClassificationName, CLASSIFICATION_COLORS, MEDIA_TYPE_LABELS, SPRING_CONFIG } from '@/lib/design-tokens';
 import { cn } from '@/lib/utils';
@@ -12,11 +12,10 @@ interface MediaCardProps {
   id: string;
   title: string;
   posterUrl: string | null;
-  type: 'movie' | 'tv' | 'documentary' | 'anime';
+  type: 'movie' | 'tv' | 'documentary' | 'anime' | 'animation' | 'person';
   classification?: ClassificationName;
   year?: number;
   director?: string;
-  layoutId?: string;
   onClick?: () => void;
   disableLink?: boolean;
 }
@@ -29,56 +28,26 @@ export default function MediaCard({
   classification,
   year,
   director,
-  layoutId,
   onClick,
   disableLink = false
 }: MediaCardProps) {
   const [isHovered, setIsHovered] = useState(false);
-  const cardRef = useRef<HTMLDivElement>(null);
-  
-  // 3D Tilt Effect
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-
-  const rotateX = useSpring(useTransform(y, [-0.5, 0.5], [10, -10]), SPRING_CONFIG.default);
-  const rotateY = useSpring(useTransform(x, [-0.5, 0.5], [-10, 10]), SPRING_CONFIG.default);
-
-  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    x.set(mouseX / rect.width - 0.5);
-    y.set(mouseY / rect.height - 0.5);
-  }
-
-  function handleMouseLeave() {
-    x.set(0);
-    y.set(0);
-    setIsHovered(false);
-  }
 
   const classificationColor = classification ? CLASSIFICATION_COLORS[classification] : undefined;
 
   const CardContent = (
     <motion.div
-      ref={cardRef}
-      onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={handleMouseLeave}
+      onMouseLeave={() => setIsHovered(false)}
       onClick={onClick}
-      style={{
-        rotateX,
-        rotateY,
-        perspective: 1000,
-      }}
+      whileHover={{ y: -5 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
       className="w-full h-full cursor-pointer group"
     >
         <GlassPanel
-          layoutId={`media-poster-${id}`}
           className={cn(
             "w-full h-full relative transition-all duration-700 overflow-hidden rounded-card",
-            isHovered && "border-white/20 shadow-[0_0_50px_rgba(255,255,255,0.05)]"
+            isHovered && "shadow-[0_0_50px_rgba(255,255,255,0.05)]"
           )}
         >
         {/* Background Poster layer */}
@@ -105,23 +74,23 @@ export default function MediaCard({
         <div className="absolute inset-0 z-10 p-5 flex flex-col justify-end">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2">
-              <span className="font-data text-[9px] uppercase tracking-[0.2em] text-white/40 px-2 py-0.5 rounded-inner bg-white/5 border border-white/10">
-                {MEDIA_TYPE_LABELS[type as keyof typeof MEDIA_TYPE_LABELS] || type}
-              </span>
-              {year && (
-                <span className="font-data text-[9px] text-muted tracking-widest">{year}</span>
-              )}
-              {director && (
-                <>
-                  <span className="text-white/20">&bull;</span>
-                  <span className="font-data text-[9px] text-muted tracking-widest uppercase">{director}</span>
-                </>
-              )}
+                <span className="font-metadata px-2 py-0.5 rounded-inner bg-white/5">
+                  {MEDIA_TYPE_LABELS[type as keyof typeof MEDIA_TYPE_LABELS] || type}
+                </span>
+                {year && (
+                  <span className="font-metadata">{year}</span>
+                )}
+                {director && (
+                  <>
+                    <span className="text-white/20">&bull;</span>
+                    <span className="font-metadata">{director}</span>
+                  </>
+                )}
             </div>
             
-            <h3 className="font-display text-xl md:text-2xl leading-[1.1] text-white group-hover:translate-x-1 transition-transform duration-700 italic">
-              {title}
-            </h3>
+              <h3 className="font-heading text-2xl md:text-3xl leading-[1.1] text-white group-hover:translate-x-1 transition-transform duration-700 italic">
+                {title}
+              </h3>
             
             {classification && (
               <div 
@@ -131,9 +100,9 @@ export default function MediaCard({
                   className="w-1.5 h-1.5 rounded-full" 
                   style={{ backgroundColor: classificationColor }} 
                 />
-                <span className="font-data text-[9px] uppercase font-bold tracking-[0.3em] text-accent">
-                   {classification}
-                </span>
+                  <span className="font-metadata font-bold tracking-[0.3em] text-accent">
+                     {classification}
+                  </span>
               </div>
             )}
           </div>

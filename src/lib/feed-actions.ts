@@ -1,55 +1,107 @@
 'use server';
 
-import { MediaFetcher, FeedEntity } from './api/MediaFetcher';
+import { UniversalMedia, UniversalTransformer } from './api/UniversalTransformer';
+import { MediaFetcher } from './api/MediaFetcher';
 import { AniListFetcher } from './api/anilist';
 import { AnimationFetcher } from './api/AnimationFetcher';
-import { MediaTransformer, AnimatrixEntity } from './api/MediaTransformer';
+import { getUpcomingMovies, getUpcomingTv, getUpcomingAnimations, getFutureHorizonsMovie } from './api/tmdb';
+import { getNextSeason } from './date-utils';
 
-export async function fetchTrendingPage(
-  type: 'movie' | 'tv',
-  pageParam: number
-): Promise<{ results: FeedEntity[]; nextCursor: number | undefined }> {
+/**
+ * Trending Feed Action
+ */
+export async function getTrendingFeedAction(type: 'movie' | 'tv', page: number = 1): Promise<{ results: UniversalMedia[], totalPages: number }> {
+    return MediaFetcher.getTrendingFeed(type, page);
+}
+
+/**
+ * Anime Feed Action (Trending from AniList)
+ */
+export async function getAnimeFeedAction(page: number = 1): Promise<{ results: UniversalMedia[], hasNextPage: boolean }> {
   try {
-    const data = await MediaFetcher.getTrendingFeed(type, pageParam);
+    const data = await AniListFetcher.getTrendingAnime(page);
+    const results = data.media.map((item: any) => UniversalTransformer.fromAniList(item));
     
     return {
-      results: data.results,
-      nextCursor: pageParam < data.totalPages ? pageParam + 1 : undefined,
+      results,
+      hasNextPage: data.pageInfo.hasNextPage
     };
   } catch (error) {
-    console.error(`Error in fetchTrendingPage for ${type} page ${pageParam}:`, error);
-    throw error;
+    console.error("Anime feed error:", error);
+    return { results: [], hasNextPage: false };
   }
 }
 
-export async function fetchAnimePage(
-  pageParam: number
-): Promise<{ results: AnimatrixEntity[]; nextCursor: number | undefined }> {
+/**
+ * Animation Feed Action (Trending from TMDB)
+ */
+export async function getAnimationFeedAction(page: number = 1): Promise<{ results: UniversalMedia[], totalPages: number }> {
   try {
-    const res = await AniListFetcher.getTrendingAnime(pageParam, 20);
-    const transformed = res.media.map(a => MediaTransformer.transformAniListToAnimatrix(a));
-    return {
-      results: transformed,
-      nextCursor: res.pageInfo.hasNextPage ? pageParam + 1 : undefined,
-    };
+    return AnimationFetcher.getTrendingAnimation(page);
   } catch (error) {
-    console.error(`Error in fetchAnimePage page ${pageParam}:`, error);
-    throw error;
+    console.error("Animation feed error:", error);
+    return { results: [], totalPages: 0 };
   }
 }
 
-export async function fetchAnimationPage(
-  pageParam: number
-): Promise<{ results: AnimatrixEntity[]; nextCursor: number | undefined }> {
+/**
+ * Release Radar Action
+ */
+export async function getReleaseRadarAction(): Promise<UniversalMedia[]> {
   try {
-    const res = await AnimationFetcher.getTrendingAnimation(pageParam);
-    const transformed = res.results.map(r => MediaTransformer.transformFeedEntityToAnimatrix(r));
-    return {
-      results: transformed,
-      nextCursor: pageParam < res.totalPages ? pageParam + 1 : undefined,
-    };
+    const { season, year } = getNextSeason();
+    // Fetch multiple sources to get a broad "All Time" reach
+    const [upcoming, anime] = await Promise.all([
+      getUpcomingFeedAction(),
+      AniListFetcher.getUpcomingAnime(season, year, 1, 50) // Increase perPage for upcoming anime
+    ]);
+    
+    const animeTransformed = anime.media.map((item: any) => UniversalTransformer.fromAniList(item));
+    
+    // We could also fetch trending TV/Movies as fallback if upcoming is too sparse, 
+    // but the user specifically asked for upcoming.
+    
+    const combinedRaw = [
+      ...upcoming.movies,
+      ...upcoming.tv,
+      ...upcoming.animation,
+      ...animeTransformed
+    ].filter(item => !!item.releaseDate);
+
+    // Deduplicate by ID
+    const uniqueMap = new Map<string, UniversalMedia>();
+    combinedRaw.forEach(item => {
+      uniqueMap.set(item.id, item);
+    });
+
+    const combined = Array.from(uniqueMap.values())
+     .sort((a, b) => new Date(a.releaseDate!).getTime() - new Date(b.releaseDate!).getTime());
+      
+    return combined;
   } catch (error) {
-    console.error(`Error in fetchAnimationPage page ${pageParam}:`, error);
-    throw error;
+    console.error("Release Radar error:", error);
+    return [];
   }
+}
+
+/**
+ * Upcoming & Future Horizons Actions
+ */
+export async function getUpcomingFeedAction() {
+  const [movies, tv, animation] = await Promise.all([
+    getUpcomingMovies(),
+    getUpcomingTv(),
+    getUpcomingAnimations()
+  ]);
+
+  return {
+    movies: movies.results.map((item: any) => UniversalTransformer.fromTMDB(item, 'movie')),
+    tv: tv.results.map((item: any) => UniversalTransformer.fromTMDB(item, 'tv')),
+    animation: animation.results.map((item: any) => UniversalTransformer.fromTMDB(item, 'movie'))
+  };
+}
+
+export async function getFutureHorizonsAction(year: number) {
+  const movies = await getFutureHorizonsMovie(year);
+  return movies.results.map((item: any) => UniversalTransformer.fromTMDB(item, 'movie'));
 }

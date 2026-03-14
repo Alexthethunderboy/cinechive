@@ -196,6 +196,12 @@ export class AniListFetcher {
             id
             site
           }
+          streamingEpisodes {
+            title
+            thumbnail
+            url
+            site
+          }
           characters(sort: ROLE, perPage: 15) {
             edges {
               role
@@ -222,6 +228,56 @@ export class AniListFetcher {
 
     const data = await this.fetchGraphQL(query, { id });
     return data.Media;
+  }
+
+  static async getUpcomingAnime(season: string, year: number, page: number = 1, perPage: number = 20): Promise<{ media: AniListAnime[], pageInfo: { hasNextPage: boolean } }> {
+    const query = `
+      query ($page: Int, $perPage: Int, $season: MediaSeason, $seasonYear: Int) {
+        Page(page: $page, perPage: $perPage) {
+          pageInfo {
+            hasNextPage
+          }
+          media(season: $season, seasonYear: $seasonYear, type: ANIME, status: NOT_YET_RELEASED, sort: POPULARITY_DESC, isAdult: false) {
+            id
+            title {
+              romaji
+              english
+              userPreferred
+            }
+            startDate {
+              year
+              month
+              day
+            }
+            status
+            season
+            seasonYear
+            format
+            episodes
+            coverImage {
+              extraLarge
+              large
+            }
+            bannerImage
+            description(asHtml: false)
+            genres
+            averageScore
+            popularity
+            trending
+            trailer {
+              id
+              site
+            }
+          }
+        }
+      }
+    `;
+
+    const data = await this.fetchGraphQL(query, { page, perPage, season, seasonYear: year });
+    return {
+      media: data.Page.media,
+      pageInfo: data.Page.pageInfo
+    };
   }
 }
 

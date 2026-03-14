@@ -12,3 +12,8 @@ export function formatDate(date: string | Date) {
     year: 'numeric',
   }).format(new Date(date));
 }
+
+export function formatUsername(username?: string) {
+  if (!username) return '';
+  return username.replace(/^u\./i, '');
+}

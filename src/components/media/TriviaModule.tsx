@@ -8,6 +8,10 @@ import { cn } from '@/lib/utils';
 
 interface TriviaModuleProps {
   trivia: TriviaItem[];
+  mediaId: string;
+  mediaType: string;
+  mediaTitle: string;
+  posterUrl: string | null;
 }
 
 const CATEGORY_STYLES = {
@@ -17,7 +21,28 @@ const CATEGORY_STYLES = {
   general: { label: 'Did You Know?', color: 'text-accent', icon: Lightbulb },
 };
 
-export default function TriviaModule({ trivia }: TriviaModuleProps) {
+import { echoTriviaAction } from '@/lib/actions';
+import { toast } from 'sonner';
+
+export default function TriviaModule({ trivia, mediaId, mediaType, mediaTitle, posterUrl }: TriviaModuleProps) {
+  async function handleEcho(item: TriviaItem) {
+    try {
+      await echoTriviaAction({
+        mediaId,
+        mediaType,
+        mediaTitle,
+        posterUrl,
+        triviaId: item.id,
+        triviaText: item.text,
+        category: item.category
+      });
+      toast.success("Echo shared to Pulse feed.");
+    } catch (error) {
+      console.error("Echo failed:", error);
+      toast.error("Authentication required to Echo.");
+    }
+  }
+
   if (!trivia || trivia.length === 0) return null;
 
   return (
@@ -52,8 +77,12 @@ export default function TriviaModule({ trivia }: TriviaModuleProps) {
                     <Icon size={12} />
                     {style.label}
                   </div>
-                  <button className="text-muted hover:text-accent transition-colors">
-                    <Share2 size={14} />
+                  <button 
+                    onClick={() => handleEcho(item)}
+                    className="text-muted hover:text-accent transition-colors flex items-center gap-2 group/echo"
+                  >
+                    <span className="opacity-0 group-hover:opacity-100 font-data text-[8px] uppercase tracking-widest transition-opacity">Echo</span>
+                    <Share2 size={14} className="group-hover:rotate-12 transition-transform" />
                   </button>
                 </div>
                 

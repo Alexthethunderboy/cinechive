@@ -16,11 +16,13 @@ interface DeepMetadata {
 
 interface DeepDiveSectionProps {
   tmdbId: string;
+  type: string;
   title: string;
+  posterUrl: string | null;
   data: DeepMetadata;
 }
 
-export default function DeepDiveSection({ tmdbId, title, data }: DeepDiveSectionProps) {
+export default function DeepDiveSection({ tmdbId, type, title, posterUrl, data }: DeepDiveSectionProps) {
   const hasData = data.trivia.length > 0 || data.scripts.length > 0 || Object.keys(data.specs).length > 0;
 
   if (!hasData) return null;
@@ -46,7 +48,13 @@ export default function DeepDiveSection({ tmdbId, title, data }: DeepDiveSection
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
         {/* Main Content: Trivia & Scripts */}
         <div className="lg:col-span-8 space-y-24">
-          <TriviaModule trivia={data.trivia} />
+          <TriviaModule 
+            trivia={data.trivia} 
+            mediaId={tmdbId} 
+            mediaType={type} 
+            mediaTitle={title} 
+            posterUrl={posterUrl} 
+          />
           <ScriptViewer tmdbId={tmdbId} title={title} scripts={data.scripts} />
         </div>
 

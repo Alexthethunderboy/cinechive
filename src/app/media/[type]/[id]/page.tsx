@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation';
+import { Metadata } from 'next';
 import { getMovieDetails, getTvDetails, getPersonDetails, getPersonMovieCredits } from '@/lib/api/tmdb';
 import { mapTMDBDetailToUnified, mapTMDBPersonCreditToUnified, mapAniListDetailToUnified, DetailedMedia, UnifiedMedia } from '@/lib/api/mapping';
 import ClientMediaDetail from '@/components/media/ClientMediaDetail';
-import { getMediaEntryForUser } from '@/lib/actions';
+import { getMediaEntryForUser, getCurrentUser } from '@/lib/actions';
 import CatalogExplorer from '@/components/cinema/CatalogExplorer';
 import { SearchService } from '@/lib/services/SearchService';
 import { AniListFetcher } from '@/lib/api/anilist';
@@ -14,10 +15,76 @@ interface PageProps {
     type: string;
     id: string;
   }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export async function generateMetadata({ params, searchParams }: PageProps): Promise<Metadata> {
+  const { type, id } = await params;
+  const { via } = await searchParams;
+  const sharer = typeof via === 'string' ? via : undefined;
+  
+  if (type === 'person') {
+    try {
+      const person = await getPersonDetails(Number(id));
+      const baseTitle = person.name;
+      const title = sharer ? `${baseTitle} (Shared by @${sharer})` : baseTitle;
+      
+      return {
+        title,
+        description: person.biography?.slice(0, 160) || `Explore the works of ${person.name} on CineChive.`,
+        openGraph: {
+          title,
+          images: person.profile_path ? [`https://image.tmdb.org/t/p/w780${person.profile_path}`] : [],
+        }
+      };
+    } catch (e) { return { title: 'Person Details' }; }
+  }
+
+  try {
+    let title: string = '';
+    let description = '';
+    let image = '';
+
+    if (type === 'anime') {
+       const data = await AniListFetcher.getAnimeDetails(Number(id));
+       const titleRaw = data.title.english || data.title.romaji || 'Anime Details';
+       title = titleRaw;
+       description = data.description?.replace(/<[^>]*>/g, '').slice(0, 160) || '';
+       image = data.bannerImage || data.coverImage.extraLarge || '';
+    } else {
+       const isTv = type === 'tv';
+       const { media } = await SearchService.getDeepEntityDetails(id, isTv ? 'tv' : 'movie');
+       title = media.displayTitle || '';
+       description = media.overview.slice(0, 160);
+       image = media.backdropUrl || media.posterUrl || '';
+    }
+
+    const finalTitle = sharer ? `${title} (via @${sharer})` : title;
+
+    return {
+      title: finalTitle,
+      description,
+      openGraph: {
+        title: finalTitle,
+        description,
+        type: 'video.movie',
+        images: image ? [image] : [],
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: finalTitle,
+        description,
+        images: image ? [image] : [],
+      },
+    };
+  } catch (error) {
+    return { title: 'Media Details' };
+  }
 }
 
 export default async function MediaDetailPage({ params }: PageProps) {
   const { type, id } = await params;
+  const user = await getCurrentUser();
 
   // Handle Person Type separately since it uses CatalogExplorer
   if (type === 'person') {
@@ -35,7 +102,7 @@ export default async function MediaDetailPage({ params }: PageProps) {
             person={{
               name: person.name,
               biography: person.biography,
-              profilePath: person.profile_path,
+              profileUrl: person.profile_path ? `https://image.tmdb.org/t/p/w780${person.profile_path}` : null,
               knownFor: person.known_for_department,
               birthday: person.birthday,
               placeOfBirth: person.place_of_birth,
@@ -55,21 +122,33 @@ export default async function MediaDetailPage({ params }: PageProps) {
   try {
     if (type === 'movie' || type === 'documentary' || type === 'tv') {
       const isTv = type === 'tv';
-      const data = await SearchService.getDeepEntityDetails(id, isTv ? 'tv' : 'movie');
+      const { media: mappedMedia, raw: rawData } = await SearchService.getDeepEntityDetails(id, isTv ? 'tv' : 'movie');
+      media = mappedMedia;
       
-      media = mapTMDBDetailToUnified(data, isTv ? 'tv' : 'movie');
-      
-      // Add extra deep links (cinema focused)
-      media.composers = data.composers;
-
       // Fetch Deep Metadata (Trivia, Technical Lab, Scripts)
-      const imdbId = data.external_ids?.imdb_id;
+      const imdbId = media.imdbId;
       const [trivia, scripts] = await Promise.all([
         imdbId ? DeepDataService.fetchTrivia(id, imdbId) : Promise.resolve([]),
-        ScriptService.findScript(media.title, imdbId)
+        ScriptService.findScript(media.displayTitle, imdbId || undefined)
       ]);
 
-      const techSpecs = DeepDataService.getTechnicalSpecs(data);
+      const techSpecs = DeepDataService.getTechnicalSpecs(rawData);
+
+      // Fetch Collection parts if available
+      if (mappedMedia.collection) {
+        try {
+          const collectionData = await SearchService.getCollection(mappedMedia.collection.id);
+          mappedMedia.collection.parts = collectionData.parts.map((p: any) => ({
+            id: String(p.id),
+            title: p.title,
+            posterUrl: p.poster_path ? `https://image.tmdb.org/t/p/w342${p.poster_path}` : null,
+            releaseDate: p.release_date || null,
+            type: 'movie'
+          }));
+        } catch (e) {
+          console.error("Failed to fetch collection details:", e);
+        }
+      }
 
       (media as any).deepData = {
         trivia,
@@ -90,5 +169,5 @@ export default async function MediaDetailPage({ params }: PageProps) {
   // Fetch user-specific archive entry if it exists
   const userEntry = await getMediaEntryForUser(id, type);
 
-  return <ClientMediaDetail media={media} initialUserEntry={userEntry} deepData={(media as any).deepData} />;
+  return <ClientMediaDetail media={media} initialUserEntry={userEntry} deepData={(media as any).deepData} user={user} />;
 }

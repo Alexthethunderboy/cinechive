@@ -27,25 +27,23 @@ export default function ClassificationMeter({ selected, onSelect, className }: C
             transition={SPRING_CONFIG.default}
             onClick={() => onSelect?.(classification)}
             className={cn(
-              "px-4 py-2 rounded-inner border transition-all flex items-center gap-2 relative",
+              "px-4 py-2 rounded-inner transition-all flex items-center gap-2 relative border border-white/5",
               isSelected 
-                ? "bg-(--classification-color) border-transparent text-white elevation"
-                : "bg-surface/50 border-border-glass hover:bg-surface-hover hover:border-white/20 text-muted"
+                ? "bg-white text-black border-white" 
+                : "bg-white/5 text-white/40 hover:text-white"
             )}
             style={{ 
               '--classification-color': color 
             } as any}
           >
             
-            <span className="font-data text-xs font-semibold whitespace-nowrap uppercase tracking-wider text-inherit">
+            <span className="font-metadata text-[10px] font-bold whitespace-nowrap uppercase tracking-widest text-inherit">
               {classification}
             </span>
             
             {isSelected && (
-              <motion.div
-                layoutId="classification-glow"
-                className="absolute inset-0 rounded-inner -z-10 blur-xl opacity-40"
-                style={{ background: color }}
+              <div
+                className="absolute inset-0 rounded-inner -z-10 bg-white/5 blur-xl"
               />
             )}
           </motion.button>

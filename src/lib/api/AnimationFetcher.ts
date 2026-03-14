@@ -1,11 +1,12 @@
 import { MediaFetcher, FeedEntity } from './MediaFetcher';
+import { UniversalMedia } from './UniversalTransformer';
 
 export class AnimationFetcher {
   /**
    * Fetches Trending Animation (Western/Global) from TMDB
    * Uses the discover endpoint locked to with_genres=16 (Animation)
    */
-  static async getTrendingAnimation(page: number = 1): Promise<{ results: FeedEntity[], totalPages: number }> {
+  static async getTrendingAnimation(page: number = 1): Promise<{ results: UniversalMedia[], totalPages: number }> {
     // We construct a discover URL that sorts by popularity and restricts to genre 16
     const url = new URL('https://api.themoviedb.org/3/discover/movie');
     url.searchParams.append('api_key', process.env.TMDB_API_KEY || '');
@@ -27,7 +28,7 @@ export class AnimationFetcher {
     const deepFetchPromises = data.results.map((item: any) => MediaFetcher.getDeepDetails(item.id, 'movie'));
     const detailedResults = await Promise.all(deepFetchPromises);
 
-    const validResults = detailedResults.filter(Boolean) as FeedEntity[];
+    const validResults = detailedResults.filter(Boolean) as UniversalMedia[];
 
     return {
       results: validResults,

@@ -30,42 +30,18 @@
   font-display: swap;
 }
 
-@font-face {
-  font-family: 'Satoshi';
-  src: url('https://api.fontsource.org/v1/fonts/satoshi/latin-500-normal.woff2') format('woff2');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Satoshi';
-  src: url('https://api.fontsource.org/v1/fonts/satoshi/latin-700-normal.woff2') format('woff2');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Satoshi';
-  src: url('https://api.fontsource.org/v1/fonts/satoshi/latin-900-normal.woff2') format('woff2');
-  font-weight: 900;
-  font-style: normal;
-  font-display: swap;
-}
-
 /* ---- Tailwind Theme Inline ---- */
 @theme inline {
-  --color-background: #0A0A0B;
-  --color-foreground: #E8E8ED;
-  --color-muted: #71717A;
-  --color-accent: #D4AF37;
-  --color-accent-hover: #C5A028;
-  --color-surface: rgba(10, 10, 11, 0.6);
-  --color-surface-hover: rgba(20, 20, 22, 0.8);
+  --color-background: #000000;
+  --color-foreground: #FFFFFF;
+  --color-muted: #A1A1AA;
+  --color-accent: #FFFFFF;
+  --color-accent-hover: #E5E5E5;
+  --color-surface: rgba(0, 0, 0, 0.6);
+  --color-surface-hover: rgba(15, 15, 15, 0.8);
 
   /* Classification Palette - Consolidated for cinematic feel */
-  --color-class-primary: #D4AF37;
+  --color-class-primary: #FFFFFF;
   --color-class-secondary: #A1A1AA;
   --color-class-accent: #FFFFFF;
 
@@ -78,9 +54,44 @@
   --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 
   /* Radius */
-  --radius-card: 32px;
-  --radius-inner: 12px;
+  --radius-card: 12px; /* Soft but modern; matches native iOS/Android aesthetic */
+  --radius-inner: 8px;
   --radius-pill: 999px;
+
+  /* Pulse & Vibe Palette */
+  --color-vibe-gold: #FFB800;
+  --color-vibe-cyan: #06B6D4;
+  --color-vibe-yellow: #FACC15;
+  --color-vibe-green: #22C55E;
+  --color-vibe-rose: #FB7185;
+  --color-vibe-orange: #FB923C;
+
+  /* 8pt Grid & Spacing Scale */
+  --spacing-1: 8px;
+  --spacing-2: 16px;
+  --spacing-3: 24px;
+  --spacing-4: 32px;
+  --spacing-5: 40px;
+  --spacing-6: 48px;
+  --spacing-gutter: 1.25rem; /* 20px - Prevents thumbs from obscuring text */
+  --spacing-section: 2.5rem; /* 40px - Creates "The Void" feel */
+}
+
+/* ---- Safe Area Utilities ---- */
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+
+@utility mb-safe {
+  margin-bottom: env(safe-area-inset-bottom);
+}
+
+@utility safe-bottom {
+  bottom: env(safe-area-inset-bottom);
 }
 
 /* ---- Base Styles ---- */
@@ -103,10 +114,13 @@ body {
   background: var(--color-background);
   color: var(--color-foreground);
   font-family: var(--font-sans);
+  font-size: 16px; /* Primary base size to prevent mobile zoom */
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   min-height: 100dvh;
   overflow-x: hidden;
+  padding-bottom: env(safe-area-inset-bottom); /* Global safe area padding */
 }
 
 /* ---- Glassmorphic Surface ---- */
@@ -116,26 +130,10 @@ body {
     background: var(--color-surface);
     backdrop-filter: blur(60px) saturate(180%);
     -webkit-backdrop-filter: blur(60px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.03);
     background-clip: padding-box;
     position: relative;
-  }
-
-  .glass::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(135deg,
-        rgba(255, 255, 255, 0.1) 0%,
-        rgba(255, 255, 255, 0) 50%);
-    -webkit-mask:
-      linear-gradient(#fff 0 0) content-box,
-      linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
+    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+    /* Subtle shadow for separation */
   }
 }
 
@@ -175,9 +173,20 @@ body {
 
 /* ---- Typography ---- */
 .font-heading {
+  font-family: var(--font-display);
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  text-transform: uppercase;
+  line-height: 0.9;
+}
+
+.font-metadata {
   font-family: var(--font-sans);
-  font-weight: 700;
-  letter-spacing: -0.02em;
+  font-size: clamp(0.65rem, 2vw, 0.75rem);
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-muted);
 }
 
 .font-display {
@@ -186,9 +195,13 @@ body {
   letter-spacing: -0.03em;
 }
 
+.text-fluid-h1 { font-size: clamp(2.5rem, 8vw, 4.5rem); }
+.text-fluid-h2 { font-size: clamp(2rem, 6vw, 3.5rem); }
+.text-fluid-h3 { font-size: clamp(1.5rem, 4vw, 2.5rem); }
+
 .font-data {
   font-family: var(--font-mono);
-  font-size: 0.8125rem;
+  font-size: clamp(0.75rem, 2vw, 0.8125rem);
   letter-spacing: -0.01em;
 }
 

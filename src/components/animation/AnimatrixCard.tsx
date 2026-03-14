@@ -2,15 +2,20 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Star, ChevronDown, Check, Bookmark, Loader2, Info, Users, DollarSign } from 'lucide-react';
-import { AnimatrixEntity } from '@/lib/api/MediaTransformer';
+import { Play, Star, ChevronDown, Check, Bookmark, Loader2, Info, Users, DollarSign, Bell, BellOff } from 'lucide-react';
+import { UniversalMedia } from '@/lib/api/UniversalTransformer';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
 import { archiveMediaAction } from '@/lib/actions';
+import { toggleReminder, getReminderStatus } from '@/app/actions/radar-actions';
+import { isAfter, startOfToday } from 'date-fns';
+import { useEffect } from 'react';
+
+import { toast } from 'sonner';
 
 interface AnimatrixCardProps {
-  media: AnimatrixEntity;
+  media: UniversalMedia;
   index: number;
 }
 
@@ -19,6 +24,15 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [isReminded, setIsReminded] = useState(false);
+
+  const isUpcoming = media.releaseDate ? isAfter(new Date(media.releaseDate), startOfToday()) : false;
+
+  useEffect(() => {
+    if (isUpcoming) {
+      getReminderStatus(String(media.sourceId), media.type).then(setIsReminded);
+    }
+  }, [media.sourceId, media.type, isUpcoming]);
 
   const handleSaveToVault = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -26,34 +40,48 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
     
     setIsSaving(true);
     try {
-      await archiveMediaAction({
+      const result = await archiveMediaAction({
         mediaId: media.id,
         mediaType: media.type,
-        title: media.displayName,
+        title: media.displayTitle,
         posterUrl: media.posterUrl,
         classification: 'Atmospheric', 
       });
+      
+      if (result && 'error' in result) {
+        toast.error(result.error as string);
+        return;
+      }
+      
       setIsSaved(true);
+      toast.success("Added to library");
     } catch (error) {
        console.error("Failed to add to watchlist:", error);
+       toast.error("Failed to add to library");
     } finally {
       setIsSaving(false);
     }
   };
 
+  const handleToggleReminder = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const result = await toggleReminder(String(media.sourceId), media.type);
+      if (result && 'error' in result) {
+        toast.error(result.error as string);
+        return;
+      }
+      setIsReminded(result.status === 'added');
+      toast.success(result.status === 'added' ? "Reminder set" : "Reminder removed");
+    } catch (err) {
+      console.error('Failed to toggle reminder:', err);
+      toast.error("Failed to toggle reminder");
+    }
+  };
+
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ 
-        delay: (index % 20) * 0.05, 
-        duration: 0.5, 
-        type: 'spring', 
-        stiffness: 100, 
-        damping: 15 
-      }}
-      className="relative flex flex-col w-full rounded-2xl overflow-hidden bg-vibe-surface/30 border border-white/10 backdrop-blur-xl group cursor-pointer"
+    <div
+      className="relative flex flex-col w-full rounded-2xl overflow-hidden bg-black border border-white/5 group cursor-pointer transition-all duration-500 hover:shadow-[0_0_40px_rgba(255,255,255,0.05)]"
       onClick={() => setIsExpanded(!isExpanded)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -62,22 +90,22 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
         {media.posterUrl ? (
           <img
             src={media.posterUrl}
-            alt={media.displayName}
+            alt={media.displayTitle}
             className={cn(
               "absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105",
-              (isExpanded || (isHovered && media.trailerUrl && media.isAnime)) ? "opacity-0" : "opacity-100",
+              (isExpanded || (isHovered && media.trailerUrl && media.source === 'anilist')) ? "opacity-0" : "opacity-100",
               isExpanded ? "blur-sm brightness-50" : "brightness-90 group-hover:brightness-100"
             )}
             loading="lazy"
           />
         ) : (
-          <div className="w-full h-full bg-vibe-dark/50 flex flex-col items-center justify-center absolute inset-0">
-             <span className="text-white/30 font-display">No Image</span>
+          <div className="w-full h-full bg-white/5 flex flex-col items-center justify-center absolute inset-0">
+             <span className="text-white/30 font-heading">No Image</span>
           </div>
         )}
 
         {/* Hover Quick-Play snippet for Anime */}
-        {media.isAnime && media.trailerUrl && (
+        {media.source === 'anilist' && media.trailerUrl && (
           <div className={cn(
             "absolute inset-0 w-full h-full transition-opacity duration-500 bg-black",
             (isHovered && !isExpanded) ? "opacity-100 z-0" : "opacity-0 -z-10"
@@ -109,14 +137,14 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
             )}
             
             {/* Anime Specific Badges */}
-            {media.isAnime && media.studio && (
-              <div className="inline-flex px-3 py-1 rounded-full bg-vibe-cyan/20 backdrop-blur-md border border-vibe-cyan/30 text-[10px] font-bold tracking-widest uppercase text-vibe-cyan shadow-sm">
-                {media.studio.name}
+            {media.source === 'anilist' && media.studio && (
+              <div className="inline-flex px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/5 text-[10px] font-metadata text-white">
+                {media.studio}
               </div>
             )}
             {/* Animation Specific Badges */}
-            {!media.isAnime && media.format && (
-              <div className="inline-flex px-3 py-1 rounded-full bg-vibe-violet/20 backdrop-blur-md border border-vibe-violet/30 text-[10px] font-bold tracking-widest uppercase text-vibe-violet shadow-sm">
+            {media.source === 'tmdb' && media.format && (
+              <div className="inline-flex px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/5 text-[10px] font-metadata text-white">
                 {media.format}
               </div>
             )}
@@ -129,23 +157,38 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
           </div>
           
           <div className="flex gap-2 relative">
-             <button 
-               onClick={handleSaveToVault}
-               disabled={isSaving || isSaved}
-               className={cn(
-                 "p-1.5 rounded-md backdrop-blur-md transition-all flex items-center justify-center border hover:scale-110",
-                 isSaved ? "bg-accent/20 border-accent/40 text-accent" : "bg-black/40 border-white/10 text-white/80 hover:text-white"
-               )}
-               title="Collect Film"
-             >
-               {isSaving ? (
-                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-               ) : isSaved ? (
-                 <Check className="w-3.5 h-3.5" />
-               ) : (
-                 <Bookmark className="w-3.5 h-3.5" />
-               )}
-             </button>
+             {!isUpcoming && (
+                <button 
+                  onClick={handleSaveToVault}
+                  disabled={isSaving || isSaved}
+                  className={cn(
+                    "p-1.5 rounded-md backdrop-blur-md transition-all flex items-center justify-center border hover:scale-110",
+                    isSaved ? "bg-accent/20 border-accent/40 text-accent" : "bg-black/40 border-white/10 text-white/80 hover:text-white"
+                  )}
+                  title="Collect Film"
+                >
+                  {isSaving ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : isSaved ? (
+                    <Check className="w-3 h-3" />
+                  ) : (
+                    <Bookmark className="w-3 h-3" />
+                  )}
+                </button>
+             )}
+
+             {isUpcoming && (
+                <button 
+                  onClick={handleToggleReminder}
+                  className={cn(
+                    "p-1.5 rounded-md backdrop-blur-md transition-all flex items-center justify-center border hover:scale-110",
+                    isReminded ? "bg-accent/20 border-accent/40 text-accent" : "bg-black/40 border-white/10 text-white/80 hover:text-white"
+                  )}
+                  title={isReminded ? "Dismiss Reminder" : "Notify Me"}
+                >
+                  {isReminded ? <BellOff className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
+                </button>
+             )}
           </div>
         </div>
 
@@ -163,30 +206,44 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
            isExpanded ? "bottom-[calc(100%-80px)] opacity-50" : "bottom-6 opacity-100"
         )}>
           <h2 className={cn(
-             "font-display font-medium text-white leading-tight mb-1 drop-shadow-2xl transition-all duration-300",
-             media.displayName.length > 30 ? "text-base md:text-xl line-clamp-3" : "text-lg md:text-2xl line-clamp-2"
+             "font-heading text-white leading-tight mb-1 transition-all duration-300",
+             media.displayTitle.length > 30 ? "text-base md:text-xl line-clamp-3" : "text-xl md:text-2xl line-clamp-2"
           )}>
-            {media.displayName}
+            {media.displayTitle}
           </h2>
           
-          {media.romajiTitle && media.romajiTitle !== media.displayName && (
-             <p className="text-[10px] md:text-xs font-mono text-white/40 mb-2 truncate">{media.romajiTitle}</p>
+          {media.romajiTitle && media.romajiTitle !== media.displayTitle && (
+              <p className="text-[10px] md:text-xs font-mono text-white/40 mb-2 truncate">{media.romajiTitle}</p>
           )}
 
-          <div className="flex items-center gap-2 md:gap-3 text-white/70 text-xs md:text-sm font-sans mt-2">
+          <div className="flex items-center gap-2 md:gap-3 text-white/50 font-metadata mt-2">
             {media.releaseYear && <span>{media.releaseYear}</span>}
-            {media.genres.length > 0 && (
+            {media.duration && (
                <>
                  <span className="w-1 h-1 rounded-full bg-white/30"></span>
-                 <span className="truncate text-xs font-semibold uppercase tracking-wider text-white/50">{media.genres[0]}</span>
+                 <span className="truncate">{media.duration}</span>
+               </>
+            )}
+            {media.genres?.length > 0 && (
+               <>
+                 <span className="w-1 h-1 rounded-full bg-white/30"></span>
+                 <Link 
+                   href={`/search?q=${encodeURIComponent(media.genres[0])}`}
+                   onClick={(e) => e.stopPropagation()}
+                   className="truncate hover:text-white transition-colors relative z-20 hover:underline decoration-accent/40 underline-offset-4 text-accent/80 font-bold"
+                   title={`Explore more ${media.genres[0]}`}
+                 >
+                   {media.genres[0]}
+                 </Link>
                </>
             )}
           </div>
         </div>
         
+
         {/* Quick Peek Button Indicator */}
         {!isExpanded && (
-           <div className="absolute bottom-6 right-4 z-10 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center backdrop-blur text-white group-hover:bg-white group-hover:text-black transition-colors shadow-lg">
+           <div className="absolute bottom-6 right-4 z-10 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center backdrop-blur text-white group-hover:scale-0 transition-transform duration-300 shadow-lg">
               <ChevronDown className="w-4 h-4" />
            </div>
         )}
@@ -217,7 +274,7 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
               </p>
 
               {/* Cast/Characters */}
-              {media.cast.length > 0 && (
+              {media.cast && media.cast.length > 0 && (
                 <div className="space-y-2">
                   <span className="text-[10px] uppercase tracking-widest text-white/40 font-semibold font-mono flex items-center gap-1.5">
                     <Users className="w-3 h-3" /> Key Elements
@@ -246,13 +303,13 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
 
               {/* Providers & Routing */}
               <div className="flex gap-2 w-full pt-4">
-                <Link href={`/media/${media.type}/${media.id}`} className="flex-1">
+                <Link href={`/media/${media.type}/${media.sourceId}`} className="flex-1">
                   <div className="w-full bg-white text-black py-3 rounded-full font-medium text-sm hover:bg-white/90 transition-colors flex items-center justify-center gap-2">
                      <Play className="w-4 h-4 fill-current"/> Deep Scrape
                   </div>
                 </Link>
-                {media.providers.slice(0, 1).map(p => (
-                   <button key={p.provider_id} className="flex-1 bg-vibe-dark/50 border border-white/10 text-white py-3 rounded-full font-medium text-sm hover:bg-vibe-dark/80 transition-colors flex items-center justify-center gap-2">
+                {media.providers && media.providers.slice(0, 1).map(p => (
+                   <button key={p.provider_id} className="flex-1 bg-white/5 border border-white/5 text-white/70 py-3 rounded-full font-metadata hover:bg-white/10 transition-colors flex items-center justify-center gap-2">
                      Watch on {p.provider_name}
                    </button>
                 ))}
@@ -262,6 +319,6 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }

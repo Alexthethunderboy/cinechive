@@ -7,7 +7,9 @@ function getUrl(path: string, params: Record<string, any> = {}) {
   const url = new URL(`${TMDB_BASE}${path}`);
   url.searchParams.append('api_key', process.env.TMDB_API_KEY || '');
   Object.entries(params).forEach(([key, val]) => {
-    url.searchParams.append(key, String(val));
+    if (val !== undefined && val !== null) {
+      url.searchParams.append(key, String(val));
+    }
   });
   return url.toString();
 }
@@ -132,6 +134,26 @@ export async function getPersonMovieCredits(id: number) {
   return res.json();
 }
 
+export async function getCollectionDetails(id: number) {
+  const url = getUrl(`/collection/${id}`);
+  const res = await fetch(url, {
+    next: { revalidate: 86400 },
+  });
+  if (!res.ok) throw new Error(`TMDB collection detail failed: ${res.status}`);
+  return res.json();
+}
+
+export async function getSeasonDetails(tvId: number, seasonNumber: number) {
+  const url = getUrl(`/tv/${tvId}/season/${seasonNumber}`, {
+    append_to_response: 'credits,videos,images,external_ids'
+  });
+  const res = await fetch(url, {
+    next: { revalidate: 86400 },
+  });
+  if (!res.ok) throw new Error(`TMDB season detail failed: ${res.status}`);
+  return res.json();
+}
+
 export async function enrichWithDirector(mediaArray: UnifiedMedia[]): Promise<UnifiedMedia[]> {
   const promises = mediaArray.map(async (media) => {
     try {
@@ -139,7 +161,7 @@ export async function enrichWithDirector(mediaArray: UnifiedMedia[]): Promise<Un
         const details = await getMovieDetails(parseInt(media.id));
         const director = details.credits?.crew?.find((c: any) => c.job === 'Director');
         if (director) return { ...media, director: director.name };
-      } else if (media.type === 'tv' || media.type === 'documentary') {
+      } else if (media.type === 'tv') {
         const details = await getTvDetails(parseInt(media.id));
         const creator = details.created_by?.[0]?.name;
         if (creator) return { ...media, director: creator };
@@ -149,4 +171,58 @@ export async function enrichWithDirector(mediaArray: UnifiedMedia[]): Promise<Un
   });
 
   return Promise.all(promises);
+}
+
+export async function getUpcomingMovies(page = 1): Promise<TMDBSearchResult> {
+  const url = getUrl('/movie/upcoming', { page, region: 'US' });
+  const res = await fetch(url, { next: { revalidate: 3600 } });
+  if (!res.ok) throw new Error('Failed to fetch upcoming movies');
+  return res.json();
+}
+
+export async function getUpcomingTv(page = 1): Promise<TMDBSearchResult> {
+  const today = new Date().toISOString().split('T')[0];
+  const url = getUrl('/discover/tv', { 
+    'first_air_date.gte': today,
+    'sort_by': 'popularity.desc',
+    'page': page
+  });
+  const res = await fetch(url, { next: { revalidate: 3600 } });
+  if (!res.ok) throw new Error('Failed to fetch upcoming TV');
+  return res.json();
+}
+
+export async function getUpcomingAnimations(page = 1): Promise<TMDBSearchResult> {
+  const today = new Date().toISOString().split('T')[0];
+  const url = getUrl('/discover/movie', { 
+    'primary_release_date.gte': today,
+    'with_genres': 16,
+    'without_original_language': 'ja', // Filter out most anime
+    'sort_by': 'popularity.desc',
+    'page': page
+  });
+  const res = await fetch(url, { next: { revalidate: 3600 } });
+  if (!res.ok) throw new Error('Failed to fetch upcoming animations');
+  return res.json();
+}
+
+export async function getFutureHorizonsMovie(year?: number, page = 1): Promise<TMDBSearchResult> {
+  const startYear = year || new Date().getFullYear() + 1;
+  const upperYear = startYear + 1;
+  const url = getUrl('/discover/movie', { 
+    'primary_release_date.gte': `${startYear}-01-01`,
+    'primary_release_date.lte': `${upperYear}-12-31`,
+    'sort_by': 'popularity.desc',
+    'page': page
+  });
+  
+  const res = await fetch(url, { next: { revalidate: 3600 } });
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error(`TMDB future horizons fetch failed [${res.status}]: ${errorText}`);
+    throw new Error(`Failed to fetch future horizons: ${res.status}`);
+  }
+  
+  return res.json();
 }

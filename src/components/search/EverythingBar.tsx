@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Search, Loader2, X, Settings2, Sparkles, Filter, Activity } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Search, Loader2, X, Settings2, Sparkles, Filter, RotateCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GlassPanel from '@/components/ui/GlassPanel';
 import { cn } from '@/lib/utils';
@@ -15,9 +15,10 @@ const CLASSIFICATIONS = Object.keys(CLASSIFICATION_COLORS) as ClassificationName
 
 interface EverythingBarProps {
   onLocalSearch?: (query: string) => void;
+  isSidebar?: boolean;
 }
 
-export default function EverythingBar({ onLocalSearch }: EverythingBarProps = {}) {
+export default function EverythingBar({ onLocalSearch, isSidebar = false }: EverythingBarProps = {}) {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -26,6 +27,7 @@ export default function EverythingBar({ onLocalSearch }: EverythingBarProps = {}
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
   const [isFocused, setIsFocused] = useState(false);
   const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('recentSearches');
@@ -67,69 +69,77 @@ export default function EverythingBar({ onLocalSearch }: EverythingBarProps = {}
   };
 
   return (
-    <div className="relative w-full max-w-4xl mx-auto z-50">
+    <div className={cn(
+      "relative w-full z-50",
+      !isSidebar && "max-w-6xl mx-auto"
+    )}>
       <div className="flex flex-col gap-2">
-        <GlassPanel className="flex items-center gap-4 px-6 py-4 border-white/10 bg-white/5 focus-within:border-accent/40 transition-all group overflow-hidden relative">
-          <button 
-            disabled={!query.trim()}
-            onClick={() => {
-              saveRecentSearch(query);
-              router.push(`/search?q=${encodeURIComponent(query)}`);
+        <GlassPanel 
+          className={cn(
+            "flex items-center gap-2 px-3 transition-all duration-500 border-white/5 overflow-hidden",
+            isSidebar ? "w-full h-10" : "w-full h-12 px-6 py-4 rounded-3xl"
+          )}
+        >
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (query.length >= 2) {
+                saveRecentSearch(query);
+                router.push(`/search?q=${encodeURIComponent(query)}`);
+              } else {
+                inputRef.current?.focus();
+              }
             }}
             className={cn(
-              "p-2 -ml-2 rounded-full transition-all group/btn",
-              query ? "bg-accent/10 border-accent/20 text-accent hover:bg-accent/20" : "text-muted"
+              "p-2 -ml-2 rounded-full transition-all group/btn flex items-center justify-center",
+              query ? "text-white" : "text-muted/60"
             )}
           >
-            <Search className="transition-transform group-hover/btn:scale-110" size={20} />
-          </button>
+            <Search size={isSidebar ? 14 : 20} className="shrink-0" />
+          </motion.button>
           
-          <input 
+          <input
+            ref={inputRef}
             type="text"
-            placeholder="Search movies, tv, people, collections..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => setIsFocused(true)}
-            onBlur={() => setTimeout(() => setIsFocused(false), 200)}
+            onBlur={() => setTimeout(() => setIsFocused(false), 300)}
+            placeholder={isSidebar ? "Search..." : "Search cinema, television, or cast..."}
+            className={cn(
+              "bg-transparent border-none outline-none flex-1 font-heading placeholder:text-muted/40 text-white w-full",
+              isSidebar ? "text-xs h-full" : "text-lg md:text-[16px] min-h-[44px]"
+            )}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && query.length >= 2) {
                 saveRecentSearch(query);
                 router.push(`/search?q=${encodeURIComponent(query)}`);
               }
             }}
-            className="bg-transparent border-none outline-none flex-1 font-heading text-lg md:text-xl placeholder:text-muted/40 text-white w-full"
           />
-          
-          <div className="flex items-center gap-2">
-            <button 
-              onClick={() => setShowFilters(!showFilters)}
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            {query.length > 0 && (
+              <button
+                onClick={(e) => { e.stopPropagation(); clearSearch(); }}
+                className="p-1 hover:bg-white/5 rounded-full transition-colors"
+                title="Clear Search"
+              >
+                <RotateCcw size={14} className="text-muted/40" />
+              </button>
+            )}
+
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowFilters(!showFilters); }}
               className={cn(
-                "p-2 rounded-inner transition-all",
-                (showFilters || selectedMood || hiddenGems) ? "bg-white/10 text-white" : "hover:bg-white/5 text-muted hover:text-white"
+                "p-1.5 rounded-inner transition-all",
+                (showFilters || selectedMood || hiddenGems) ? "bg-white text-black" : "hover:bg-white/5 text-muted hover:text-white"
               )}
             >
-              <Settings2 size={20} />
+              <Filter size={isSidebar ? 14 : 16} />
             </button>
-            <AnimatePresence>
-              {(isLoading || query) && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className="flex items-center gap-3"
-                >
-                  {isLoading && <Loader2 className="animate-spin text-white opacity-50" size={20} />}
-                  {query && (
-                    <button 
-                      onClick={clearSearch}
-                      className="p-1 hover:bg-white/10 rounded-full transition-colors text-muted hover:text-white"
-                    >
-                      <X size={18} />
-                    </button>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
           </div>
         </GlassPanel>
 
@@ -142,20 +152,18 @@ export default function EverythingBar({ onLocalSearch }: EverythingBarProps = {}
               exit={{ opacity: 0, y: -10 }}
               className="px-2"
             >
-              <h2 className="font-display text-2xl md:text-3xl tracking-tighter mb-2 italic text-white uppercase">Cinema Index</h2>
-              <p className="text-muted text-sm md:text-base opacity-40 mb-4">Explore the cinematic landscape.</p>
               <GlassPanel className="p-4 bg-black/40 border-white/5 flex flex-col items-start gap-6">
                 <div className="flex flex-col gap-4 w-full">
-                  <span className="font-data text-[10px] uppercase tracking-widest text-muted">Classification</span>
+                  <span className="font-metadata text-xs opacity-50 uppercase tracking-widest">Classification</span>
                   <div className="flex flex-wrap gap-2">
                     {CLASSIFICATIONS.map((classification) => (
                       <button
                         key={classification}
                         onClick={() => setSelectedMood(selectedMood === classification ? null : classification)}
                         className={cn(
-                          "px-3 py-1.5 md:px-4 md:py-2 rounded-full font-data text-[10px] uppercase tracking-widest border transition-all",
+                          "px-3 py-1.5 rounded-full font-metadata text-[10px] border transition-all",
                           selectedMood === classification 
-                             ? "bg-accent text-black border-accent" 
+                             ? "bg-white text-black border-white" 
                              : "bg-white/5 text-muted border-white/5 hover:border-white/20"
                         )}
                       >
@@ -170,67 +178,41 @@ export default function EverythingBar({ onLocalSearch }: EverythingBarProps = {}
                 <button
                   onClick={() => setHiddenGems(!hiddenGems)}
                   className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-inner border transition-all font-data text-[10px] uppercase tracking-widest",
+                    "flex items-center gap-2 px-3 py-1.5 rounded-inner border transition-all font-metadata text-[10px]",
                     hiddenGems 
                       ? "bg-white/10 border-white/20 text-white" 
                       : "bg-white/5 border-white/5 text-muted hover:text-white"
                   )}
                 >
-                  <Sparkles size={14} className={cn(hiddenGems && "animate-pulse")} />
+                  <Sparkles size={12} className={cn(hiddenGems && "animate-pulse")} />
                   Cult Classics
                 </button>
               </GlassPanel>
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Search Results Dropdown */}
+        <AnimatePresence>
+          {(isFocused || (results && (results.movies.length > 0 || results.tv.length > 0 || results.people.length > 0))) && debouncedQuery.length >= 2 && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className={cn(
+                "absolute z-100 shadow-2xl transition-all duration-500",
+                isSidebar ? "left-full top-0 ml-4 w-[600px]" : "top-full left-0 right-0 mt-4"
+              )}
+            >
+              <OracleResults 
+                results={results || { movies: [], tv: [], people: [] }} 
+                isLoading={isLoading} 
+                isVisible={true} 
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-
-      {/* Recent Searches Dropdown */}
-      <AnimatePresence>
-        {isFocused && !query && recentSearches.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-            className="absolute top-full left-0 right-0 mt-4 z-50 p-4 glass rounded-3xl border border-white/10 shadow-2xl"
-          >
-            <div className="flex items-center gap-2 mb-4 px-2">
-              <Activity size={14} className="text-accent" />
-              <span className="font-data text-[10px] uppercase tracking-widest text-muted">Recent Enquiries</span>
-            </div>
-            <div className="flex flex-col gap-1">
-              {recentSearches.map((sq, i) => (
-                <button
-                  key={i}
-                  onClick={() => setQuery(sq)}
-                  className="w-full text-left px-4 py-3 rounded-xl hover:bg-white/5 text-white/60 hover:text-white transition-all font-heading truncate flex items-center justify-between group"
-                >
-                  {sq}
-                  <Search size={14} className="opacity-0 group-hover:opacity-100 transition-opacity text-accent" />
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {debouncedQuery.length >= 2 && results && (
-          <motion.div
-            initial={{ opacity: 0, y: 10, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.98 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute top-full left-0 right-0 mt-4 z-50"
-          >
-            <OracleResults 
-              results={results || { movies: [], tv: [], people: [] }} 
-              isLoading={isLoading} 
-              isVisible={!!results} 
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

@@ -5,41 +5,50 @@ import { redirect } from 'next/navigation';
 
 const AUTH_DOMAIN = 'enterarchive.com';
 
+// Username must only contain alphanumeric, dots, underscores, hyphens
+const USERNAME_REGEX = /^[a-zA-Z0-9._-]+$/;
+
 function usernameToEmail(username: string) {
-  // Sanitize: only alphanumeric, dots, underscores, and hyphens allowed in email local-part
-  const sanitized = username.toLowerCase().replace(/[^a-z0-9._-]/g, '');
-  return `${sanitized}@${AUTH_DOMAIN}`;
+  // Using a prefix to avoid Supabase blocks on specific keywords/usernames
+  return `u.${username.toLowerCase()}@${AUTH_DOMAIN}`;
 }
 
 function formatAuthError(error: { message: string }, username: string, email: string) {
   let message = error.message;
-  // Replace the internal email with the username in the error message
   if (message.includes(email)) {
     message = message.replace(email, username);
   }
-  // Replace references to "email" with "username" to keep the experience seamless
-  return message.replace(/email address/gi, 'Username').replace(/email/gi, 'Username');
+  return message
+    .replace(/email address/gi, 'Username')
+    .replace(/email/gi, 'Username');
 }
 
 export async function signUp(formData: FormData) {
   const supabase = await createClient();
   const username = (formData.get('username') as string)?.trim();
   const password = formData.get('password') as string;
-  const dob = formData.get('dob') as string;
 
-  if (!username || !password || !dob) {
-    return { error: 'Username, password, and date of birth are required' };
+  if (!username || !password) {
+    return { error: 'Username and password are required.' };
+  }
+
+  // Server-side username format validation (defence in depth)
+  if (!USERNAME_REGEX.test(username)) {
+    return { error: 'Username can only contain letters, numbers, dots, underscores, and hyphens.' };
+  }
+
+  if (password.length < 6) {
+    return { error: 'Password must be at least 6 characters.' };
   }
 
   const email = usernameToEmail(username);
 
-  const { data, error } = await supabase.auth.signUp({
+  const { error } = await supabase.auth.signUp({
     email,
     password,
     options: {
       data: {
         username: username,
-        dob: dob,
       },
     },
   });
@@ -48,22 +57,10 @@ export async function signUp(formData: FormData) {
     return { error: formatAuthError(error, username, email) };
   }
 
-  // Create profile entry
-  if (data.user) {
-    const { error: profileError } = await (supabase
-      .from('profiles') as any)
-      .insert({
-        id: data.user.id,
-        username: username,
-        date_of_birth: dob,
-      });
+  // Profile row is created automatically by the DB trigger (on_auth_user_created).
+  // No manual insert needed here — that caused a duplicate key violation.
 
-    if (profileError) {
-      console.error('Error creating profile:', profileError);
-    }
-  }
-
-  return { success: true };
+  redirect('/');
 }
 
 export async function login(formData: FormData) {
@@ -72,7 +69,7 @@ export async function login(formData: FormData) {
   const password = formData.get('password') as string;
 
   if (!username || !password) {
-    return { error: 'Username and password are required' };
+    return { error: 'Username and password are required.' };
   }
 
   const email = usernameToEmail(username);

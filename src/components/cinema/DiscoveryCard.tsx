@@ -1,310 +1,186 @@
 'use client';
 
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Star, Info, ChevronDown, ChevronUp, Users, DollarSign, Eye, Bookmark, Loader2, Check } from 'lucide-react';
-import { FeedEntity } from '@/lib/api/MediaFetcher';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Star, Bookmark, Loader2, Check, Bell, BellOff } from 'lucide-react';
+import { UniversalMedia } from '@/lib/api/UniversalTransformer';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
-import { archiveMediaAction, getDeepEntityAction } from '@/lib/actions';
-import { useEffect } from 'react';
-import { posterUrl } from '@/lib/api/tmdb';
+import { archiveMediaAction } from '@/lib/actions';
+import { toggleReminder, getReminderStatus } from '@/app/actions/radar-actions';
+import { isAfter, startOfToday } from 'date-fns';
+import { toast } from 'sonner';
 
 interface DiscoveryCardProps {
-  media: FeedEntity;
+  media: UniversalMedia;
   index: number;
 }
 
 export function DiscoveryCard({ media: initialMedia, index }: DiscoveryCardProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [media] = useState<UniversalMedia>(initialMedia);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
-  const [media, setMedia] = useState<FeedEntity>(initialMedia);
-  const [isFetchingDeep, setIsFetchingDeep] = useState(false);
+  const [isReminded, setIsReminded] = useState(false);
+
+  const isUpcoming = media.releaseDate ? isAfter(new Date(media.releaseDate), startOfToday()) : false;
 
   useEffect(() => {
-    // If expanded and we don't have enough details, fetch them
-    if (isExpanded && (!media.cast || media.cast.length === 0) && media.type !== 'anime') {
-      const fetchDeep = async () => {
-        setIsFetchingDeep(true);
-        try {
-          const detail = await getDeepEntityAction(media.id, media.type as 'movie' | 'tv');
-          
-          // Map deep detail to FeedEntity shape
-          const trailer = detail.videos?.results?.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube');
-          
-          setMedia(prev => ({
-            ...prev,
-            overview: detail.overview || prev.overview,
-            director: detail.credits?.crew?.find((c: any) => c.job === 'Director')?.name || prev.director,
-            ep: detail.credits?.crew?.find((c: any) => c.job === 'Executive Producer')?.name || prev.ep,
-            dp: detail.credits?.crew?.find((c: any) => c.job === 'Director of Photography')?.name || prev.dp,
-            cast: detail.credits?.cast?.slice(0, 10).map((c: any) => ({
-              id: String(c.id),
-              name: c.name,
-              role: c.character,
-              profileUrl: c.profile_path ? posterUrl(c.profile_path, 'w342') : null
-            })) || [],
-            trailerUrl: trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : prev.trailerUrl,
-            business: detail.budget || detail.revenue ? {
-              budget: detail.budget || 0,
-              revenue: detail.revenue || 0
-            } : prev.business
-          }));
-        } catch (err) {
-          console.error("Deep fetch failed:", err);
-        } finally {
-          setIsFetchingDeep(false);
-        }
-      };
-      fetchDeep();
+    if (isUpcoming) {
+      getReminderStatus(String(media.sourceId), media.type).then(setIsReminded);
     }
-  }, [isExpanded, media.id, media.type, media.cast?.length]);
+  }, [media.sourceId, media.type, isUpcoming]);
 
   const handleSaveToVault = async (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
     if (isSaving || isSaved) return;
     
     setIsSaving(true);
     try {
-      await archiveMediaAction({
+      const result = await archiveMediaAction({
         mediaId: media.id,
         mediaType: media.type,
-        title: media.displayName,
+        title: media.displayTitle,
         posterUrl: media.posterUrl,
-        classification: 'Atmospheric', // Default vibe for trending
+        classification: 'Atmospheric', 
       });
+      
+      if (result && 'error' in result) {
+        toast.error(result.error as string);
+        return;
+      }
+      
       setIsSaved(true);
+      if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(10);
+      toast.success("Added to library");
     } catch (error) {
        console.error("Failed to add to watchlist:", error);
+       toast.error("Failed to add to library");
     } finally {
       setIsSaving(false);
     }
   };
 
+  const handleToggleReminder = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const result = await toggleReminder(String(media.sourceId), media.type);
+      if (result && 'error' in result) {
+        toast.error(result.error as string);
+        return;
+      }
+      setIsReminded(result.status === 'added');
+      if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(10);
+      toast.success(result.status === 'added' ? "Reminder set" : "Reminder removed");
+    } catch (err) {
+      console.error('Failed to toggle reminder:', err);
+      toast.error("Failed to toggle reminder");
+    }
+  };
+
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 50 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ 
-        delay: (index % 20) * 0.05, 
-        duration: 0.5, 
-        type: 'spring', 
-        stiffness: 100, 
-        damping: 15 
-      }}
-      className="relative flex flex-col w-full rounded-2xl overflow-hidden bg-vibe-surface/30 border border-white/10 backdrop-blur-xl group cursor-pointer"
-      onClick={() => setIsExpanded(!isExpanded)}
+    <Link
+      href={`/media/${media.type}/${media.sourceId}`}
+      className="relative flex flex-col w-full rounded-2xl overflow-hidden bg-black border border-white/5 group transition-all duration-500 hover:shadow-[0_0_40px_rgba(255,255,255,0.05)]"
     >
       {/* Base Card Image Container (2:3 aspect ratio) */}
       <div className="relative w-full aspect-2/3 overflow-hidden">
         {media.posterUrl ? (
-          <img
+          <Image
             src={media.posterUrl}
-            alt={media.displayName}
-            className={cn(
-              "w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105",
-              isExpanded ? "blur-sm brightness-50" : "brightness-90 group-hover:brightness-100"
-            )}
-            loading="lazy"
+            alt={media.displayTitle}
+            fill
+            className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110 brightness-90 group-hover:brightness-100"
+            sizes="(max-width: 768px) 50vw, 25vw"
           />
         ) : (
-          <div className="w-full h-full bg-vibe-dark/50 flex flex-col items-center justify-center">
-             <span className="text-white/30 font-display">No Image</span>
+          <div className="w-full h-full bg-white/5 flex flex-col items-center justify-center">
+             <span className="text-white/30 font-heading">No Image</span>
           </div>
         )}
 
         {/* Top Badges */}
-        <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-10">
-          <div className="flex flex-col gap-2">
+        <div className="absolute top-2 left-2 right-2 flex justify-between items-start z-10">
+          <div className="flex flex-col gap-1.5">
             {media.rating?.showBadge && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10">
-                <Star className="text-vibe-yellow w-3.5 h-3.5 fill-current" />
-                <span className="text-white font-mono text-xs font-bold">{media.rating?.average?.toFixed(1)}</span>
-              </div>
-            )}
-            {media.releaseLabel && (
-              <div className="inline-flex px-3 py-1 rounded-full bg-vibe-blue/20 backdrop-blur-md border border-vibe-blue/30 text-xs font-medium text-vibe-blue shadow-sm">
-                {media.releaseLabel}
+              <div className="flex items-center gap-1 px-2 py-1 md:px-3 md:py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10">
+                <Star className="text-vibe-yellow w-3 h-3 md:w-3.5 md:h-3.5 fill-current" />
+                <span className="text-white font-mono text-[10px] md:text-xs font-bold">{media.rating?.average?.toFixed(1)}</span>
               </div>
             )}
           </div>
           
-          <div className="flex gap-2 relative">
-             <span className="text-[10px] font-mono tracking-widest text-white/50 bg-black/40 px-2 py-1 rounded-md backdrop-blur-md">
-               {media.type === 'movie' ? 'FILM' : 'SERIES'}
+          <div className="flex gap-1.5 relative z-20">
+             <span className="hidden xs:inline-block text-[9px] font-mono tracking-widest text-white/50 bg-black/40 px-1.5 py-0.5 rounded backdrop-blur-md uppercase">
+               {media.type}
              </span>
-             <button 
-               onClick={handleSaveToVault}
-               disabled={isSaving || isSaved}
-               className={cn(
-                 "p-1.5 rounded-md backdrop-blur-md transition-all flex items-center justify-center border",
-                 isSaved ? "bg-accent/20 border-accent/40 text-accent" : "bg-black/40 border-white/10 text-white/50 hover:text-white"
-               )}
-               title="Collect Film"
-             >
-               {isSaving ? (
-                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
-               ) : isSaved ? (
-                 <Check className="w-3.5 h-3.5" />
-               ) : (
-                 <Bookmark className="w-3.5 h-3.5" />
-               )}
-             </button>
+             
+             {!isUpcoming && (
+                 <motion.button 
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleSaveToVault}
+                  disabled={isSaving || isSaved}
+                  className={cn(
+                    "p-1 md:p-1.5 rounded-md backdrop-blur-md transition-all flex items-center justify-center border",
+                    isSaved ? "bg-white text-black border-white" : "bg-black/40 border-white/10 text-white/50 hover:text-white"
+                  )}
+                  title="Collect Item"
+                >
+                  {isSaving ? (
+                    <Loader2 className="w-3 md:w-3.5 h-3 md:h-3.5 animate-spin" />
+                  ) : isSaved ? (
+                    <Check className="w-3 md:w-3.5 h-3 md:h-3.5" />
+                  ) : (
+                    <Bookmark className="w-3 md:w-3.5 h-3 md:h-3.5" />
+                  )}
+                </motion.button>
+             )}
+
+             {isUpcoming && (
+                <motion.button 
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleToggleReminder}
+                  className={cn(
+                    "p-1 md:p-1.5 rounded-md backdrop-blur-md transition-all flex items-center justify-center border",
+                    isReminded ? "bg-white text-black border-white" : "bg-black/40 border-white/10 text-white/50 hover:text-white"
+                  )}
+                  title={isReminded ? "Dismiss Reminder" : "Notify Me"}
+                >
+                  {isReminded ? <BellOff className="w-3 md:w-3.5 h-3 md:h-3.5" /> : <Bell className="w-3 md:w-3.5 h-3 md:h-3.5" />}
+                </motion.button>
+             )}
           </div>
         </div>
 
-        {/* Gradient Overlay for Base Info */}
-        <div className={cn(
-          "absolute inset-0 bg-linear-to-t from-black/90 via-black/40 to-transparent transition-opacity duration-500",
-          isExpanded ? "opacity-90" : "opacity-100"
-        )}></div>
+        {/* Gradient Overlay */}
+        <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/20 to-transparent transition-opacity duration-500 opacity-100 group-hover:via-black/40"></div>
 
         {/* Base Info (Title & Year) */}
-        <div className={cn(
-          "absolute left-4 right-4 transition-all duration-500 z-10",
-           isExpanded ? "bottom-[calc(100%-80px)] opacity-50" : "bottom-6 opacity-100"
-        )}>
-          <h2 className="text-lg md:text-2xl font-display font-medium text-white leading-tight mb-1 line-clamp-2 drop-shadow-lg">
-            {media.displayName}
+        <div className="absolute left-3 right-3 bottom-4 z-10 transition-all duration-500">
+          <h2 className="text-lg font-heading text-white leading-tight mb-1 line-clamp-2 group-hover:text-accent transition-colors">
+            {media.displayTitle}
           </h2>
-          <div className="flex items-center gap-2 md:gap-3 text-white/70 text-xs md:text-sm font-sans">
+          <div className="flex items-center gap-2 text-white/40 font-metadata text-[10px]">
             {media.releaseYear && <span>{media.releaseYear}</span>}
+            {media.duration && (
+              <>
+                <span className="w-0.5 h-0.5 rounded-full bg-white/20"></span>
+                <span>{media.duration}</span>
+              </>
+            )}
             {media.genres?.length > 0 && (
                <>
-                 <span className="w-1 h-1 rounded-full bg-white/30"></span>
-                 <span className="truncate">{media.genres[0]}</span>
+                 <span className="w-0.5 h-0.5 rounded-full bg-white/20"></span>
+                 <span className="text-white/30 truncate">{media.genres[0]}</span>
                </>
             )}
           </div>
         </div>
-        
-        {/* Quick Peek Button Indicator */}
-        {!isExpanded && (
-           <div className="absolute bottom-6 right-4 z-10 w-8 h-8 rounded-full bg-white/10 flex items-center justify-center backdrop-blur text-white group-hover:bg-white group-hover:text-black transition-colors">
-              <ChevronDown className="w-4 h-4" />
-           </div>
-        )}
-
       </div>
-
-      {/* Expanded Quick Peek Content */}
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="absolute inset-x-0 bottom-0 bg-black/80 backdrop-blur-2xl border-t border-white/10 z-20 flex flex-col p-5 overflow-y-auto max-h-[85%]"
-            onClick={(e) => e.stopPropagation()} // Keep card from closing if interacting inside
-          >
-            {/* Close Handle */}
-            <button 
-              onClick={() => setIsExpanded(false)}
-              className="absolute top-3 right-4 p-2 rounded-full hover:bg-white/10 transition-colors text-white/50 hover:text-white"
-            >
-              <ChevronDown className="w-5 h-5" />
-            </button>
-
-            {isFetchingDeep ? (
-              <div className="flex-1 flex flex-col items-center justify-center py-20 gap-4 text-accent/50">
-                <Loader2 className="w-8 h-8 animate-spin" />
-                <span className="font-data text-[10px] uppercase tracking-[0.3em]">Deep Fetching Registry...</span>
-              </div>
-            ) : (
-              <div className="space-y-6 pt-2">
-                {/* Creator Info */}
-              <div className="flex flex-col gap-1">
-                <span className="text-[10px] uppercase tracking-widest text-vibe-cyan/70 font-semibold font-mono">
-                  {media.type === 'movie' ? 'Director' : 'Executive Producer'}
-                </span>
-                <span className="text-white text-lg font-medium">
-                  {media.director || media.ep || 'Unknown'}
-                </span>
-                {media.dp && (
-                   <div className="mt-1 text-xs text-white/50">
-                     <span className="mr-2">DP:</span> {media.dp}
-                   </div>
-                )}
-              </div>
-
-              {/* Cast */}
-              {media.cast && media.cast.length > 0 && (
-                <div className="space-y-2">
-                  <span className="text-[10px] uppercase tracking-widest text-white/40 font-semibold font-mono flex items-center gap-1.5">
-                    <Users className="w-3 h-3" /> Cast
-                  </span>
-                  <div className="flex flex-wrap gap-2 text-sm text-white/80">
-                     {media.cast.map(c => c.name).slice(0, 3).join(" • ")}
-                  </div>
-                </div>
-              )}
-
-              {/* Trailer Embed */}
-              {media.trailerUrl ? (
-                <div className="w-full aspect-video rounded-xl overflow-hidden bg-white/5 relative border border-white/10 shadow-2xl">
-                  {/* Since we need a 30-sec snippet conceptually, typically we'd use YouTube iframe API. 
-                      For React, a simple iframe is direct. We can append ?start=0&end=30 or let the user watch. */}
-                  <iframe 
-                    width="100%" 
-                    height="100%" 
-                    src={media.trailerUrl.replace('watch?v=', 'embed/') + "?autoplay=0&controls=1&modestbranding=1&rel=0"} 
-                    title="Trailer" 
-                    frameBorder="0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                    allowFullScreen
-                    className="absolute inset-0 z-10"
-                  ></iframe>
-                </div>
-              ) : (
-                <div className="w-full aspect-video rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
-                  <span className="text-white/30 text-sm font-mono flex items-center gap-2">
-                     <Info className="w-4 h-4"/> No Trailer Available
-                  </span>
-                </div>
-              )}
-
-              {/* Production Figures (Movies Only) */}
-              {media.business && (
-                <div className="grid grid-cols-2 gap-3 pb-2">
-                  <div className="bg-white/5 rounded-lg p-3">
-                    <span className="text-[10px] uppercase tracking-widest text-white/40 font-mono block mb-1">Budget</span>
-                    <span className="text-white text-sm font-medium flex items-center gap-1">
-                      <DollarSign className="w-3.5 h-3.5 text-vibe-green" /> 
-                      {(media.business.budget / 1000000).toFixed(1)}M
-                    </span>
-                  </div>
-                  <div className="bg-white/5 rounded-lg p-3">
-                    <span className="text-[10px] uppercase tracking-widest text-white/40 font-mono block mb-1">Revenue</span>
-                    <span className="text-white text-sm font-medium flex items-center gap-1">
-                      <DollarSign className="w-3.5 h-3.5 text-vibe-green" /> 
-                      {(media.business.revenue / 1000000).toFixed(1)}M
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Providers (Action Buttons) */}
-              <div className="flex gap-2 w-full pt-2">
-                <Link href={`/media/${media.type}/${media.id}`} className="flex-1">
-                  <div className="w-full bg-white text-black py-3 rounded-full font-medium text-sm hover:bg-white/90 transition-colors flex items-center justify-center gap-2">
-                     <Play className="w-4 h-4 fill-current"/> Full Details
-                  </div>
-                </Link>
-                {media.providers?.slice(0, 1).map(p => (
-                   <button key={p.provider_id} className="flex-1 bg-vibe-dark/50 border border-white/10 text-white py-3 rounded-full font-medium text-sm hover:bg-vibe-dark/80 transition-colors flex items-center justify-center gap-2">
-                     Watch on {p.provider_name}
-                   </button>
-                ))}
-              </div>
-
-            </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+    </Link>
   );
 }

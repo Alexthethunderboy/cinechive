@@ -2,7 +2,14 @@ import { getCurrentUser, getVaultEntries } from '@/lib/actions';
 import ClientProfile from '@/components/profile/ClientProfile';
 import { redirect } from 'next/navigation';
 
-export default async function MyProfilePage() {
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: "Frequencies | Profile",
+  description: "Personal settings and cinematic identity.",
+};
+
+export default async function ProfilePage() {
   const user = await getCurrentUser();
   
   if (!user) {

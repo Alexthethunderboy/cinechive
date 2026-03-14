@@ -22,7 +22,7 @@ export default function DiscoveryViewToggle({ activeView, onViewChange }: Discov
     <div className="flex justify-center mb-16 px-6">
       <div className="glass p-1.5 rounded-full border border-white/5 flex items-center gap-1 shadow-2xl relative overflow-hidden group">
         {/* Animated Background Highlight */}
-        <div className="absolute inset-0 bg-linear-to-tr from-accent/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+        <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
         
         {options.map((option) => {
           const isActive = activeView === option.id;
@@ -38,29 +38,23 @@ export default function DiscoveryViewToggle({ activeView, onViewChange }: Discov
               )}
             >
               {isActive && (
-                <motion.div
-                  layoutId="active-view-bg"
-                  className="absolute inset-0 bg-white/10 border border-white/10 rounded-full shadow-inner"
-                  transition={SPRING_CONFIG.default}
+                <div
+                  className="absolute inset-0 bg-white/10 rounded-full shadow-inner"
                 />
               )}
               
               <Icon size={16} className={cn(
                 "transition-transform duration-500",
-                isActive ? "scale-110" : "scale-100",
-                isActive && option.id === 'broadcast' && "text-rose-400 drop-shadow-[0_0_8px_rgba(251,113,133,0.4)]",
-                isActive && option.id === 'registries' && "text-accent"
+                isActive ? "scale-110 text-white" : "scale-100 text-white/40",
               )} />
               
-              <span className="font-data text-[10px] uppercase tracking-[0.2em] font-bold">
+              <span className="font-metadata font-bold">
                 {option.label}
               </span>
 
               {isActive && (
-                <motion.div
-                  layoutId="active-dot"
-                  className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-accent rounded-full blur-[1px]"
-                  transition={SPRING_CONFIG.default}
+                <div
+                  className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full blur-[1px]"
                 />
               )}
             </button>

@@ -33,29 +33,30 @@ export default function ClientCollections({ initialEntries }: ClientCollectionsP
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
+            className="flex flex-col justify-end"
           >
             <div className="flex items-center gap-3 mb-4">
-              <Sparkles className="text-white/60" size={24} />
-              <span className="font-data text-xs uppercase tracking-[0.3em] font-bold text-white/60">
-                Cinema Library
+              <Sparkles className="text-white/30" size={16} />
+              <span className="font-metadata text-xs uppercase tracking-[0.4em] font-bold text-white/40">
+                Personal Collection
               </span>
             </div>
-            <h1 className="font-display text-5xl md:text-7xl tracking-tighter leading-none">
-               MY <span className="text-muted italic">CINEMATHEQUE</span>
+            <h1 className="font-heading text-6xl md:text-8xl tracking-tighter leading-none text-white italic uppercase">
+               MY <span className="text-white/40 not-italic ml-2">LIBRARY</span>
             </h1>
-            <p className="text-muted mt-6 max-w-xl font-heading text-lg opacity-80">
-              Your personal film library. A high-order curation of cinema, audio, and visual experiences collected across the global network.
+            <p className="text-white/60 mt-6 max-w-xl font-metadata text-sm leading-relaxed">
+              Your personal cinematic registry. A highly curated collection of films, series, and visual experiences across the global network.
             </p>
           </motion.div>
 
-          <div className="flex gap-4">
-            <GlassPanel className="px-8 py-6 bg-white/5 border-white/5 flex flex-col items-center">
-               <span className="font-display text-3xl text-white">{initialEntries.length}</span>
-               <span className="font-data text-[10px] text-muted uppercase tracking-widest mt-1">Total Films</span>
+          <div className="flex gap-4 items-end">
+            <GlassPanel className="px-6 py-4 bg-white/5 border-white/5 flex flex-col items-center">
+               <span className="font-heading text-4xl text-white leading-none">{initialEntries.length}</span>
+               <span className="font-metadata text-[10px] text-white/40 uppercase tracking-widest mt-2">Total Works</span>
             </GlassPanel>
-            <GlassPanel className="px-8 py-6 bg-white/5 border-white/5 flex flex-col items-center">
-                <span className="font-display text-3xl text-accent">{new Set(initialEntries.map(e => e.classification)).size}</span>
-                <span className="font-data text-[10px] text-muted uppercase tracking-widest mt-1">Style Categories</span>
+            <GlassPanel className="px-6 py-4 bg-white/5 border-white/5 flex flex-col items-center">
+                <span className="font-heading text-4xl text-accent leading-none">{new Set(initialEntries.map(e => e.classification)).size}</span>
+                <span className="font-metadata text-[10px] text-white/40 uppercase tracking-widest mt-2">Active Archetypes</span>
             </GlassPanel>
           </div>
         </div>
@@ -85,13 +86,13 @@ export default function ClientCollections({ initialEntries }: ClientCollectionsP
 
            <div className="flex items-center gap-4">
               <div className="relative">
-                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" size={14} />
+                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" size={14} />
                  <input 
                   type="text"
-                  placeholder="Scan collections..."
+                  placeholder="Scan library..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-white/5 border border-white/10 rounded-inner pl-10 pr-4 py-2 font-heading text-sm focus:border-vibe-violet/40 outline-none w-full md:w-64 transition-all"
+                  className="bg-white/5 border border-white/10 rounded-inner pl-10 pr-4 py-2 font-metadata text-xs focus:border-white/30 outline-none w-full md:w-64 transition-all text-white placeholder:text-white/30"
                  />
               </div>
 
@@ -100,13 +101,13 @@ export default function ClientCollections({ initialEntries }: ClientCollectionsP
               <div className="flex gap-2">
                  <button 
                   onClick={() => setView('grid')}
-                  className={cn("p-2 rounded-inner transition-colors", view === 'grid' ? "bg-white/10 text-white" : "text-muted hover:text-white")}
+                  className={cn("p-2 rounded-inner transition-colors", view === 'grid' ? "bg-white/10 text-white" : "text-white/30 hover:text-white")}
                  >
                    <LayoutGrid size={18} />
                  </button>
                  <button 
                   onClick={() => setView('list')}
-                  className={cn("p-2 rounded-inner transition-colors", view === 'list' ? "bg-white/10 text-white" : "text-muted hover:text-white")}
+                  className={cn("p-2 rounded-inner transition-colors", view === 'list' ? "bg-white/10 text-white" : "text-white/30 hover:text-white")}
                  >
                    <List size={18} />
                  </button>
@@ -129,7 +130,6 @@ export default function ClientCollections({ initialEntries }: ClientCollectionsP
                         posterUrl={entry.poster_url}
                         type={entry.media_type}
                         classification={entry.classification as ClassificationName}
-                        layoutId={`media-poster-${entry.media_id}`}
                        />
                     </BentoItem>
                   ))}
@@ -171,17 +171,19 @@ export default function ClientCollections({ initialEntries }: ClientCollectionsP
               )}
             </AnimatePresence>
          ) : (
-            <div className="py-32 flex flex-col items-center justify-center text-center opacity-30">
-               <FolderLock size={64} className="mb-6" />
-               <h3 className="font-display text-2xl mb-2">CINEMATHEQUE EMPTY</h3>
-               <p className="font-heading text-muted">No cinematic works collected yet.</p>
-               <Link href="/">
+            <div className="py-32 flex flex-col items-center justify-center text-center">
+               <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-6">
+                 <Archive size={32} className="text-white/20" />
+               </div>
+               <h3 className="font-heading text-2xl tracking-tighter italic uppercase text-white/50 mb-2">Library Empty</h3>
+               <p className="font-metadata text-sm text-white/40">No cinematic works collected yet.</p>
+               <Link href="/discover">
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className="mt-8 px-8 py-3 rounded-card bg-white text-black font-data text-xs uppercase font-bold tracking-widest"
+                    className="mt-8 px-8 py-3 rounded-full bg-white/10 text-white font-metadata text-xs uppercase font-bold tracking-widest hover:bg-white hover:text-black transition-colors"
                   >
-                     Explore Cinema
+                     Explore Discover
                   </motion.button>
                </Link>
             </div>
