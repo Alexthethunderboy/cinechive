@@ -27,9 +27,9 @@ export default function ClientCollections({ initialEntries }: ClientCollectionsP
   });
 
   return (
-    <div className="py-10 md:py-16 px-6 md:px-10">
-      <header className="mb-12">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-12">
+    <div className="pt-6 pb-10 md:py-16 px-4 md:px-10">
+      <header className="mb-8 md:mb-12">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 md:gap-8 mb-8 md:mb-12">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -45,7 +45,7 @@ export default function ClientCollections({ initialEntries }: ClientCollectionsP
                MY <span className="text-white/40 not-italic ml-2">LIBRARY</span>
             </h1>
             <p className="text-white/60 mt-6 max-w-xl font-metadata text-sm leading-relaxed">
-              Your personal cinematic registry. A highly curated collection of films, series, and visual experiences across the global network.
+              Your personal library of films, series, and more.
             </p>
           </motion.div>
 
@@ -56,14 +56,14 @@ export default function ClientCollections({ initialEntries }: ClientCollectionsP
             </GlassPanel>
             <GlassPanel className="px-6 py-4 bg-white/5 border-white/5 flex flex-col items-center">
                 <span className="font-heading text-4xl text-accent leading-none">{new Set(initialEntries.map(e => e.classification)).size}</span>
-                <span className="font-metadata text-[10px] text-white/40 uppercase tracking-widest mt-2">Active Archetypes</span>
+                <span className="font-metadata text-[10px] text-white/40 uppercase tracking-widest mt-2">Active Styles</span>
             </GlassPanel>
           </div>
         </div>
 
         {/* Toolbar */}
-        <div className="flex flex-col md:flex-row gap-6 md:items-center justify-between py-6 border-y border-white/5">
-           <div className="flex items-center gap-6 overflow-x-auto pb-4 md:pb-0 scrollbar-hide">
+        <div className="flex flex-col md:flex-row gap-6 md:items-center justify-between py-6 border-y border-white/5 overflow-hidden">
+           <div className="flex items-center gap-6 overflow-x-auto pb-4 md:pb-0 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
               {[
                 { id: 'all', label: 'Everything' },
                 { id: 'watchlist', label: 'Watchlist' },
@@ -89,7 +89,7 @@ export default function ClientCollections({ initialEntries }: ClientCollectionsP
                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/30" size={14} />
                  <input 
                   type="text"
-                  placeholder="Scan library..."
+                  placeholder="Search library..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="bg-white/5 border border-white/10 rounded-inner pl-10 pr-4 py-2 font-metadata text-xs focus:border-white/30 outline-none w-full md:w-64 transition-all text-white placeholder:text-white/30"
@@ -161,7 +161,7 @@ export default function ClientCollections({ initialEntries }: ClientCollectionsP
                               </div>
                               <div className="text-right">
                                  <span className="font-data text-[10px] text-muted block">{new Date(entry.created_at).toLocaleDateString()}</span>
-                                 <span className="font-data text-[10px] text-white/60 uppercase tracking-widest mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Examine Details</span>
+                                 <span className="font-data text-[10px] text-white/60 uppercase tracking-widest mt-1 opacity-0 group-hover:opacity-100 transition-opacity">View Details</span>
                               </div>
                            </GlassPanel>
                          </Link>
@@ -176,7 +176,7 @@ export default function ClientCollections({ initialEntries }: ClientCollectionsP
                  <Archive size={32} className="text-white/20" />
                </div>
                <h3 className="font-heading text-2xl tracking-tighter italic uppercase text-white/50 mb-2">Library Empty</h3>
-               <p className="font-metadata text-sm text-white/40">No cinematic works collected yet.</p>
+               <p className="font-metadata text-sm text-white/40">Nothing here yet.</p>
                <Link href="/discover">
                   <motion.button
                     whileHover={{ scale: 1.05 }}
@@ -200,11 +200,11 @@ export default function ClientCollections({ initialEntries }: ClientCollectionsP
          >
             <Sparkles className="mx-auto text-white/60 opacity-50" size={32} />
             <p className="font-display text-3xl md:text-5xl tracking-tighter leading-tight italic text-muted">
-              "Cinema does not merely show; it evokes. It is the persistent echo of everything that mattered."
+              "Cinema is the art of seeing. A curated collection of everything that matters."
             </p>
             <div className="h-12 w-px bg-accent/30 mx-auto" />
             <span className="font-data text-[10px] uppercase tracking-[0.5em] text-accent/60 font-bold">
-              CINECHIVE CINEMATIC PROTOCOL // V2.0
+              CINECHIVE ARCHIVE REGISTRY
             </span>
          </motion.div>
       </footer>

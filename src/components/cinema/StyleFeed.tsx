@@ -3,18 +3,18 @@
 import React, { useEffect } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
-import { getArchetypePageAction } from '@/lib/actions';
+import { getStylePageAction } from '@/lib/actions';
 import { UniversalMedia } from '@/lib/api/UniversalTransformer';
 import { DiscoveryCard } from './DiscoveryCard';
 import { Loader2, Film, Tv2 } from 'lucide-react';
 
-interface ArchetypeFeedProps {
+interface StyleFeedProps {
   slug: string;
   initialMovies: { results: UniversalMedia[]; totalPages: number };
   initialTv: { results: UniversalMedia[]; totalPages: number };
 }
 
-export function ArchetypeFeed({ slug, initialMovies, initialTv }: ArchetypeFeedProps) {
+export function StyleFeed({ slug, initialMovies, initialTv }: StyleFeedProps) {
   const { ref: movieRef, inView: movieInView } = useInView({ rootMargin: '1000px' });
   const { ref: tvRef, inView: tvInView } = useInView({ rootMargin: '1000px' });
 
@@ -25,10 +25,10 @@ export function ArchetypeFeed({ slug, initialMovies, initialTv }: ArchetypeFeedP
     hasNextPage: hasNextMoviePage,
     isFetchingNextPage: isFetchingNextMoviePage,
   } = useInfiniteQuery({
-    queryKey: ['archetypeFeed', 'movie', slug],
+    queryKey: ['styleFeed', 'movie', slug],
     queryFn: async ({ pageParam = 1 }) => {
       if (pageParam === 1) return initialMovies;
-      const result = await getArchetypePageAction(slug, pageParam);
+      const result = await getStylePageAction(slug, pageParam);
       return result.movies;
     },
     initialPageParam: 1,
@@ -50,10 +50,10 @@ export function ArchetypeFeed({ slug, initialMovies, initialTv }: ArchetypeFeedP
     hasNextPage: hasNextTvPage,
     isFetchingNextPage: isFetchingNextTvPage,
   } = useInfiniteQuery({
-    queryKey: ['archetypeFeed', 'tv', slug],
+    queryKey: ['styleFeed', 'tv', slug],
     queryFn: async ({ pageParam = 1 }) => {
       if (pageParam === 1) return initialTv;
-      const result = await getArchetypePageAction(slug, pageParam);
+      const result = await getStylePageAction(slug, pageParam);
       return result.tv;
     },
     initialPageParam: 1,
@@ -103,7 +103,7 @@ export function ArchetypeFeed({ slug, initialMovies, initialTv }: ArchetypeFeedP
 
       {/* Series Section */}
       {allTv.length > 0 && (
-        <section className="px-6 md:px-10">
+        <section className="px-4 md:px-10">
           <div className="flex items-center gap-3 mb-8">
             <Tv2 size={16} className="text-white/30" />
             <h2 className="font-heading text-2xl tracking-tighter italic uppercase text-white/40">

@@ -111,7 +111,7 @@ export default function ReleaseRadar() {
   }, [futureData]);
 
   return (
-    <div className="space-y-8 pb-20">
+    <div className="space-y-2 md:space-y-8 pb-20">
       {/* Date Scroller */}
       <AnimatePresence>
         {activeFilter !== 'horizons' && (
@@ -121,8 +121,8 @@ export default function ReleaseRadar() {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="px-4 md:px-10 pt-2 mb-8">
-              <div className="flex items-center justify-between mb-4">
+            <div className="px-4 md:px-10 pt-1 mb-1 md:mb-4">
+              <div className="flex items-center justify-between mb-2">
                 <h2 className="text-white font-heading text-xs uppercase tracking-[0.3em] opacity-40">Release Calendar</h2>
                 <div className="flex gap-2">
                   <button 
@@ -163,8 +163,8 @@ export default function ReleaseRadar() {
       </AnimatePresence>
 
       {/* Filters & Horizons Toggle */}
-      <div className="px-6 md:px-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="flex flex-wrap gap-2 md:gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-6">
+        <div className="flex gap-2 md:gap-4 overflow-x-auto pb-2 md:pb-0 no-scrollbar px-4 md:px-10 md:flex-wrap snap-x items-center w-full">
           {[
             { id: 'all', label: 'All Media', icon: Sparkles },
             { id: 'movies', label: 'Movies', icon: Clapperboard },
@@ -176,37 +176,39 @@ export default function ReleaseRadar() {
               key={f.id}
               onClick={() => setActiveFilter(f.id as RadarFilter)}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-full border text-[10px] font-data font-bold uppercase tracking-widest transition-all",
+                "flex items-center gap-2 px-4 py-2 rounded-full border text-[10px] font-data font-bold uppercase tracking-widest transition-all shrink-0 snap-start",
                 activeFilter === f.id 
                   ? "bg-accent/10 text-accent border-accent/20" 
                   : "bg-white/5 text-white/30 border-white/5 hover:text-white/60 hover:border-white/20"
               )}
             >
-              <f.icon size={12} />
-              {f.label}
+              <f.icon size={12} className="shrink-0" />
+              <span className="whitespace-nowrap">{f.label}</span>
             </button>
           ))}
         </div>
 
         {/* Future Horizons Premium Button */}
-        <button
-          onClick={() => setActiveFilter('horizons')}
-          className={cn(
-            "group relative flex items-center justify-center gap-3 px-6 py-3 rounded-2xl border text-[10px] font-data font-bold uppercase tracking-[0.2em] transition-all duration-500 overflow-hidden",
-            activeFilter === 'horizons'
-              ? "bg-white text-black border-white shadow-[0_0_30px_rgba(255,255,255,0.3)] scale-105"
-              : "bg-white/5 text-white/60 border-white/10 hover:border-white/30 hover:text-white"
-          )}
-        >
-          {activeFilter !== 'horizons' && (
-            <div className="absolute inset-0 bg-linear-to-r from-blue-500/10 via-purple-500/10 to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-          )}
-          <Telescope size={16} className={cn("transition-transform duration-500 group-hover:rotate-12", activeFilter === 'horizons' ? "text-accent" : "text-white/40 group-hover:text-accent")} />
-          <span className="relative z-10">Future Horizons</span>
-          {activeFilter === 'horizons' && (
-            <motion.div layoutId="horizons-glow" className="absolute inset-0 bg-white/20 blur-md rounded-2xl -z-10" />
-          )}
-        </button>
+        <div className="px-4 md:px-10 shrink-0">
+          <button
+            onClick={() => setActiveFilter('horizons')}
+            className={cn(
+              "group relative flex w-full md:w-auto items-center justify-center gap-3 px-6 py-3 rounded-2xl border text-[10px] font-data font-bold uppercase tracking-[0.2em] transition-all duration-500 overflow-hidden",
+              activeFilter === 'horizons'
+                ? "bg-white text-black border-white shadow-[0_0_30px_rgba(255,255,255,0.3)] scale-105"
+                : "bg-white/5 text-white/60 border-white/10 hover:border-white/30 hover:text-white"
+            )}
+          >
+            {activeFilter !== 'horizons' && (
+              <div className="absolute inset-0 bg-linear-to-r from-blue-500/10 via-purple-500/10 to-accent/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            )}
+            <Telescope size={16} className={cn("transition-transform duration-500 group-hover:rotate-12", activeFilter === 'horizons' ? "text-accent" : "text-white/40 group-hover:text-accent")} />
+            <span className="relative z-10 w-full text-center md:w-auto">Future Horizons</span>
+            {activeFilter === 'horizons' && (
+              <motion.div layoutId="horizons-glow" className="absolute inset-0 bg-white/20 blur-md rounded-2xl -z-10" />
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Grid */}
@@ -217,7 +219,7 @@ export default function ReleaseRadar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="px-6 md:px-10 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6"
+            className="px-4 md:px-10 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6"
           >
             {Array.from({ length: 10 }).map((_, i) => (
               <div key={i} className="aspect-2/3 rounded-2xl bg-white/5 animate-pulse" />
@@ -229,11 +231,11 @@ export default function ReleaseRadar() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="flex flex-col gap-8"
+            className="flex flex-col gap-4 md:gap-8"
           >
-            <div className="px-6 md:px-10 flex flex-col items-center text-center max-w-2xl mx-auto pt-8">
-              <Telescope size={40} className="text-accent mb-6 opacity-80" />
-              <h2 className="font-display text-3xl md:text-5xl italic tracking-tighter mb-4 bg-clip-text text-transparent bg-linear-to-b from-white to-white/60 leading-none">
+            <div className="px-4 md:px-10 flex flex-col items-center text-center max-w-2xl mx-auto pt-4 md:pt-8">
+              <Telescope size={40} className="text-accent mb-4 md:mb-6 opacity-80" />
+              <h2 className="font-display text-3xl md:text-5xl italic tracking-tighter mb-2 md:mb-4 bg-clip-text text-transparent bg-linear-to-b from-white to-white/60 leading-none">
                 BEYOND THE <br />HORIZON
               </h2>
               <p className="text-white/50 font-heading text-sm md:text-base leading-relaxed">
@@ -241,7 +243,7 @@ export default function ReleaseRadar() {
               </p>
             </div>
             
-            <div className="px-6 md:px-10 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+            <div className="px-4 md:px-10 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
               {normalizedFutureData.map((item, i) => (
                 <motion.div
                   key={item.id}
@@ -266,7 +268,7 @@ export default function ReleaseRadar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="px-6 md:px-10 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6"
+            className="px-4 md:px-10 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6"
           >
             {filteredData.map((item, i) => (
               <motion.div

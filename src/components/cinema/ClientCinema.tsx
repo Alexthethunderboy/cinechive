@@ -48,7 +48,7 @@ export default function ClientCinema({ initialTrending }: ClientCinemaProps) {
   }, [query]);
 
   return (
-    <div className="py-10 md:py-16 px-6 md:px-10 pb-24 md:pb-16 max-w-7xl mx-auto">
+    <div className="pt-6 pb-24 md:py-16 px-4 md:px-10 max-w-7xl mx-auto">
       <header className="mb-12">
         <motion.div
            initial={{ opacity: 0, x: -20 }}

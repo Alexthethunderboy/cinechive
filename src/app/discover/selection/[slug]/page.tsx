@@ -31,10 +31,10 @@ export default async function SelectionPage({ params }: Props) {
   return (
     <div className="min-h-screen pb-32">
       {/* Header */}
-      <header className="px-6 md:px-10 pt-12 mb-16 border-b border-white/5 pb-12">
+      <header className="px-4 md:px-10 pt-6 md:pt-12 mb-8 md:mb-16 border-b border-white/5 pb-6 md:pb-12">
         <Link
           href="/discover"
-          className="inline-flex items-center gap-2 text-white/30 hover:text-white font-metadata text-xs uppercase tracking-widest transition-colors mb-10 group"
+          className="inline-flex items-center gap-2 text-white/30 hover:text-white font-metadata text-xs uppercase tracking-widest transition-colors mb-6 md:mb-10 group"
         >
           <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
           Discover
@@ -56,7 +56,7 @@ export default async function SelectionPage({ params }: Props) {
       </header>
 
       {/* Grid */}
-      <section className="px-6 md:px-10">
+      <section className="px-4 md:px-10">
         <div className="flex items-center gap-2 mb-8">
           <Sparkles size={14} className="text-white/20" />
           <span className="font-metadata text-[11px] text-white/20 uppercase tracking-widest">

@@ -81,11 +81,10 @@ export default function ReleaseRadarCard({ item }: ReleaseRadarCardProps) {
         <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-transparent" />
       </div>
 
-      {/* Date Badge */}
       <div className="absolute top-2 left-2 z-20">
-        <div className="bg-white text-black p-1 md:p-1.5 rounded-lg flex flex-col items-center justify-center min-w-[38px] md:min-w-[45px] shadow-2xl border border-white/20">
-          <span className="text-lg font-bold leading-none">{day}</span>
-          <span className="text-[9px] font-data font-bold tracking-wider">{month}</span>
+        <div className="bg-white text-black p-1 md:p-1.5 rounded-lg flex flex-col items-center justify-center min-w-8 md:min-w-[45px] shadow-2xl border border-white/20">
+          <span className="text-base md:text-lg font-bold leading-none">{day}</span>
+          <span className="text-[8px] md:text-[9px] font-data font-bold tracking-wider">{month}</span>
         </div>
       </div>
 
@@ -102,7 +101,7 @@ export default function ReleaseRadarCard({ item }: ReleaseRadarCardProps) {
       </div>
 
       {/* Content */}
-      <div className="absolute inset-x-0 bottom-0 p-4 z-20">
+      <div className="absolute inset-x-0 bottom-0 p-3 md:p-4 z-20">
         <div className="mb-2 flex items-center gap-2">
           {item.type === 'anime' && (
             <span className="text-[8px] font-data bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded border border-rose-500/30 uppercase tracking-widest">Anime</span>
@@ -112,12 +111,12 @@ export default function ReleaseRadarCard({ item }: ReleaseRadarCardProps) {
           )}
         </div>
         
-        <h3 className="text-lg font-heading font-bold text-white mb-2 line-clamp-1 group-hover:text-accent transition-colors">
+        <h3 className="text-lg font-heading font-bold text-white mb-1 line-clamp-1 group-hover:text-accent transition-colors">
           {item.displayTitle}
         </h3>
 
         {/* Hype Meter */}
-        <div className="space-y-1 mb-4">
+        <div className="space-y-1 mb-2 md:mb-4">
           <div className="flex items-center justify-between text-[10px] font-data text-white/40 uppercase tracking-tighter">
             <span>Anticipation Meter</span>
             <span className="text-white/80">{item.hypeLevel || 0}%</span>
@@ -132,19 +131,19 @@ export default function ReleaseRadarCard({ item }: ReleaseRadarCardProps) {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleToggleNotify}
             className={cn(
-              "flex-1 flex items-center justify-center gap-2 py-2 rounded-xl border transition-all duration-300",
+              "flex-1 flex items-center justify-center gap-1.5 md:gap-2 py-1.5 md:py-2 rounded-xl border transition-all duration-300",
               isNotified 
                 ? "bg-accent text-black border-accent" 
                 : "bg-white/10 text-white border-white/10 hover:bg-white/20"
             )}
           >
-            {isNotified ? <BellOff size={14} /> : <Bell size={14} />}
-            <span className="text-[10px] font-data font-bold uppercase tracking-widest">
+            {isNotified ? <BellOff size={12} className="md:w-[14px] md:h-[14px]" /> : <Bell size={12} className="md:w-[14px] md:h-[14px]" />}
+            <span className="text-[9px] md:text-[10px] font-data font-bold uppercase tracking-widest">
               {isNotified ? 'Dismiss' : 'Notify Me'}
             </span>
           </motion.button>

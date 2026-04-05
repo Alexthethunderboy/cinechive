@@ -2,21 +2,37 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Loader2, Search } from 'lucide-react';
+import { Bell, Loader2, Search, Zap, Sparkles, ChevronRight, History, Activity as ActivityIcon, MessageSquare, Repeat2 } from 'lucide-react';
 import { useAuth } from '@/components/providers/AuthProvider';
-import { getAlgorithmicNotifications, PulseNotification } from '@/lib/pulse-actions';
+import { getAlgorithmicNotifications, getUserActivityHistory, CommunityNotification, UserActivityItem } from '@/lib/community-actions';
 import Link from 'next/link';
 import Image from 'next/image';
+import GlassPanel from '@/components/ui/GlassPanel';
 
 export default function ActivityPage() {
   const { user, loading } = useAuth();
-  const [notifications, setNotifications] = useState<PulseNotification[]>([]);
+  const [notifications, setNotifications] = useState<CommunityNotification[]>([]);
+  const [history, setHistory] = useState<UserActivityItem[]>([]);
+  const [topInterests, setTopInterests] = useState<string[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      getAlgorithmicNotifications().then(setNotifications);
-    }
+    const fetchData = () => {
+      if (user) {
+        Promise.all([
+          getAlgorithmicNotifications(),
+          getUserActivityHistory()
+        ]).then(([notifs, hist]) => {
+          setNotifications(notifs.notifications);
+          setTopInterests(notifs.topInterests);
+          setHistory(hist);
+        });
+      }
+    };
+
+    fetchData();
+    window.addEventListener('refresh-notifications', fetchData);
+    return () => window.removeEventListener('refresh-notifications', fetchData);
   }, [user]);
 
   if (loading) {
@@ -49,11 +65,140 @@ export default function ActivityPage() {
           <h1 className="text-4xl font-heading uppercase italic tracking-tighter text-white">Activity</h1>
           <p className="text-[10px] font-metadata text-white/40 uppercase tracking-[0.3em]">Recent Notifications & History</p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col items-end gap-2">
           <div className="text-[10px] font-mono text-vibe-gold bg-vibe-gold/10 px-3 py-1 rounded-full border border-vibe-gold/20">
             {notifications.length} New Alerts
           </div>
+          {topInterests.length > 0 && (
+            <div className="flex items-center gap-2">
+               <Sparkles size={8} className="text-vibe-violet" />
+               <span className="text-[8px] font-mono text-white/30 uppercase tracking-widest">Interests: {topInterests.join(' • ')}</span>
+            </div>
+          )}
         </div>
+      </div>
+
+      {/* Onboarding Notice */}
+      {user?.profile?.onboarding_completed === false && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="mb-10"
+        >
+          <GlassPanel className="p-6 bg-vibe-violet/10 border-vibe-violet/20 overflow-hidden relative group">
+            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+              <Zap size={80} className="text-vibe-violet" />
+            </div>
+            <div className="relative z-10 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-vibe-violet/20 text-vibe-violet">
+                  <Sparkles size={18} />
+                </div>
+                <h3 className="font-heading text-lg text-white">Complete Your Profile</h3>
+              </div>
+              <p className="text-sm text-white/60 font-metadata leading-relaxed max-w-lg">
+                Your activity feed is currently showing general trends. Finish onboarding to unlock deep personalization tailored to your movie style.
+              </p>
+              <Link 
+                href="/" 
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-white text-black font-heading font-bold rounded-xl hover:bg-white/90 transition-all text-xs uppercase tracking-widest"
+              >
+                Start Onboarding
+                <ChevronRight size={14} />
+              </Link>
+            </div>
+          </GlassPanel>
+        </motion.div>
+      )}
+
+      {/* Taste Profile */}
+      {topInterests.length > 0 && (
+         <motion.div 
+           initial={{ opacity: 0, y: 10 }}
+           animate={{ opacity: 1, y: 0 }}
+           className="mb-12 space-y-4"
+         >
+           <div className="flex items-center gap-2">
+             <div className="h-px bg-white/10 flex-1" />
+             <span className="text-[10px] font-mono text-white/30 uppercase tracking-[0.2em] px-2 italic">Your Style</span>
+             <div className="h-px bg-white/10 flex-1" />
+           </div>
+           
+           <div className="flex flex-wrap justify-center gap-3">
+             {topInterests.map((interest) => (
+               <div 
+                 key={interest}
+                 className="px-6 py-3 rounded-2xl bg-white/3 border border-white/5 flex flex-col items-center gap-1 group hover:bg-white/5 transition-all"
+               >
+                 <span className="text-lg font-heading text-white uppercase italic tracking-tighter group-hover:text-vibe-violet transition-colors">
+                   {interest}
+                 </span>
+                 <div className="w-1 h-1 rounded-full bg-vibe-violet opacity-40 group-hover:scale-150 transition-transform" />
+               </div>
+             ))}
+           </div>
+         </motion.div>
+      )}
+
+      {/* Personal Activity History */}
+      <div className="space-y-4 mb-16">
+        <div className="space-y-2 flex items-center justify-between">
+           <div className="flex items-center gap-2">
+             <History size={14} className="text-white/40" />
+             <h2 className="text-[10px] font-data uppercase tracking-[0.4em] text-white/40 font-bold italic">Your History</h2>
+           </div>
+           <div className="h-px bg-white/5 flex-1 ml-4" />
+        </div>
+
+        <div className="space-y-3">
+          {history.length === 0 ? (
+            <div className="py-12 text-center rounded-2xl bg-white/2 border border-dashed border-white/5">
+              <p className="text-[10px] font-metadata text-white/20 uppercase tracking-widest italic">No personal logs yet. Start archiving to build your history.</p>
+            </div>
+          ) : (
+            history.map((item) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="flex items-center gap-4 p-3 rounded-xl bg-white/3 border border-white/5 hover:bg-white/5 transition-all group"
+              >
+                <div className="relative w-10 aspect-2/3 rounded overflow-hidden border border-white/10 shrink-0">
+                  {item.poster_url && (
+                    <Image src={item.poster_url} alt={item.title} fill className="object-cover" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[8px] font-mono text-white/30 uppercase tracking-widest">
+                      {item.activity_type === 'entry' ? 'Log' : item.activity_type === 're_archive' ? 'Re-collect' : 'Trivia'}
+                    </span>
+                    <span className="text-[8px] font-mono text-white/10">•</span>
+                    <span className="text-[8px] font-mono text-white/20">{new Date(item.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <h4 className="text-sm font-heading text-white truncate">{item.title}</h4>
+                  {item.vibe && (
+                    <span className="text-[8px] font-mono text-vibe-gold/60 uppercase">{item.vibe}</span>
+                  )}
+                </div>
+                <Link 
+                  href={`/media/${item.media_type}/${item.media_id}`}
+                  className="p-2 text-white/20 hover:text-white transition-colors"
+                >
+                  <ChevronRight size={14} />
+                </Link>
+              </motion.div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-2 mb-6 flex items-center justify-between">
+         <div className="flex items-center gap-2">
+           <ActivityIcon size={14} className="text-vibe-gold/40" />
+           <h2 className="text-[10px] font-data uppercase tracking-[0.4em] text-vibe-gold/40 font-bold italic">Recommended for You</h2>
+         </div>
+         <div className="h-px bg-white/5 flex-1 ml-4" />
       </div>
 
       <div className="space-y-4">
@@ -67,7 +212,7 @@ export default function ActivityPage() {
               <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto text-white/10">
                 <Bell size={32} />
               </div>
-              <p className="font-metadata text-xs text-white/20 uppercase tracking-[0.2em]">The void remains silent</p>
+              <p className="font-metadata text-xs text-white/20 uppercase tracking-[0.2em]">No recommendations right now</p>
             </motion.div>
           ) : (
             notifications.map((notif, idx) => (
@@ -97,7 +242,7 @@ export default function ActivityPage() {
 
                   <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono text-vibe-gold/80 uppercase tracking-widest">{notif.media.type} Alert</span>
+                      <span className="text-[10px] font-mono text-vibe-gold/80 uppercase tracking-widest">{notif.media.type} Release</span>
                       <span className="text-[10px] font-mono text-white/20 capitalize">{notif.timestamp}</span>
                     </div>
                     <h3 className="text-xl font-heading text-white line-clamp-1 group-hover:text-vibe-gold transition-colors">

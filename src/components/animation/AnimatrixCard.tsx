@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Star, ChevronDown, Check, Bookmark, Loader2, Info, Users, DollarSign, Bell, BellOff } from 'lucide-react';
 import { UniversalMedia } from '@/lib/api/UniversalTransformer';
-import { cn } from '@/lib/utils';
+import { cn, formatDate, getReleaseStatus } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
 import { archiveMediaAction } from '@/lib/actions';
@@ -27,6 +27,7 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
   const [isReminded, setIsReminded] = useState(false);
 
   const isUpcoming = media.releaseDate ? isAfter(new Date(media.releaseDate), startOfToday()) : false;
+  const releaseStatus = getReleaseStatus(media.releaseDate, media.type);
 
   useEffect(() => {
     if (isUpcoming) {
@@ -130,21 +131,21 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
         <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-10 transition-opacity duration-300">
           <div className="flex flex-col gap-2">
             {media.rating.showBadge && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10">
-                <Star className="text-vibe-yellow w-3.5 h-3.5 fill-current" />
-                <span className="text-white font-mono text-xs font-bold">{media.rating.average.toFixed(1)}</span>
+              <div className="flex items-center gap-1 px-1 py-[2px] md:px-1.5 md:py-0.5 rounded bg-black/60 backdrop-blur-md border border-white/10 shadow-lg">
+                <Star className="text-vibe-yellow w-2 h-2 md:w-2.5 md:h-2.5 fill-current" />
+                <span className="text-white font-mono tracking-widest text-[7px] md:text-[9px] font-bold">{media.rating.average.toFixed(1)}</span>
               </div>
             )}
             
             {/* Anime Specific Badges */}
             {media.source === 'anilist' && media.studio && (
-              <div className="inline-flex px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/5 text-[10px] font-metadata text-white">
+              <div className="inline-flex px-2 py-0.5 md:px-3 md:py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/5 text-[9px] md:text-[10px] font-metadata text-white">
                 {media.studio}
               </div>
             )}
             {/* Animation Specific Badges */}
             {media.source === 'tmdb' && media.format && (
-              <div className="inline-flex px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/5 text-[10px] font-metadata text-white">
+              <div className="inline-flex px-2 py-0.5 md:px-3 md:py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/5 text-[9px] md:text-[10px] font-metadata text-white">
                 {media.format}
               </div>
             )}
@@ -157,22 +158,30 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
           </div>
           
           <div className="flex gap-2 relative">
+             {releaseStatus && (
+               <div className={cn(
+                 "inline-flex items-center text-[7px] md:text-[9px] font-mono tracking-widest font-bold px-1 py-[2px] md:px-1.5 md:py-0.5 rounded backdrop-blur-md uppercase",
+                 releaseStatus.style
+               )}>
+                 {releaseStatus.label}
+               </div>
+             )}
              {!isUpcoming && (
                 <button 
                   onClick={handleSaveToVault}
                   disabled={isSaving || isSaved}
                   className={cn(
-                    "p-1.5 rounded-md backdrop-blur-md transition-all flex items-center justify-center border hover:scale-110",
+                    "p-1 md:p-1.5 rounded-md backdrop-blur-md transition-all flex items-center justify-center border hover:scale-110",
                     isSaved ? "bg-accent/20 border-accent/40 text-accent" : "bg-black/40 border-white/10 text-white/80 hover:text-white"
                   )}
                   title="Collect Film"
                 >
                   {isSaving ? (
-                    <Loader2 className="w-3 h-3 animate-spin" />
+                    <Loader2 className="w-2.5 md:w-3.5 h-2.5 md:h-3.5 animate-spin" />
                   ) : isSaved ? (
-                    <Check className="w-3 h-3" />
+                    <Check className="w-2.5 md:w-3.5 h-2.5 md:h-3.5" />
                   ) : (
-                    <Bookmark className="w-3 h-3" />
+                    <Bookmark className="w-2.5 md:w-3.5 h-2.5 md:h-3.5" />
                   )}
                 </button>
              )}
@@ -181,12 +190,12 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
                 <button 
                   onClick={handleToggleReminder}
                   className={cn(
-                    "p-1.5 rounded-md backdrop-blur-md transition-all flex items-center justify-center border hover:scale-110",
+                    "p-1 md:p-1.5 rounded-md backdrop-blur-md transition-all flex items-center justify-center border hover:scale-110",
                     isReminded ? "bg-accent/20 border-accent/40 text-accent" : "bg-black/40 border-white/10 text-white/80 hover:text-white"
                   )}
                   title={isReminded ? "Dismiss Reminder" : "Notify Me"}
                 >
-                  {isReminded ? <BellOff className="w-3.5 h-3.5" /> : <Bell className="w-3.5 h-3.5" />}
+                  {isReminded ? <BellOff className="w-2.5 md:w-3.5 h-2.5 md:h-3.5" /> : <Bell className="w-2.5 md:w-3.5 h-2.5 md:h-3.5" />}
                 </button>
              )}
           </div>

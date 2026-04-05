@@ -66,10 +66,10 @@ export default async function GenrePage({ params }: Props) {
   return (
     <div className="min-h-screen pb-32">
       {/* Header */}
-      <header className="px-6 md:px-10 pt-12 mb-16">
+      <header className="px-4 md:px-10 pt-6 md:pt-12 mb-8 md:mb-16">
         <Link
           href="/discover"
-          className="inline-flex items-center gap-2 text-white/30 hover:text-white font-metadata text-xs uppercase tracking-widest transition-colors mb-10 group"
+          className="inline-flex items-center gap-2 text-white/30 hover:text-white font-metadata text-xs uppercase tracking-widest transition-colors mb-6 md:mb-10 group"
         >
           <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
           Discover

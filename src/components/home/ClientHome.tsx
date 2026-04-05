@@ -2,30 +2,34 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Flame, Calendar, Layers, Search, Sparkles, Users, Activity, ExternalLink } from 'lucide-react';
+import { Flame, Calendar, Layers, Search, Sparkles, Users, ChevronRight, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import GlassPanel from '@/components/ui/GlassPanel';
 import Link from 'next/link';
 import Image from 'next/image';
-import { UnifiedMedia } from '@/lib/api/mapping';
-import { ClassificationName, CLASSIFICATION_COLORS } from '@/lib/design-tokens';
-import { TrendingFeed } from '@/components/cinema/TrendingFeed';
-import RandomFactWidget from '@/components/dashboard/RandomFactWidget';
-import ReleaseRadar from '@/components/cinema/ReleaseRadar';
-
+import { TrendingFeed } from '../cinema/TrendingFeed';
+import ReleaseRadar from '../cinema/ReleaseRadar';
+import OnboardingModal from '@/components/onboarding/OnboardingModal';
 
 type DiscoveryMode = 'broadcast' | 'radar';
 
 export interface ClientHomeProps {
   user?: any;
-  userLogs?: any[];
-  pulseFeed?: any[];
 }
 
-export default function ClientHome({ user, userLogs, pulseFeed }: ClientHomeProps) {
+export default function ClientHome({ user }: ClientHomeProps) {
   const [activeView, setActiveView] = useState<DiscoveryMode>('broadcast');
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
+  
+  // Show onboarding modal for new users who haven't completed it
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  useEffect(() => {
+    if (user && user.profile && user.profile.onboarding_completed === false) {
+      setShowOnboarding(true);
+    }
+  }, [user]);
 
   useEffect(() => {
     const scrollContainer = document.querySelector('main');
@@ -35,7 +39,6 @@ export default function ClientHome({ user, userLogs, pulseFeed }: ClientHomeProp
       const currentScrollY = scrollContainer.scrollTop;
       
       // Show if scrolling up, hide if scrolling down
-      // Only hide if we've scrolled past a small threshold
       if (currentScrollY > lastScrollY.current && currentScrollY > 100) {
         setIsVisible(false);
       } else {
@@ -55,7 +58,7 @@ export default function ClientHome({ user, userLogs, pulseFeed }: ClientHomeProp
   ];
 
   return (
-    <div>
+    <div className="flex flex-col min-h-screen">
       {/* Refined Header - Animated on scroll */}
       <motion.header 
         initial={false}
@@ -64,7 +67,7 @@ export default function ClientHome({ user, userLogs, pulseFeed }: ClientHomeProp
           opacity: isVisible ? 1 : 0
         }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="px-4 md:px-10 pt-6 md:pt-12 mb-6 flex items-center justify-between sticky top-0 md:relative bg-black/50 md:bg-transparent backdrop-blur-xl md:backdrop-blur-none z-40"
+        className="px-4 md:px-10 pt-4 md:pt-12 mb-2 md:mb-8 flex items-center justify-between sticky top-0 md:relative bg-black/50 md:bg-transparent backdrop-blur-xl md:backdrop-blur-none z-40"
         style={{ pointerEvents: isVisible ? 'auto' : 'none' }}
       >
         <motion.div
@@ -88,11 +91,6 @@ export default function ClientHome({ user, userLogs, pulseFeed }: ClientHomeProp
           </div>
         </motion.div>
       </motion.header>
- 
-      {/* Cinematic Insights */}
-      <section className="px-6 md:px-10 mb-8 hidden">
-         <RandomFactWidget />
-      </section>
 
       {/* Discovery Perspective Toggle */}
       <motion.div 
@@ -146,7 +144,7 @@ export default function ClientHome({ user, userLogs, pulseFeed }: ClientHomeProp
         </div>
       </motion.div>
 
-      <div className="relative z-10">
+      <div className="relative z-10 flex-1 px-4 md:px-0">
         {activeView === 'broadcast' && (
            <TrendingFeed isVisible={isVisible} />
         )}
@@ -154,8 +152,12 @@ export default function ClientHome({ user, userLogs, pulseFeed }: ClientHomeProp
         {activeView === 'radar' && (
            <ReleaseRadar />
         )}
-
       </div>
+
+      {/* Onboarding Flow for New Users */}
+      {showOnboarding && (
+        <OnboardingModal onComplete={() => setShowOnboarding(false)} />
+      )}
     </div>
   );
 }

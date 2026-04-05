@@ -1,0 +1,326 @@
+'use client';
+
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  User, 
+  Shield, 
+  Settings as SettingsIcon, 
+  Trash2, 
+  Check, 
+  X, 
+  Camera, 
+  Info,
+  ChevronLeft,
+  Loader2,
+  Lock,
+  Eye,
+  Activity
+} from 'lucide-react';
+import GlassPanel from '@/components/ui/GlassPanel';
+import { updateProfile, deleteAccount, clearHistory } from '@/app/actions/profile-actions';
+import { cn, formatUsername } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+
+interface ProfileSettingsUIProps {
+  profile: any;
+}
+
+type SettingsTab = 'identity' | 'account' | 'preferences';
+
+export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState<SettingsTab>('identity');
+  const [isSaving, setIsSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  // Form State
+  const [displayName, setDisplayName] = useState(profile.display_name || '');
+  const [bio, setBio] = useState(profile.bio || '');
+  const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url || '');
+
+  const handleSaveProfile = async () => {
+    setIsSaving(true);
+    try {
+      const result = await updateProfile({
+        display_name: displayName,
+        bio: bio,
+        avatar_url: avatarUrl
+      });
+      
+      if (result.success) {
+        toast.success('Profile updated successfully');
+        router.refresh();
+      } else {
+        toast.error(result.error || 'Failed to update profile');
+      }
+    } catch (error) {
+      toast.error('An unexpected error occurred');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setIsSaving(true);
+    try {
+      const result = await deleteAccount();
+      if (result?.error) {
+        toast.error(result.error);
+        setIsSaving(false);
+      }
+    } catch (e) {
+      toast.error('Failed to delete account');
+      setIsSaving(false);
+    }
+  };
+
+  const tabs = [
+    { id: 'identity', label: 'Identity', icon: User },
+    { id: 'account', label: 'Account', icon: Shield },
+    { id: 'preferences', label: 'Preferences', icon: SettingsIcon },
+  ];
+
+  return (
+    <div className="min-h-screen pb-20 pt-10 px-4 md:px-10 max-w-5xl mx-auto">
+      <div className="mb-10 flex items-center gap-4">
+        <button 
+          onClick={() => router.back()}
+          className="p-2 rounded-full hover:bg-white/10 transition-colors text-white/60 hover:text-white"
+        >
+          <ChevronLeft size={24} />
+        </button>
+        <div>
+          <h1 className="text-3xl md:text-4xl font-display font-bold text-white tracking-tight">Settings</h1>
+          <p className="text-white/40 font-heading text-sm">Manage your profile and account preferences</p>
+        </div>
+      </div>
+
+      <div className="flex flex-col md:flex-row gap-8">
+        {/* Sidebar Nav */}
+        <aside className="w-full md:w-64 space-y-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as SettingsTab)}
+              className={cn(
+                "w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-300 font-heading text-sm font-bold",
+                activeTab === tab.id 
+                  ? "bg-white text-black shadow-xl scale-[1.02]" 
+                  : "bg-white/5 text-white/40 hover:bg-white/10 hover:text-white/80"
+              )}
+            >
+              <tab.icon size={20} />
+              {tab.label}
+            </button>
+          ))}
+        </aside>
+
+        {/* Main Panel */}
+        <div className="flex-1">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeTab}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              <GlassPanel className="p-6 md:p-10 bg-white/5 border-white/10 shadow-2xl overflow-hidden relative">
+                {activeTab === 'identity' && (
+                  <div className="space-y-8">
+                    <div className="flex flex-col md:flex-row gap-8 items-start">
+                      <div className="relative group">
+                        <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white/10 bg-surface-hover shadow-2xl">
+                          {avatarUrl ? (
+                            <img src={avatarUrl} alt="Preview" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-4xl font-display text-white/20">
+                              {formatUsername(profile.username)[0].toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <button className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
+                          <Camera size={24} className="text-white" />
+                        </button>
+                      </div>
+                      
+                      <div className="flex-1 w-full space-y-6">
+                        <div className="space-y-2">
+                          <label className="text-xs font-data uppercase tracking-widest text-white/40 font-bold">Display Name</label>
+                          <input 
+                            value={displayName}
+                            onChange={(e) => setDisplayName(e.target.value)}
+                            placeholder="Your name"
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-white font-heading focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                          />
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <label className="text-xs font-data uppercase tracking-widest text-white/40 font-bold">Bio</label>
+                          <textarea 
+                            value={bio}
+                            onChange={(e) => setBio(e.target.value)}
+                            placeholder="Write a short bit about yourself..."
+                            rows={4}
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-white font-heading focus:outline-none focus:ring-2 focus:ring-white/20 transition-all resize-none"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <label className="text-xs font-data uppercase tracking-widest text-white/40 font-bold">Avatar URL</label>
+                          <input 
+                            value={avatarUrl}
+                            onChange={(e) => setAvatarUrl(e.target.value)}
+                            placeholder="https://..."
+                            className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-white font-heading focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-6 border-t border-white/10 flex justify-end">
+                      <button 
+                        onClick={handleSaveProfile}
+                        disabled={isSaving}
+                        className="flex items-center gap-2 px-8 py-3 rounded-xl bg-white text-black font-heading font-bold hover:bg-white/90 disabled:opacity-50 transition-all shadow-xl"
+                      >
+                        {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
+                        Save Changes
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'account' && (
+                  <div className="space-y-10">
+                    <div className="space-y-6">
+                      <h3 className="text-xl font-display font-bold text-white">Security</h3>
+                      <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl flex gap-4">
+                        <Info className="text-blue-400 shrink-0" size={20} />
+                        <p className="text-sm text-blue-100/70 leading-relaxed font-heading">
+                          Your account is protected by your personal password. We use high-grade encryption to ensure your data stays private.
+                        </p>
+                      </div>
+                      
+                      <div className="space-y-4">
+                         <div className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5">
+                            <div className="flex items-center gap-4">
+                               <div className="p-2.5 rounded-lg bg-white/5 text-white/60">
+                                  <Lock size={18} />
+                               </div>
+                               <div>
+                                  <p className="font-heading text-sm font-bold text-white">Authentication</p>
+                                  <p className="text-xs text-white/30">{formatUsername(profile.username)}@enterarchive.com</p>
+                               </div>
+                            </div>
+                            <button className="text-xs font-data uppercase tracking-widest text-white/40 hover:text-white transition-colors font-bold">Change</button>
+                         </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-10 border-t border-white/10 space-y-6">
+                      <h3 className="text-xl font-display font-bold text-rose-400">Danger Zone</h3>
+                      <p className="text-sm text-white/40 font-heading">Actions here are permanent and cannot be undone.</p>
+                      
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <button 
+                          onClick={async () => {
+                            if (confirm('Are you sure you want to clear your entire history?')) {
+                              await clearHistory();
+                              toast.success('History cleared');
+                            }
+                          }}
+                          className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-white font-heading font-bold hover:bg-white/10 transition-all"
+                        >
+                          <Activity size={18} />
+                          Clear All Logs
+                        </button>
+                        
+                        {!showDeleteConfirm ? (
+                          <button 
+                            onClick={() => setShowDeleteConfirm(true)}
+                            className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 font-heading font-bold hover:bg-rose-500/20 transition-all"
+                          >
+                            <Trash2 size={18} />
+                            Delete Account
+                          </button>
+                        ) : (
+                          <div className="flex flex-1 items-center gap-3">
+                             <button 
+                              onClick={handleDeleteAccount}
+                              className="flex-1 px-4 py-3 rounded-xl bg-rose-500 text-white font-heading font-bold hover:bg-rose-600 transition-all shadow-xl"
+                            >
+                              Final Confirmation (Delete)
+                            </button>
+                            <button 
+                              onClick={() => setShowDeleteConfirm(false)}
+                              className="p-3 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all"
+                            >
+                              <X size={20} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {activeTab === 'preferences' && (
+                  <div className="space-y-8">
+                    <div className="space-y-6">
+                      <h3 className="text-xl font-display font-bold text-white">Interface</h3>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/5">
+                           <div className="flex items-center gap-4">
+                              <div className="p-3 rounded-xl bg-blue-500/10 text-blue-400">
+                                 <Activity size={20} />
+                              </div>
+                              <div>
+                                 <p className="font-heading text-sm font-bold text-white">Reduced Motion</p>
+                                 <p className="text-xs text-white/30">Minimize animations across the app</p>
+                              </div>
+                           </div>
+                           <div className="w-12 h-6 bg-white/10 rounded-full relative cursor-pointer">
+                              <div className="absolute left-1 top-1 w-4 h-4 bg-white/40 rounded-full" />
+                           </div>
+                        </div>
+
+                        <div className="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/5 opacity-50 cursor-not-allowed">
+                           <div className="flex items-center gap-4">
+                              <div className="p-3 rounded-xl bg-purple-500/10 text-purple-400">
+                                 <Eye size={20} />
+                              </div>
+                              <div>
+                                 <p className="font-heading text-sm font-bold text-white">Compact View</p>
+                                 <p className="text-xs text-white/30">Show more information at once</p>
+                              </div>
+                           </div>
+                           <div className="w-12 h-6 bg-white/10 rounded-full relative">
+                              <div className="absolute left-1 top-1 w-4 h-4 bg-white/40 rounded-full" />
+                           </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="p-6 bg-white/5 rounded-2xl border border-white/5 flex gap-5 items-center">
+                       <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center text-white/40">
+                          <SettingsIcon size={24} />
+                       </div>
+                       <div className="flex-1">
+                          <p className="font-heading text-sm font-bold text-white">More preferences coming soon</p>
+                          <p className="text-xs text-white/30">We're building more ways for you to customize your experience.</p>
+                       </div>
+                    </div>
+                  </div>
+                )}
+              </GlassPanel>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+    </div>
+  );
+}

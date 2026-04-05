@@ -22,7 +22,7 @@ function SearchContent() {
   });
 
   return (
-    <div className="pt-10 pb-20 px-6 md:px-16 space-y-12">
+    <div className="pt-6 pb-20 px-4 md:px-16 space-y-6 md:space-y-12">
       <div className="max-w-6xl mx-auto space-y-4">
         <EverythingBar />
         {query && (

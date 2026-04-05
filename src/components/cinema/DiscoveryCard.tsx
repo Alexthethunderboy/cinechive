@@ -2,28 +2,32 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Star, Bookmark, Loader2, Check, Bell, BellOff } from 'lucide-react';
+import { Star, Bookmark, Loader2, Check, Bell, BellOff, Plus } from 'lucide-react';
 import { UniversalMedia } from '@/lib/api/UniversalTransformer';
-import { cn } from '@/lib/utils';
+import { cn, formatDate, getReleaseStatus } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
 import { archiveMediaAction } from '@/lib/actions';
 import { toggleReminder, getReminderStatus } from '@/app/actions/radar-actions';
 import { isAfter, startOfToday } from 'date-fns';
 import { toast } from 'sonner';
+import SaveMediaDialog from '../vault/SaveMediaDialog';
 
 interface DiscoveryCardProps {
   media: UniversalMedia;
   index: number;
+  isAlreadySaved?: boolean;
 }
 
-export function DiscoveryCard({ media: initialMedia, index }: DiscoveryCardProps) {
+export function DiscoveryCard({ media: initialMedia, index, isAlreadySaved = false }: DiscoveryCardProps) {
   const [media] = useState<UniversalMedia>(initialMedia);
   const [isSaving, setIsSaving] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+  const [isSaved, setIsSaved] = useState(isAlreadySaved);
   const [isReminded, setIsReminded] = useState(false);
+  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
 
   const isUpcoming = media.releaseDate ? isAfter(new Date(media.releaseDate), startOfToday()) : false;
+  const releaseStatus = getReleaseStatus(media.releaseDate, media.type);
 
   useEffect(() => {
     if (isUpcoming) {
@@ -60,6 +64,12 @@ export function DiscoveryCard({ media: initialMedia, index }: DiscoveryCardProps
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleOpenSaveDialog = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsSaveDialogOpen(true);
   };
 
   const handleToggleReminder = async (e: React.MouseEvent) => {
@@ -105,38 +115,41 @@ export function DiscoveryCard({ media: initialMedia, index }: DiscoveryCardProps
         <div className="absolute top-2 left-2 right-2 flex justify-between items-start z-10">
           <div className="flex flex-col gap-1.5">
             {media.rating?.showBadge && (
-              <div className="flex items-center gap-1 px-2 py-1 md:px-3 md:py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10">
-                <Star className="text-vibe-yellow w-3 h-3 md:w-3.5 md:h-3.5 fill-current" />
-                <span className="text-white font-mono text-[10px] md:text-xs font-bold">{media.rating?.average?.toFixed(1)}</span>
+              <div className="flex items-center gap-1 px-1 py-[2px] md:px-1.5 md:py-0.5 rounded bg-black/60 backdrop-blur-md border border-white/10 shadow-lg">
+                <Star className="text-vibe-yellow w-2 h-2 md:w-2.5 md:h-2.5 fill-current" />
+                <span className="text-white font-mono tracking-widest text-[7px] md:text-[9px] font-bold">{media.rating?.average?.toFixed(1)}</span>
               </div>
             )}
           </div>
           
           <div className="flex gap-1.5 relative z-20">
+             {releaseStatus && (
+               <span className={cn(
+                 "inline-flex items-center text-[7px] md:text-[9px] font-mono tracking-widest font-bold px-1 py-[2px] md:px-1.5 md:py-0.5 rounded backdrop-blur-md uppercase shadow-lg",
+                 releaseStatus.style
+               )}>
+                 {releaseStatus.label}
+               </span>
+             )}
              <span className="hidden xs:inline-block text-[9px] font-mono tracking-widest text-white/50 bg-black/40 px-1.5 py-0.5 rounded backdrop-blur-md uppercase">
                {media.type}
              </span>
              
              {!isUpcoming && (
-                 <motion.button 
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={handleSaveToVault}
-                  disabled={isSaving || isSaved}
-                  className={cn(
-                    "p-1 md:p-1.5 rounded-md backdrop-blur-md transition-all flex items-center justify-center border",
-                    isSaved ? "bg-white text-black border-white" : "bg-black/40 border-white/10 text-white/50 hover:text-white"
-                  )}
-                  title="Collect Item"
-                >
-                  {isSaving ? (
-                    <Loader2 className="w-3 md:w-3.5 h-3 md:h-3.5 animate-spin" />
-                  ) : isSaved ? (
-                    <Check className="w-3 md:w-3.5 h-3 md:h-3.5" />
-                  ) : (
-                    <Bookmark className="w-3 md:w-3.5 h-3 md:h-3.5" />
-                  )}
-                </motion.button>
+               <div className="flex gap-1">
+                  <motion.button 
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleOpenSaveDialog}
+                    className={cn(
+                      "p-1 md:p-1.5 rounded-md backdrop-blur-md transition-all flex items-center justify-center border",
+                      isSaved ? "bg-white text-black border-white" : "bg-black/40 border-white/10 text-white/50 hover:text-white"
+                    )}
+                    title="Save & Curate"
+                  >
+                    <Bookmark className={cn("w-2.5 md:w-3.5 h-2.5 md:h-3.5", isSaved && "fill-current")} fill={isSaved ? "currentColor" : "none"} />
+                  </motion.button>
+               </div>
              )}
 
              {isUpcoming && (
@@ -150,7 +163,7 @@ export function DiscoveryCard({ media: initialMedia, index }: DiscoveryCardProps
                   )}
                   title={isReminded ? "Dismiss Reminder" : "Notify Me"}
                 >
-                  {isReminded ? <BellOff className="w-3 md:w-3.5 h-3 md:h-3.5" /> : <Bell className="w-3 md:w-3.5 h-3 md:h-3.5" />}
+                  {isReminded ? <BellOff className="w-2.5 md:w-3.5 h-2.5 md:h-3.5" /> : <Bell className="w-2.5 md:w-3.5 h-2.5 md:h-3.5" />}
                 </motion.button>
              )}
           </div>
@@ -181,6 +194,11 @@ export function DiscoveryCard({ media: initialMedia, index }: DiscoveryCardProps
           </div>
         </div>
       </div>
+      <SaveMediaDialog 
+        isOpen={isSaveDialogOpen} 
+        onClose={() => setIsSaveDialogOpen(false)} 
+        media={media} 
+      />
     </Link>
   );
 }

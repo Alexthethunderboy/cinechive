@@ -1,20 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
-import { getTrendingFeedAction, getAnimeFeedAction, getAnimationFeedAction } from '@/lib/feed-actions';
+import { getTrendingFeedAction, getAnimeFeedAction, getAnimationFeedAction, getDocumentaryFeedAction } from '@/lib/feed-actions';
 import { UniversalMedia } from '@/lib/api/UniversalTransformer';
 import { DiscoveryCard } from './DiscoveryCard';
 import { AnimatrixCard } from '@/components/animation/AnimatrixCard';
-import { FilterLab, FilterState } from '@/components/animation/FilterLab';
-import { Loader2, Film, Tv, Sparkles, Wand2, Filter } from 'lucide-react';
+import { AdvancedFilters, FilterState } from '@/components/animation/FilterLab';
+import { Loader2, Film, Tv, Sparkles, Wand2, Filter, Library } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
-  const [activeTab, setActiveTab] = useState<'movie' | 'tv' | 'anime' | 'animation'>('movie');
+  const [activeTab, setActiveTab] = useState<'movie' | 'tv' | 'anime' | 'animation' | 'documentary'>('movie');
   const [localQuery, setLocalQuery] = useState('');
   
   // FilterLab State
-  const [isFilterLabOpen, setIsFilterLabOpen] = useState(false);
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
   const [animationFilters, setAnimationFilters] = useState<FilterState>({
     genres: [], studios: [], year: '', format: [], status: []
   });
@@ -38,8 +38,14 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
           results: data.results,
           nextCursor: data.hasNextPage ? pageParam + 1 : undefined
         };
-      } else {
+      } else if (activeTab === 'animation') {
         const data = await getAnimationFeedAction(pageParam);
+        return {
+          results: data.results,
+          nextCursor: pageParam < data.totalPages ? pageParam + 1 : undefined
+        };
+      } else {
+        const data = await getDocumentaryFeedAction(pageParam);
         return {
           results: data.results,
           nextCursor: pageParam < data.totalPages ? pageParam + 1 : undefined
@@ -126,7 +132,7 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
           opacity: isVisible ? 1 : 0
         }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-white/5 p-2 flex flex-col md:flex-row items-center justify-between gap-3 overflow-hidden max-w-full pointer-events-auto"
+        className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-white/5 p-1.5 flex flex-col md:flex-row items-center justify-between gap-3 overflow-hidden max-w-full pointer-events-auto"
         style={{ pointerEvents: isVisible ? 'auto' : 'none' }}
       >
         <div className="flex bg-white/5 p-1 rounded-full border border-white/5 relative overflow-x-auto max-w-full scrollbar-hide">
@@ -162,27 +168,35 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
           >
             <Wand2 className="w-3.5 h-3.5" /> Animation
           </button>
+          <button
+            onClick={() => setActiveTab('documentary')}
+            className={`relative z-10 flex items-center gap-2 px-4 py-1.5 rounded-full font-metadata text-xs transition-colors whitespace-nowrap ${
+              activeTab === 'documentary' ? 'bg-white text-black' : 'text-white/40 hover:text-white'
+            }`}
+          >
+            <Library className="w-3.5 h-3.5" /> Documentaries
+          </button>
         </div>
 
-        {/* Filter Lab Trigger for Anime/Animation */}
+        {/* Filters Trigger for Anime/Animation */}
         {(activeTab === 'anime' || activeTab === 'animation') && (
            <button 
-             onClick={() => setIsFilterLabOpen(true)}
+             onClick={() => setIsFiltersOpen(true)}
              className={`px-3 py-1 rounded-full border flex items-center gap-1.5 transition-all text-[10px] uppercase font-metadata tracking-tighter ${
                animationFilters.genres.length > 0 || animationFilters.studios.length > 0 
                 ? 'bg-white/20 border-white/30 text-white' 
                 : 'bg-white/5 border-white/5 text-white/50 hover:bg-white/10 hover:text-white'
              }`}
            >
-              <Filter className="w-3 h-3" /> Filter Lab
+              <Filter className="w-3 h-3" /> Filters
            </button>
         )}
       </motion.div>
 
-      {/* Slide-out Filter Lab */}
-      <FilterLab 
-        isOpen={isFilterLabOpen}
-        onClose={() => setIsFilterLabOpen(false)}
+      {/* Advanced Filters */}
+      <AdvancedFilters 
+        isOpen={isFiltersOpen}
+        onClose={() => setIsFiltersOpen(false)}
         activeTab={activeTab as 'anime' | 'animation'}
         onApplyFilters={setAnimationFilters}
         currentFilters={animationFilters}
@@ -194,12 +208,12 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
         {status === 'pending' ? (
           <div className="w-full flex flex-col items-center justify-center py-20 opacity-50 space-y-4">
             <Loader2 className="w-8 h-8 animate-spin text-vibe-cyan" />
-            <p className="font-mono text-sm tracking-widest uppercase">Initializing Deep Feed...</p>
+            <p className="font-mono text-sm tracking-widest uppercase">Loading...</p>
           </div>
         ) : status === 'error' ? (
           <div className="w-full flex flex-col items-center justify-center py-20 space-y-4">
-            <p className="text-red-400 font-mono text-sm">Failed to load intel. Connection disrupted.</p>
-            <button onClick={() => refetch()} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full text-sm">Retry Connection</button>
+            <p className="text-red-400 font-mono text-sm">Failed to load. Please try again.</p>
+            <button onClick={() => refetch()} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full text-sm">Try Again</button>
           </div>
         ) : (
           <>
@@ -208,31 +222,58 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
                   No matches found in the current stream for "{localQuery}".
                </div>
             ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
+            <motion.div 
+              variants={{
+                hidden: { opacity: 0 },
+                show: {
+                  opacity: 1,
+                  transition: {
+                    staggerChildren: 0.05
+                  }
+                }
+              }}
+              initial="hidden"
+              animate="show"
+              className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8"
+            >
               {filteredItems.map((item, i) => (
-                <div key={`${item.id}-${i}`}>
+                <motion.div 
+                  key={`${item.id}-${i}`}
+                  variants={{
+                    hidden: { opacity: 0, y: 20 },
+                    show: { opacity: 1, y: 0 }
+                  }}
+                >
                   {(activeTab === 'anime' || activeTab === 'animation') 
                     ? <AnimatrixCard media={item} index={i} />
                     : <DiscoveryCard media={item} index={i} />
                   }
-                </div>
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
             )}
 
             {/* InView trigger for Infinite Scroll */}
             {!localQuery && (
-               <div ref={ref} className="w-full py-12 flex justify-center mt-10">
+               <div ref={ref} className="w-full py-12 flex flex-col items-center justify-center mt-20 relative">
+                 <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/10 to-transparent" />
+                 
                  {isFetchingNextPage ? (
-                   <div className="flex items-center gap-3 opacity-50">
-                     <Loader2 className="w-5 h-5 animate-spin text-vibe-cyan" />
-                     <span className="font-mono text-xs tracking-widest uppercase">Fetching more records...</span>
+                   <div className="flex flex-col items-center gap-4 opacity-50">
+                     <Loader2 className="w-6 h-6 animate-spin text-accent" />
+                     <span className="font-data text-[10px] tracking-[0.3em] uppercase text-white/40">Synchronizing deep stream...</span>
                    </div>
                  ) : hasNextPage ? (
-                   <div className="h-10"></div> /* Empty invisible div to observe */
+                   <div className="h-20"></div> /* Space to trigger inView */
                  ) : (
-                   <div className="font-mono text-sm tracking-widest uppercase text-white/30 pt-10 border-t border-white/5 w-full text-center">
-                     End of Records
+                   <div className="flex flex-col items-center gap-6 py-10 opacity-30">
+                      <div className="w-12 h-12 rounded-full border border-dashed border-white/20 flex items-center justify-center">
+                         <Sparkles size={20} />
+                      </div>
+                      <div className="text-center space-y-1">
+                        <h4 className="font-heading text-lg italic tracking-tighter text-white">You've reached the end.</h4>
+                        <p className="font-metadata text-[9px] uppercase tracking-[0.3em] text-white/50">You've seen all current entries in this category.</p>
+                      </div>
                    </div>
                  )}
                </div>

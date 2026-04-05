@@ -1,32 +1,24 @@
-import { getCurrentUser, getVaultEntries } from '@/lib/actions';
-import ClientProfile from '@/components/profile/ClientProfile';
+import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 
-import { Metadata } from 'next';
+export default async function ProfileRedirect() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-export const metadata: Metadata = {
-  title: "Frequencies | Profile",
-  description: "Personal settings and cinematic identity.",
-};
-
-export default async function ProfilePage() {
-  const user = await getCurrentUser();
-  
   if (!user) {
     redirect('/login');
   }
 
-  const recentEntries = await getVaultEntries();
-  
-  // Calculate some simple stats for the UI
-  const entriesCount = recentEntries.length;
+  const { data: profile } = await (supabase
+    .from('profiles')
+    .select('username')
+    .eq('id', user.id)
+    .single() as any);
 
-  return (
-    <ClientProfile 
-      user={user} 
-      profile={user.profile} 
-      stats={{ entriesCount }}
-      recentEntries={recentEntries}
-    />
-  );
+  if (profile?.username) {
+    redirect(`/profile/${profile.username}`);
+  }
+
+  // Fallback if somehow username is missing, redirect to settings to set it
+  redirect('/profile/settings');
 }

@@ -4,6 +4,7 @@ import { UniversalMedia, UniversalTransformer } from './api/UniversalTransformer
 import { MediaFetcher } from './api/MediaFetcher';
 import { AniListFetcher } from './api/anilist';
 import { AnimationFetcher } from './api/AnimationFetcher';
+import { DocumentaryFetcher } from './api/DocumentaryFetcher';
 import { getUpcomingMovies, getUpcomingTv, getUpcomingAnimations, getFutureHorizonsMovie } from './api/tmdb';
 import { getNextSeason } from './date-utils';
 
@@ -40,6 +41,18 @@ export async function getAnimationFeedAction(page: number = 1): Promise<{ result
     return AnimationFetcher.getTrendingAnimation(page);
   } catch (error) {
     console.error("Animation feed error:", error);
+    return { results: [], totalPages: 0 };
+  }
+}
+
+/**
+ * Documentary Feed Action (Trending from TMDB)
+ */
+export async function getDocumentaryFeedAction(page: number = 1): Promise<{ results: UniversalMedia[], totalPages: number }> {
+  try {
+    return DocumentaryFetcher.getTrendingDocumentaries(page);
+  } catch (error) {
+    console.error("Documentary feed error:", error);
     return { results: [], totalPages: 0 };
   }
 }

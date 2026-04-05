@@ -1,0 +1,213 @@
+'use server';
+
+import { createClient } from '@/lib/supabase/server';
+import { revalidatePath } from 'next/cache';
+import { createNotificationInternal } from './social-notification-actions';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export interface FollowUser {
+  id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+}
+
+export interface FollowCounts {
+  followers: number;
+  following: number;
+}
+
+// ─── Core Follow / Unfollow ──────────────────────────────────────────────────
+
+/**
+ * Follow a user. Returns { success } or { error }.
+ */
+export async function followUserAction(targetUserId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Authentication required.' };
+  if (user.id === targetUserId) return { error: 'Cannot follow yourself.' };
+
+  const { error } = await (supabase.from('follows') as any).insert({
+    follower_id: user.id,
+    following_id: targetUserId,
+  });
+
+  if (error) {
+    // Unique constraint means already following — treat as success
+    if (error.code === '23505') return { success: true };
+    return { error: error.message };
+  }
+
+  revalidatePath('/community');
+  revalidatePath('/people');
+  revalidatePath('/profile', 'layout');
+  return { success: true };
+}
+
+/**
+ * Unfollow a user. Returns { success } or { error }.
+ */
+export async function unfollowUserAction(targetUserId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Authentication required.' };
+
+  const { error } = await (supabase
+    .from('follows') as any)
+    .delete()
+    .eq('follower_id', user.id)
+    .eq('following_id', targetUserId);
+
+  if (error) return { error: error.message };
+
+  revalidatePath('/community');
+  revalidatePath('/people');
+  revalidatePath('/profile', 'layout');
+  return { success: true };
+}
+
+// ─── Status Checks ───────────────────────────────────────────────────────────
+
+/**
+ * Check if the current user is following a specific user.
+ */
+export async function getFollowStatusAction(targetUserId: string): Promise<boolean> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { data } = await (supabase
+    .from('follows') as any)
+    .select('id')
+    .eq('follower_id', user.id)
+    .eq('following_id', targetUserId)
+    .maybeSingle();
+
+  return !!data;
+}
+
+/**
+ * Get follower and following counts for any user.
+ */
+export async function getFollowCountsAction(userId: string): Promise<FollowCounts> {
+  const supabase = await createClient();
+
+  const [followersRes, followingRes] = await Promise.all([
+    (supabase.from('follows') as any)
+      .select('id', { count: 'exact', head: true })
+      .eq('following_id', userId),
+    (supabase.from('follows') as any)
+      .select('id', { count: 'exact', head: true })
+      .eq('follower_id', userId),
+  ]);
+
+  return {
+    followers: followersRes.count ?? 0,
+    following: followingRes.count ?? 0,
+  };
+}
+
+/**
+ * Get IDs of all users the current user is following. Used for feed filtering.
+ */
+export async function getFollowingIdsAction(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data } = await (supabase
+    .from('follows') as any)
+    .select('following_id')
+    .eq('follower_id', user.id);
+
+  return (data ?? []).map((row: any) => row.following_id);
+}
+
+// ─── Lists ───────────────────────────────────────────────────────────────────
+
+/**
+ * Get the list of users following the given userId.
+ */
+export async function getFollowersAction(userId: string): Promise<FollowUser[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await (supabase
+    .from('follows') as any)
+    .select(`
+      follower:follower_id (
+        id, username, display_name, avatar_url, bio
+      )
+    `)
+    .eq('following_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error || !data) return [];
+  return data.map((row: any) => row.follower as FollowUser);
+}
+
+/**
+ * Get the list of users the given userId is following.
+ */
+export async function getFollowingAction(userId: string): Promise<FollowUser[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await (supabase
+    .from('follows') as any)
+    .select(`
+      following:following_id (
+        id, username, display_name, avatar_url, bio
+      )
+    `)
+    .eq('follower_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error || !data) return [];
+  return data.map((row: any) => row.following as FollowUser);
+}
+
+// ─── Discovery ───────────────────────────────────────────────────────────────
+
+/**
+ * Search users by username or display_name.
+ */
+export async function searchUsersAction(query: string): Promise<FollowUser[]> {
+  if (!query.trim()) return [];
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { data, error } = await (supabase
+    .from('profiles') as any)
+    .select('id, username, display_name, avatar_url, bio')
+    .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
+    .neq('id', user?.id ?? '')
+    .limit(20);
+
+  if (error) return [];
+  return data as FollowUser[];
+}
+
+/**
+ * Get suggested users — other CineChive members the current user doesn't follow yet.
+ * Ordered by number of followers (rough popularity signal).
+ */
+export async function getSuggestedUsersAction(): Promise<FollowUser[]> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  // Users the current user already follows
+  const followingIds = await getFollowingIdsAction();
+  const excluded = [user.id, ...followingIds];
+
+  const { data, error } = await (supabase
+    .from('profiles') as any)
+    .select('id, username, display_name, avatar_url, bio')
+    .not('id', 'in', `(${excluded.join(',')})`)
+    .limit(10);
+
+  if (error) return [];
+  return data as FollowUser[];
+}

@@ -40,7 +40,7 @@ export default function ReviewSection({ mediaId, mediaType }: ReviewSectionProps
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <h2 className="font-display text-3xl tracking-tighter uppercase italic text-white flex items-center gap-3">
           <MessageSquare className="text-accent" />
-          Community Pulse
+          Reviews
         </h2>
 
         <div className="flex p-1 bg-white/5 rounded-full border border-white/10 w-fit">
@@ -100,7 +100,7 @@ export default function ReviewSection({ mediaId, mediaType }: ReviewSectionProps
               <p className="font-heading text-white/40 italic">
                 {activeTab === 'friends' 
                   ? "None of your friends have shared their thoughts on this yet." 
-                  : "Be the first to share your cinematic perspective on this work."}
+                  : "Be the first to review this."}
               </p>
             </motion.div>
           )}

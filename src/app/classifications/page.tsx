@@ -5,23 +5,23 @@ import GlassPanel from '@/components/ui/GlassPanel';
 import { cn } from '@/lib/utils';
 import { ClassificationName, CLASSIFICATION_COLORS } from '@/lib/design-tokens';
 
-interface Archetype {
+interface CinematicStyle {
   name: ClassificationName;
   description: string;
   encompasses: string[];
   icon: React.ElementType;
 }
 
-const ARCHETYPES: Archetype[] = [
+const STYLES: CinematicStyle[] = [
   {
     name: 'Essential',
-    description: 'The indisputable classics and monumental achievements in filmmaking.',
+    description: 'The defining classics and significant achievements in filmmaking.',
     encompasses: ['Animation', 'Documentary'],
     icon: Sparkles,
   },
   {
     name: 'Avant-Garde',
-    description: 'Pushing boundaries, defying conventions, and bending reality.',
+    description: 'Innovative films that challenge conventions and explore new perspectives.',
     encompasses: ['Adventure', 'Fantasy', 'Mystery', 'Sci-Fi'],
     icon: Popcorn,
   },
@@ -64,8 +64,8 @@ const ARCHETYPES: Archetype[] = [
 ];
 
 export const metadata = {
-  title: 'Classifications | CineChive',
-  description: 'Explore the CineChive taxonomy of cinema.',
+  title: 'Styles',
+  description: 'Explore our curated categories of cinematic styles.',
 };
 
 export default function ClassificationsPage() {
@@ -75,26 +75,26 @@ export default function ClassificationsPage() {
       <header className="px-6 md:px-10 pt-16 md:pt-24 mb-16 flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-white/5 pb-12">
         <div className="max-w-4xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 text-white/40 font-metadata mb-6">
-            Classification Taxonomy
+            Styles
           </div>
           <h1 className="font-heading text-5xl md:text-7xl leading-tight tracking-tighter text-white italic">
             CINEMATIC <br />
-            <span className="text-white/40 not-italic">CLASSIFICATIONS</span>
+            <span className="text-white/40 not-italic">STYLES</span>
           </h1>
           <p className="mt-6 text-white/60 text-base md:text-lg font-metadata max-w-2xl leading-relaxed">
-            A curated taxonomy for the dedicated cinephile. We organize films not just by genre, but by their fundamental atmospheric and emotional resonance.
+            We organize films not just by genre, but by their overall tone and emotional impact.
           </p>
         </div>
       </header>
 
       <main className="px-6 md:px-10 max-w-7xl mx-auto">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {ARCHETYPES.map((archetype) => {
-            const Icon = archetype.icon;
-            const color = CLASSIFICATION_COLORS[archetype.name];
+          {STYLES.map((style) => {
+            const Icon = style.icon;
+            const color = CLASSIFICATION_COLORS[style.name];
 
             return (
-              <Link key={archetype.name} href={`/search?mood=${encodeURIComponent(archetype.name)}`}>
+              <Link key={style.name} href={`/search?mood=${encodeURIComponent(style.name)}`}>
                 <div className="h-full flex flex-col p-6 group rounded-2xl bg-white/5 border border-white/5 hover:border-white/20 transition-all duration-500 relative overflow-hidden cursor-pointer">
                   {/* Subtle Background Glow */}
                   <div 
@@ -114,17 +114,17 @@ export default function ClassificationsPage() {
 
                   <div className="flex-1 z-10">
                     <h2 className="font-heading text-2xl tracking-tight mb-3 text-white">
-                      {archetype.name}
+                      {style.name}
                     </h2>
                     <p className="text-white/50 text-sm leading-relaxed mb-6 font-metadata">
-                      {archetype.description}
+                      {style.description}
                     </p>
                   </div>
 
                   <div className="mt-auto pt-6 border-t border-white/5 z-10">
                     <p className="font-metadata text-[10px] text-white/20 mb-3">Encompasses Genres</p>
                     <div className="flex flex-wrap gap-2">
-                      {archetype.encompasses.map((genre) => (
+                      {style.encompasses.map((genre) => (
                         <span 
                           key={genre}
                           className="px-2.5 py-1 rounded-md bg-white/5 border border-white/5 text-[11px] text-white/40 font-metadata"

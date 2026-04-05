@@ -3,7 +3,7 @@ import ClientDiscover from '@/components/cinema/ClientDiscover';
 
 export const metadata: Metadata = {
   title: "Discover",
-  description: "Browse the editorial collective of curated cinematic works.",
+  description: "Browse curated collections of films and series.",
 };
 
 export default function DiscoverPage() {

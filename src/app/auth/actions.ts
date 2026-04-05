@@ -9,7 +9,10 @@ const AUTH_DOMAIN = 'enterarchive.com';
 const USERNAME_REGEX = /^[a-zA-Z0-9._-]+$/;
 
 function usernameToEmail(username: string) {
-  // Using a prefix to avoid Supabase blocks on specific keywords/usernames
+  return `${username.toLowerCase()}@${AUTH_DOMAIN}`;
+}
+
+function legacyUsernameToEmail(username: string) {
   return `u.${username.toLowerCase()}@${AUTH_DOMAIN}`;
 }
 
@@ -72,15 +75,28 @@ export async function login(formData: FormData) {
     return { error: 'Username and password are required.' };
   }
 
+  // 1. Try standard email (new users)
   const email = usernameToEmail(username);
-
-  const { error } = await supabase.auth.signInWithPassword({
+  let authRes = await supabase.auth.signInWithPassword({
     email,
     password,
   });
 
-  if (error) {
-    return { error: formatAuthError(error, username, email) };
+  // 2. If it fails, try legacy u.email (existing users)
+  if (authRes.error) {
+    const legacyEmail = legacyUsernameToEmail(username);
+    const legacyRes = await supabase.auth.signInWithPassword({
+      email: legacyEmail,
+      password,
+    });
+
+    if (!legacyRes.error) {
+      authRes = legacyRes;
+    }
+  }
+
+  if (authRes.error) {
+    return { error: formatAuthError(authRes.error, username, email) };
   }
 
   redirect('/');

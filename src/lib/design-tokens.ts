@@ -24,6 +24,21 @@ export const CLASSIFICATION_COLORS: Record<ClassificationName, string> = {
   'Noir': '#3F3F46',
 } as const;
 
+/**
+ * Rich, saturated colors used for the background gradients of cinematic styles.
+ * Separate from CLASSIFICATION_COLORS so feed badges are unaffected.
+ */
+export const CLASSIFICATION_STYLE_COLORS: Record<ClassificationName, string> = {
+  'Noir':        '#1a0a2e', // deep indigo-violet
+  'Visceral':    '#7f1d1d', // deep crimson
+  'Melancholic': '#1e3a5f', // deep ocean blue
+  'Atmospheric': '#0f2a1e', // deep forest green
+  'Avant-Garde': '#2d1b69', // electric violet
+  'Provocative': '#4a0d0d', // dark blood red
+  'Legacy':      '#2a1f0f', // aged amber
+  'Essential':   '#111111', // near-black
+} as const;
+
 export const BRAND_COLORS = {
   background: '#000000', // Pure Black
   accent: '#FFFFFF',     // White Accent
@@ -45,7 +60,8 @@ export const MEDIA_TYPE_LABELS = {
 
 export const NAV_ITEMS = [
   { label: 'Movies', href: '/', icon: 'home' },
-  { label: 'Pulse', href: '/pulse', icon: 'zap' },
+  { label: 'Community', href: '/community', icon: 'zap' },
+  { label: 'People', href: '/people', icon: 'user' },
   { label: 'Activity', href: '/activity', icon: 'bell' },
   { label: 'Discover', href: '/discover', icon: 'globe' },
   { label: 'Library', href: '/vault', icon: 'layers' },

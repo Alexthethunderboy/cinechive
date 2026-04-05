@@ -6,7 +6,7 @@ import { X, Filter, Zap, LayoutGrid, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import GlassPanel from '@/components/ui/GlassPanel';
 
-interface FilterLabProps {
+interface AdvancedFiltersProps {
   isOpen: boolean;
   onClose: () => void;
   activeTab: 'anime' | 'animation';
@@ -26,7 +26,7 @@ const ANIME_GENRES = ["Action", "Adventure", "Comedy", "Drama", "Sci-Fi", "Myste
 const ANIMATION_COMPANIES = ["Pixar", "Walt Disney Animation", "DreamWorks", "Illumination", "Sony Pictures Animation", "Studio Ghibli", "Cartoon Saloon", "Laika"];
 const ANIME_STUDIOS = ["MAPPA", "ufotable", "Kyoto Animation", "Bones", "Madhouse", "Wit Studio", "CloverWorks", "A-1 Pictures", "Production I.G", "Trigger"];
 
-export function FilterLab({ isOpen, onClose, activeTab, onApplyFilters, currentFilters }: FilterLabProps) {
+export function AdvancedFilters({ isOpen, onClose, activeTab, onApplyFilters, currentFilters }: AdvancedFiltersProps) {
   const [localFilters, setLocalFilters] = useState<FilterState>(currentFilters);
 
   // Sync when opened
@@ -93,7 +93,7 @@ export function FilterLab({ isOpen, onClose, activeTab, onApplyFilters, currentF
                   <Filter size={18} />
                 </div>
                 <div>
-                  <h2 className="text-xl font-display text-white tracking-tight leading-none">Filter Lab</h2>
+                  <h2 className="text-xl font-display text-white tracking-tight leading-none">Advanced Filters</h2>
                   <p className="text-xs text-white/50 font-mono mt-1 uppercase tracking-widest">
                     {activeTab === 'anime' ? 'AniList Integration' : 'TMDB Animation'}
                   </p>
@@ -113,7 +113,7 @@ export function FilterLab({ isOpen, onClose, activeTab, onApplyFilters, currentF
               {/* Common: Year */}
               <div className="space-y-3">
                 <label className="text-xs font-mono uppercase tracking-widest text-white/40 flex items-center gap-2">
-                   Release Window
+                   Release Year
                 </label>
                 <div className="flex gap-2">
                    <input 
@@ -130,7 +130,7 @@ export function FilterLab({ isOpen, onClose, activeTab, onApplyFilters, currentF
               {activeTab === 'anime' && (
                 <div className="space-y-3">
                   <label className="text-xs font-mono uppercase tracking-widest text-white/40">
-                    Resonance (Genres)
+                    Genres
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {ANIME_GENRES.map(genre => {
@@ -222,7 +222,7 @@ export function FilterLab({ isOpen, onClose, activeTab, onApplyFilters, currentF
                   onClick={handleApply}
                   className="flex-1 bg-accent text-black py-3 rounded-xl font-medium text-lg hover:bg-accent/90 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-accent/20"
                 >
-                  Synthesize Feed
+                  Apply Filters
                   {activeCount > 0 && (
                     <span className="flex items-center justify-center w-5 h-5 rounded-full bg-black/20 text-black text-xs">
                       {activeCount}

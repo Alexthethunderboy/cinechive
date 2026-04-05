@@ -4,7 +4,8 @@ import { createClient } from '@/lib/supabase/client';
 
 export async function toggleReminder(mediaId: string, mediaType: string) {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user;
 
   if (!user) return { error: 'Authentication required' };
 
@@ -39,7 +40,8 @@ export async function toggleReminder(mediaId: string, mediaType: string) {
 
 export async function getReminderStatus(mediaId: string, mediaType: string) {
   const supabase = createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
+  const user = session?.user;
 
   if (!user) return false;
 

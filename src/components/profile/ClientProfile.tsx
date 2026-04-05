@@ -9,6 +9,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { signOut } from '@/app/auth/actions';
 
+import CinematicAvatar from '@/components/layout/CinematicAvatar';
+
 interface ClientProfileProps {
   user: any;
   profile: any;
@@ -25,31 +27,31 @@ interface ClientProfileProps {
 }
 
 export default function ClientProfile({ user, profile, stats, recentEntries, pinnedMedia = [] }: ClientProfileProps) {
-  // Cinematic Aura logic: Determine dominant vibe for background
-  const dominantVibe = useMemo(() => {
+  // Cinematic Style logic: Determine dominant style for background
+  const dominantStyle = useMemo(() => {
     if (stats.vibeDistribution) {
       return Object.entries(stats.vibeDistribution).sort((a,b) => b[1] - a[1])[0]?.[0] as ClassificationName;
     }
-    return recentEntries[0]?.classification as ClassificationName || 'Chill';
+    return recentEntries[0]?.classification as ClassificationName || 'Essential';
   }, [stats.vibeDistribution, recentEntries]);
 
-  const auraColor = CLASSIFICATION_COLORS[dominantVibe] || '#8B5CF6';
+  const styleColor = CLASSIFICATION_COLORS[dominantStyle] || '#8B5CF6';
 
   return (
     <div className="relative min-h-screen overflow-hidden">
-       {/* Cinematic Aura Background */}
+       {/* Cinematic Style Background */}
        <motion.div 
          initial={{ opacity: 0 }}
          animate={{ 
            opacity: [0.1, 0.2, 0.1],
            scale: [1, 1.1, 1],
-           backgroundColor: auraColor 
+           backgroundColor: styleColor 
          }}
          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
          className="absolute -top-1/4 -left-1/4 w-[150%] h-[150%] blur-[120px] rounded-full -z-10 pointer-events-none"
        />
 
-       <div className="py-10 md:py-16 px-6 md:px-10 max-w-6xl mx-auto relative z-10">
+       <div className="pt-6 pb-10 md:py-16 px-4 md:px-10 max-w-6xl mx-auto relative z-10">
       {/* Profile Header */}
       <header className="mb-16">
         <div className="flex flex-col md:flex-row gap-10 items-start md:items-end">
@@ -58,15 +60,12 @@ export default function ClientProfile({ user, profile, stats, recentEntries, pin
             animate={{ opacity: 1, scale: 1 }}
             className="relative"
           >
-            <div className="w-32 h-32 md:w-48 md:h-48 rounded-full overflow-hidden border-4 border-white/5 relative bg-surface-hover">
-               {profile.avatar_url ? (
-                 <Image src={profile.avatar_url} alt={profile.username} fill className="object-cover" />
-               ) : (
-                 <div className="w-full h-full flex items-center justify-center text-4xl font-display text-muted">
-                    {profile.username[0].toUpperCase()}
-                 </div>
-               )}
-            </div>
+            <CinematicAvatar 
+              src={profile.avatar_url} 
+              username={profile.username} 
+              size="xl" 
+              style={dominantStyle} 
+            />
             <motion.div 
               whileHover={{ rotate: 15 }}
               className="absolute -bottom-2 -right-2 w-12 h-12 bg-vibe-violet rounded-full border-4 border-background flex items-center justify-center shadow-xl"
@@ -79,7 +78,7 @@ export default function ClientProfile({ user, profile, stats, recentEntries, pin
              <div className="flex items-center justify-between">
                 <div>
                   <h1 className="font-display text-4xl md:text-6xl tracking-tighter leading-none italic">
-                     {profile.display_name || formatUsername(profile.username).toUpperCase()}
+                     {formatUsername(profile.display_name || profile.username).toUpperCase()}
                   </h1>
                   <span className="font-data text-xs text-muted uppercase tracking-[0.3em] font-bold mt-2 block">
                     Cinema Curator — @{formatUsername(profile.username)}
@@ -120,7 +119,7 @@ export default function ClientProfile({ user, profile, stats, recentEntries, pin
       </header>
 
       {/* Stats Grid */}
-      <section className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-16">
+      <section className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6 mb-16">
          <GlassPanel className="p-8 flex flex-col items-center justify-center text-center bg-white/5 border-white/5">
             <Layers className="text-white/60 mb-4" size={32} />
             <span className="font-display text-4xl mb-1">{stats.entriesCount}</span>
@@ -153,7 +152,7 @@ export default function ClientProfile({ user, profile, stats, recentEntries, pin
             <div className="h-px flex-1 bg-white/5 ml-6" />
          </div>
 
-         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
             {(pinnedMedia.length > 0 ? pinnedMedia : recentEntries.slice(0, 4)).map((media, i) => (
               <motion.div
                 key={media.id}
@@ -195,7 +194,7 @@ export default function ClientProfile({ user, profile, stats, recentEntries, pin
       {/* Content Tabs */}
       <section>
          <div className="flex items-center gap-8 border-b border-white/5 mb-10 overflow-x-auto pb-4 scrollbar-hide">
-            {['RECENT ENTRIES', 'FILM LIBRARY', 'CINEMA PULSE'].map((tab, i) => (
+            {['RECENT ENTRIES', 'FILM LIBRARY', 'COMMUNITY FEED'].map((tab, i) => (
               <button key={tab} className={cn(
                 "font-data text-[10px] uppercase font-bold tracking-[0.2em] whitespace-nowrap transition-all relative pb-2",
                 i === 0 ? "text-white" : "text-muted hover:text-white"
@@ -208,7 +207,7 @@ export default function ClientProfile({ user, profile, stats, recentEntries, pin
             ))}
          </div>
 
-         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {recentEntries.length > 0 ? recentEntries.slice(0, 6).map((entry, index) => (
               <motion.div
                 key={entry.id}

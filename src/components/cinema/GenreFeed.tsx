@@ -101,7 +101,7 @@ export function GenreFeed({ genreId, initialMovies, initialTv }: GenreFeedProps)
 
       {/* Series Section */}
       {allTv.length > 0 && (
-        <section className="px-6 md:px-10">
+        <section className="px-4 md:px-10">
           <div className="flex items-center gap-3 mb-8">
             <Tv2 size={16} className="text-white/30" />
             <h2 className="font-heading text-2xl tracking-tighter italic uppercase text-white/40">

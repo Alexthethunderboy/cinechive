@@ -36,10 +36,10 @@ export default function TriviaModule({ trivia, mediaId, mediaType, mediaTitle, p
         triviaText: item.text,
         category: item.category
       });
-      toast.success("Echo shared to Pulse feed.");
+      toast.success("Shared to Community feed.");
     } catch (error) {
       console.error("Echo failed:", error);
-      toast.error("Authentication required to Echo.");
+      toast.error("Sign in to share.");
     }
   }
 
@@ -50,7 +50,7 @@ export default function TriviaModule({ trivia, mediaId, mediaType, mediaTitle, p
       <div className="flex items-center justify-between">
         <h3 className="font-display text-3xl uppercase italic tracking-tighter flex items-center gap-3">
           <Lightbulb className="text-accent" />
-          Cinematic Insights
+          Trivia & Facts
         </h3>
         <span className="font-data text-[10px] text-muted uppercase tracking-[0.3em]">
           Producer Notes
@@ -81,7 +81,7 @@ export default function TriviaModule({ trivia, mediaId, mediaType, mediaTitle, p
                     onClick={() => handleEcho(item)}
                     className="text-muted hover:text-accent transition-colors flex items-center gap-2 group/echo"
                   >
-                    <span className="opacity-0 group-hover:opacity-100 font-data text-[8px] uppercase tracking-widest transition-opacity">Echo</span>
+                    <span className="opacity-0 group-hover:opacity-100 font-data text-[8px] uppercase tracking-widest transition-opacity">Share</span>
                     <Share2 size={14} className="group-hover:rotate-12 transition-transform" />
                   </button>
                 </div>

@@ -2,7 +2,7 @@ import { TMDBMedia, posterUrl, backdropUrl } from './tmdb';
 import { AniListAnime } from './anilist';
 import { ClassificationName } from '../design-tokens';
 import { deriveClassification } from '../classification-utils';
-import { formatCountdown } from '../date-utils';
+import { formatCountdown, getStatusBadge } from '../date-utils';
 
 /**
  * Universal Media Interface
@@ -158,7 +158,7 @@ export class UniversalTransformer {
       genres: item.genres?.map((g: any) => g.name) || [],
       releaseYear: year,
       releaseDate,
-      status: item.status || null,
+      status: getStatusBadge(releaseDate, type),
       seasons: (item.seasons || []).map((s: any) => ({
         id: s.id,
         seasonNumber: s.season_number,
@@ -250,7 +250,7 @@ export class UniversalTransformer {
       genres: item.genres || [],
       releaseYear: year,
       releaseDate,
-      status,
+      status: getStatusBadge(releaseDate, 'tv'),
       rating: {
         average: item.averageScore ? (item.averageScore / 10) : 0,
         count: item.popularity || 0,

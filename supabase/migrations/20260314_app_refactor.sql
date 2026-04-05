@@ -96,4 +96,6 @@ EXCEPTION
 END $$;
 
 -- 5. Enable Realtime for Echoes
-ALTER PUBLICATION supabase_realtime ADD TABLE public.echoes;
+DO $$ BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.echoes;
+EXCEPTION WHEN others THEN NULL; END $$;

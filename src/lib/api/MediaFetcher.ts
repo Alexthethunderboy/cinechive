@@ -152,8 +152,8 @@ export class MediaFetcher {
     return results;
   }
 
-  // Canonical archetype → TMDB genre ID mapping
-  static readonly ARCHETYPE_MAP: Record<string, { label: string; description: string; genreIds: number[]; tvGenreIds?: number[] }> = {
+  // Canonical style → TMDB genre ID mapping
+  static readonly STYLE_MAP: Record<string, { label: string; description: string; genreIds: number[]; tvGenreIds?: number[] }> = {
     'essential': {
       label: 'Essential',
       description: 'Monumental achievements that redefined the art form.',
@@ -204,12 +204,12 @@ export class MediaFetcher {
     },
   };
 
-  static async getByArchetype(slug: string, page: number = 1): Promise<{ movies: { results: UniversalMedia[], totalPages: number }; tv: { results: UniversalMedia[], totalPages: number } }> {
-    const archetype = this.ARCHETYPE_MAP[slug];
-    if (!archetype) return { movies: { results: [], totalPages: 0 }, tv: { results: [], totalPages: 0 } };
+  static async getByStyle(slug: string, page: number = 1): Promise<{ movies: { results: UniversalMedia[], totalPages: number }; tv: { results: UniversalMedia[], totalPages: number } }> {
+    const styleData = this.STYLE_MAP[slug];
+    if (!styleData) return { movies: { results: [], totalPages: 0 }, tv: { results: [], totalPages: 0 } };
 
-    const genreStr = archetype.genreIds.join('|');
-    const tvGenreStr = (archetype.tvGenreIds || archetype.genreIds).join('|');
+    const genreStr = styleData.genreIds.join('|');
+    const tvGenreStr = (styleData.tvGenreIds || styleData.genreIds).join('|');
 
     const [movieData, tvData] = await Promise.all([
       this.fetchWithRateLimit(this.getUrl('/discover/movie', {
@@ -280,6 +280,13 @@ export class MediaFetcher {
       console.error(`Failed to fetch deep details for ${type} ${id}:`, error);
       return null;
     }
+  }
+  static async searchMedia(query: string, page: number = 1): Promise<UniversalMedia[]> {
+    const url = this.getUrl('/search/multi', { query, page });
+    const data = await this.fetchWithRateLimit(url);
+    return data.results
+      .filter((item: any) => item.media_type === 'movie' || item.media_type === 'tv')
+      .map((item: any) => UniversalTransformer.fromTMDB(item, item.media_type));
   }
 }
 

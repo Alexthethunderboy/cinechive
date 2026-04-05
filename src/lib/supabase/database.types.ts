@@ -19,6 +19,7 @@ export interface Database {
           trakt_token: string | null;
           lastfm_username: string | null;
           date_of_birth: string | null;
+          onboarding_completed: boolean;
           created_at: string;
           updated_at: string;
         };
@@ -31,6 +32,7 @@ export interface Database {
           trakt_token?: string | null;
           lastfm_username?: string | null;
           date_of_birth?: string | null;
+          onboarding_completed?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -43,6 +45,7 @@ export interface Database {
           trakt_token?: string | null;
           lastfm_username?: string | null;
           date_of_birth?: string | null;
+          onboarding_completed?: boolean;
           created_at?: string;
           updated_at?: string;
         };
@@ -154,6 +157,35 @@ export interface Database {
           created_at?: string;
         };
       };
+      user_onboarding_tastes: {
+        Row: {
+          id: string;
+          user_id: string;
+          category: 'movie' | 'style' | 'creator' | 'genre';
+          value: string;
+          display_name: string | null;
+          poster_url: string | null;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          category: 'movie' | 'style' | 'creator' | 'genre';
+          value: string;
+          display_name?: string | null;
+          poster_url?: string | null;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          category?: 'movie' | 'style' | 'creator' | 'genre';
+          value?: string;
+          display_name?: string | null;
+          poster_url?: string | null;
+          created_at?: string;
+        };
+      };
     };
     Views: {
       feed_activity: {
@@ -182,3 +214,5 @@ export type MediaEntry = Database['public']['Tables']['media_entries']['Row'];
 export type ReArchive = Database['public']['Tables']['re_archives']['Row'];
 export type FeedActivity = Database['public']['Views']['feed_activity']['Row'];
 export type MediaType = MediaEntry['media_type'];
+export type UserOnboardingTaste = Database['public']['Tables']['user_onboarding_tastes']['Row'];
+export type OnboardingCategory = UserOnboardingTaste['category'];
