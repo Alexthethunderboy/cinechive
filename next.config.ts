@@ -6,26 +6,42 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'image.tmdb.org',
-        port: '',
+        pathname: '/t/p/**',
+      },
+      {
+        protocol: 'http',
+        hostname: 'image.tmdb.org',
         pathname: '/t/p/**',
       },
       {
         protocol: 'https',
+        hostname: 'www.themoviedb.org',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'tmdb.org',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'i.scdn.co',
-        port: '',
         pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: 'images.unsplash.com',
-        port: '',
         pathname: '/**',
       },
       {
         protocol: 'https',
         hostname: '*.anilist.co',
-        port: '',
         pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'crnjvztlpdxsugypctqu.supabase.co',
+        pathname: '/storage/v1/object/public/**',
       },
     ],
   },

@@ -44,10 +44,10 @@ export default function ClientPeople({ initialSuggestions }: ClientPeopleProps) 
     <div className="pt-6 pb-20 md:py-16 max-w-4xl mx-auto px-4 md:px-10">
       {/* Header */}
       <header className="mb-12">
-        <h1 className="font-heading text-4xl md:text-7xl tracking-tighter mb-4 italic uppercase">
-          FIND <span className="text-accent">CINEPHILES</span>
+        <h1 className="font-heading text-4xl md:text-7xl tracking-tighter mb-4 italic">
+          Find <span className="text-accent">cinephiles</span>
         </h1>
-        <p className="text-white/40 font-metadata text-xs uppercase tracking-widest leading-relaxed max-w-xl">
+        <p className="text-white/40 font-metadata text-xs tracking-widest leading-relaxed max-w-xl">
           Discover critics, collectors, and creators sharing your cinematic style.
         </p>
       </header>
@@ -84,7 +84,7 @@ export default function ClientPeople({ initialSuggestions }: ClientPeopleProps) 
                   <UserCard key={user.id} user={user} variant="search" />
                 ))
               ) : !isSearching && (
-                <div className="p-8 text-center text-white/20 font-heading italic uppercase tracking-widest border border-dashed border-white/10 rounded-3xl">
+                <div className="p-8 text-center text-white/20 font-heading italic tracking-widest border border-dashed border-white/10 rounded-3xl">
                   No match found
                 </div>
               )}
@@ -97,19 +97,19 @@ export default function ClientPeople({ initialSuggestions }: ClientPeopleProps) 
       <section className="space-y-8">
         <div className="flex items-center gap-4">
           <Sparkles className="text-accent" size={20} />
-          <h2 className="font-display text-2xl tracking-tight uppercase font-bold text-white/80">
-            Suggested for You
+          <h2 className="font-heading text-2xl tracking-tighter italic text-white/80">
+            Suggested for you
           </h2>
           <div className="h-px flex-1 bg-white/5" />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="flex flex-col gap-4">
           {suggestions.length > 0 ? (
             suggestions.map((user) => (
               <UserCard key={user.id} user={user} variant="suggestion" />
             ))
           ) : (
-            <div className="col-span-full py-12 text-center text-white/20 font-heading italic uppercase tracking-widest bg-white/2 border border-white/5 rounded-3xl">
+            <div className="py-12 text-center text-white/20 font-heading italic tracking-widest bg-white/2 border border-white/5 rounded-3xl">
               Check back later for suggested cinephiles
             </div>
           )}
@@ -123,39 +123,47 @@ export default function ClientPeople({ initialSuggestions }: ClientPeopleProps) 
 
 function UserCard({ user, variant }: { user: FollowUser; variant: 'search' | 'suggestion' }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-4 px-5 rounded-3xl bg-white/3 border border-white/5 hover:border-white/10 transition-all group">
-      <div className="flex items-center gap-4 min-w-0">
-        <Link href={`/profile/${formatUsername(user.username)}`}>
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 rounded-[32px] bg-white/3 border border-white/5 hover:border-white/10 transition-all group relative overflow-hidden">
+      {/* Background Spectral Glow */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-accent/5 blur-[60px] -z-10 group-hover:bg-accent/10 transition-colors" />
+
+      <div className="flex items-start md:items-center gap-5 min-w-0 flex-1">
+        <Link href={`/profile/${formatUsername(user.username)}`} className="shrink-0">
           <CinematicAvatar 
             src={user.avatar_url} 
             username={user.username} 
             size="lg" 
+            seed={user.id}
           />
         </Link>
         
-        <div className="min-w-0">
-          <Link href={`/profile/${formatUsername(user.username)}`} className="flex items-center gap-1.5 group/link">
-            <h3 className="font-heading text-lg text-white group-hover/link:text-accent transition-colors truncate">
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <Link href={`/profile/${formatUsername(user.username)}`} className="inline-flex items-center gap-1.5 group/link max-w-full">
+            <h3 className="font-heading text-xl md:text-2xl text-white group-hover/link:text-accent transition-colors leading-none">
               {formatUsername(user.display_name || user.username)}
             </h3>
-            <ArrowUpRight size={14} className="text-white/20 group-hover/link:text-accent transition-colors" />
+            <ArrowUpRight size={16} className="text-white/20 group-hover/link:text-accent transition-colors shrink-0" />
           </Link>
-          <p className="font-metadata text-[10px] text-white/30 uppercase tracking-widest mb-1 italic">
+          
+          <p className="font-metadata text-[10px] text-white/30 tracking-widest italic block">
             @{formatUsername(user.username)}
           </p>
+          
           {user.bio && (
-            <p className="font-heading text-xs text-white/40 truncate max-w-[200px]">
+            <p className="font-heading text-xs md:text-sm text-white/60 leading-relaxed max-w-2xl">
               {user.bio}
             </p>
           )}
         </div>
       </div>
 
-      <FollowButton 
-        targetUserId={user.id} 
-        size="sm"
-        className="shrink-0"
-      />
+      <div className="flex items-center justify-end shrink-0 pt-2 md:pt-0">
+        <FollowButton 
+          targetUserId={user.id} 
+          size="md"
+          className="w-full md:w-auto"
+        />
+      </div>
     </div>
   );
 }

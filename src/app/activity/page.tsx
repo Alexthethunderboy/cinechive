@@ -47,11 +47,11 @@ export default function ActivityPage() {
     return (
       <div className="h-full flex flex-col items-center justify-center p-6 text-center">
         <Bell size={48} className="text-white/5 mb-6" />
-        <h1 className="text-2xl font-heading uppercase italic tracking-tighter text-white/40 mb-2">Access Denied</h1>
-        <p className="text-xs font-metadata text-white/20 uppercase tracking-widest max-w-xs">
+        <h1 className="text-2xl font-heading italic tracking-tighter text-white/40 mb-2">Access Denied</h1>
+        <p className="text-xs font-metadata text-white/20 tracking-widest max-w-xs">
           Sign in to access your activity history.
         </p>
-        <Link href="/login?returnTo=/activity" className="mt-8 px-8 py-3 bg-white text-black font-heading font-bold rounded-full hover:bg-white/90 transition-all uppercase tracking-widest text-[10px]">
+        <Link href="/login?returnTo=/activity" className="mt-8 px-8 py-3 bg-white text-black font-heading font-bold rounded-full hover:bg-white/90 transition-all tracking-widest text-[10px]">
           Identify Yourself
         </Link>
       </div>
@@ -62,8 +62,8 @@ export default function ActivityPage() {
     <div className="max-w-3xl mx-auto pt-20 pb-40 px-6">
       <div className="flex items-center justify-between mb-12">
         <div className="space-y-1">
-          <h1 className="text-4xl font-heading uppercase italic tracking-tighter text-white">Activity</h1>
-          <p className="text-[10px] font-metadata text-white/40 uppercase tracking-[0.3em]">Recent Notifications & History</p>
+          <h1 className="text-4xl font-heading italic tracking-tighter text-white">Activity</h1>
+          <p className="text-[10px] font-metadata text-white/40 tracking-[0.3em]">Recent Notifications & History</p>
         </div>
         <div className="flex flex-col items-end gap-2">
           <div className="text-[10px] font-mono text-vibe-gold bg-vibe-gold/10 px-3 py-1 rounded-full border border-vibe-gold/20">
@@ -72,7 +72,7 @@ export default function ActivityPage() {
           {topInterests.length > 0 && (
             <div className="flex items-center gap-2">
                <Sparkles size={8} className="text-vibe-violet" />
-               <span className="text-[8px] font-mono text-white/30 uppercase tracking-widest">Interests: {topInterests.join(' • ')}</span>
+               <span className="text-[8px] font-mono text-white/30 tracking-widest">Interests: {topInterests.join(' • ')}</span>
             </div>
           )}
         </div>
@@ -101,7 +101,7 @@ export default function ActivityPage() {
               </p>
               <Link 
                 href="/" 
-                className="inline-flex items-center gap-2 px-6 py-2.5 bg-white text-black font-heading font-bold rounded-xl hover:bg-white/90 transition-all text-xs uppercase tracking-widest"
+                className="inline-flex items-center gap-2 px-6 py-2.5 bg-white text-black font-heading font-bold rounded-xl hover:bg-white/90 transition-all text-xs tracking-widest"
               >
                 Start Onboarding
                 <ChevronRight size={14} />
@@ -120,7 +120,7 @@ export default function ActivityPage() {
          >
            <div className="flex items-center gap-2">
              <div className="h-px bg-white/10 flex-1" />
-             <span className="text-[10px] font-mono text-white/30 uppercase tracking-[0.2em] px-2 italic">Your Style</span>
+             <span className="text-[10px] font-mono text-white/30 tracking-[0.2em] px-2 italic">Your Style</span>
              <div className="h-px bg-white/10 flex-1" />
            </div>
            
@@ -130,7 +130,7 @@ export default function ActivityPage() {
                  key={interest}
                  className="px-6 py-3 rounded-2xl bg-white/3 border border-white/5 flex flex-col items-center gap-1 group hover:bg-white/5 transition-all"
                >
-                 <span className="text-lg font-heading text-white uppercase italic tracking-tighter group-hover:text-vibe-violet transition-colors">
+                 <span className="text-lg font-heading text-white italic tracking-tighter group-hover:text-vibe-violet transition-colors">
                    {interest}
                  </span>
                  <div className="w-1 h-1 rounded-full bg-vibe-violet opacity-40 group-hover:scale-150 transition-transform" />
@@ -145,7 +145,7 @@ export default function ActivityPage() {
         <div className="space-y-2 flex items-center justify-between">
            <div className="flex items-center gap-2">
              <History size={14} className="text-white/40" />
-             <h2 className="text-[10px] font-data uppercase tracking-[0.4em] text-white/40 font-bold italic">Your History</h2>
+             <h2 className="text-[10px] font-data tracking-[0.4em] text-white/40 font-bold italic">Your History</h2>
            </div>
            <div className="h-px bg-white/5 flex-1 ml-4" />
         </div>
@@ -153,7 +153,7 @@ export default function ActivityPage() {
         <div className="space-y-3">
           {history.length === 0 ? (
             <div className="py-12 text-center rounded-2xl bg-white/2 border border-dashed border-white/5">
-              <p className="text-[10px] font-metadata text-white/20 uppercase tracking-widest italic">No personal logs yet. Start archiving to build your history.</p>
+              <p className="text-[10px] font-metadata text-white/20 tracking-widest italic">No personal logs yet. Start archiving to build your history.</p>
             </div>
           ) : (
             history.map((item) => (
@@ -170,7 +170,7 @@ export default function ActivityPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-[8px] font-mono text-white/30 uppercase tracking-widest">
+                    <span className="text-[8px] font-mono text-white/30 tracking-widest">
                       {item.activity_type === 'entry' ? 'Log' : item.activity_type === 're_archive' ? 'Re-collect' : 'Trivia'}
                     </span>
                     <span className="text-[8px] font-mono text-white/10">•</span>
@@ -178,7 +178,7 @@ export default function ActivityPage() {
                   </div>
                   <h4 className="text-sm font-heading text-white truncate">{item.title}</h4>
                   {item.vibe && (
-                    <span className="text-[8px] font-mono text-vibe-gold/60 uppercase">{item.vibe}</span>
+                    <span className="text-[8px] font-mono text-vibe-gold/60">{item.vibe}</span>
                   )}
                 </div>
                 <Link 
@@ -196,7 +196,7 @@ export default function ActivityPage() {
       <div className="space-y-2 mb-6 flex items-center justify-between">
          <div className="flex items-center gap-2">
            <ActivityIcon size={14} className="text-vibe-gold/40" />
-           <h2 className="text-[10px] font-data uppercase tracking-[0.4em] text-vibe-gold/40 font-bold italic">Recommended for You</h2>
+           <h2 className="text-[10px] font-data tracking-[0.4em] text-vibe-gold/40 font-bold italic">Recommended for You</h2>
          </div>
          <div className="h-px bg-white/5 flex-1 ml-4" />
       </div>
@@ -212,7 +212,7 @@ export default function ActivityPage() {
               <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto text-white/10">
                 <Bell size={32} />
               </div>
-              <p className="font-metadata text-xs text-white/20 uppercase tracking-[0.2em]">No recommendations right now</p>
+              <p className="font-metadata text-xs text-white/20 tracking-[0.2em]">No recommendations right now</p>
             </motion.div>
           ) : (
             notifications.map((notif, idx) => (
@@ -242,7 +242,7 @@ export default function ActivityPage() {
 
                   <div className="flex-1 min-w-0 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono text-vibe-gold/80 uppercase tracking-widest">{notif.media.type} Release</span>
+                      <span className="text-[10px] font-mono text-vibe-gold/80 tracking-widest">{notif.media.type} Release</span>
                       <span className="text-[10px] font-mono text-white/20 capitalize">{notif.timestamp}</span>
                     </div>
                     <h3 className="text-xl font-heading text-white line-clamp-1 group-hover:text-vibe-gold transition-colors">

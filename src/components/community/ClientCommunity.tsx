@@ -90,10 +90,10 @@ export default function ClientCommunity({
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
           <div className="flex items-center justify-between w-full md:w-auto">
             <div>
-              <h1 className="font-heading text-3xl md:text-5xl tracking-tighter italic uppercase text-white drop-shadow-sm leading-none mb-1">
-                Community <span className="text-white/40">Feed</span>
+              <h1 className="font-heading text-3xl md:text-5xl tracking-tighter italic text-white drop-shadow-sm leading-none mb-1">
+                Community <span className="text-white/40">feed</span>
               </h1>
-              <p className="text-white/40 font-metadata text-[9px] flex items-center gap-1.5 uppercase tracking-widest font-bold">
+              <p className="text-white/40 font-metadata text-[9px] flex items-center gap-1.5 tracking-widest font-bold">
                 <span className="w-1 h-1 rounded-full bg-green-400 animate-pulse" />
                 Live cinematic activity
               </p>
@@ -117,7 +117,7 @@ export default function ClientCommunity({
                   key={id}
                   onClick={() => setActiveTab(id)}
                   className={cn(
-                    'relative flex items-center gap-2 px-4 py-1.5 rounded-full font-heading text-xs uppercase tracking-wider transition-all duration-300',
+                    'relative flex items-center gap-2 px-4 py-1.5 rounded-full font-heading text-xs tracking-wider transition-all duration-300',
                     activeTab === id
                       ? 'text-black'
                       : 'text-white/60 hover:text-white'
@@ -140,7 +140,7 @@ export default function ClientCommunity({
 
             <Link
               href="/people"
-              className="hidden md:flex items-center gap-2 px-5 py-2 rounded-full bg-white text-black hover:bg-white/90 transition-all font-heading text-xs uppercase tracking-widest font-bold shadow-lg"
+              className="hidden md:flex items-center gap-2 px-5 py-2 rounded-full bg-white text-black hover:bg-white/90 transition-all font-heading text-xs tracking-widest font-bold shadow-lg"
             >
               <UserPlus size={14} />
               <span>Find Friends</span>
@@ -163,15 +163,15 @@ export default function ClientCommunity({
               <div className="w-20 h-20 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mb-6">
                 <Users className="text-white/20" size={32} />
               </div>
-              <p className="font-heading text-2xl tracking-tighter italic uppercase text-white/60 mb-2">
+              <p className="font-heading text-2xl tracking-tighter italic text-white/60 mb-2">
                 No one yet
               </p>
-              <p className="font-metadata text-[10px] text-white/30 uppercase tracking-widest mb-8 max-w-xs leading-relaxed">
+              <p className="font-metadata text-[10px] text-white/30 tracking-widest mb-8 max-w-xs leading-relaxed">
                 Follow other cinephiles to see their activity here.
               </p>
               <Link
                 href="/people"
-                className="px-6 py-3 rounded-full bg-white text-black font-heading text-xs uppercase tracking-widest hover:bg-white/90 transition-colors font-bold shadow-lg"
+                className="px-6 py-3 rounded-full bg-white text-black font-heading text-xs tracking-widest hover:bg-white/90 transition-colors font-bold shadow-lg"
               >
                 Find Cinephiles
               </Link>
@@ -210,10 +210,10 @@ export default function ClientCommunity({
               <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-6">
                 <Activity className="text-white/20" size={32} />
               </div>
-              <p className="font-heading text-2xl tracking-tighter italic uppercase text-white/50 mb-2">
+              <p className="font-heading text-2xl tracking-tighter italic text-white/50 mb-2">
                 No activity yet
               </p>
-              <p className="font-metadata text-[10px] text-white/30 uppercase tracking-widest">
+              <p className="font-metadata text-[10px] text-white/30 tracking-widest">
                 Start adding to your library to share with the community.
               </p>
             </motion.div>
@@ -277,8 +277,8 @@ function EditPostModal({ post, onClose }: { post: any; onClose: () => void }) {
                 <Edit3 size={20} />
               </div>
               <div>
-                <h3 className="font-heading text-xl text-white uppercase italic tracking-tighter">Edit Post</h3>
-                <p className="text-[9px] text-white/30 uppercase tracking-[0.2em] font-bold">Refine your cinematic thought</p>
+                <h3 className="font-heading text-xl text-white italic tracking-tighter">Edit post</h3>
+                <p className="text-[9px] text-white/30 tracking-[0.2em] font-bold">Refine your cinematic thought</p>
               </div>
             </div>
             <button onClick={onClose} className="p-2 rounded-full hover:bg-white/5 text-white/30 hover:text-white transition-all">
@@ -300,7 +300,7 @@ function EditPostModal({ post, onClose }: { post: any; onClose: () => void }) {
                   key={v}
                   onClick={() => setVibe(v)}
                   className={cn(
-                    "px-3 py-2.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all border",
+                    "px-3 py-2.5 rounded-xl text-[10px] font-bold tracking-widest transition-all border",
                     vibe === v 
                       ? "bg-white text-black border-white shadow-lg" 
                       : "bg-white/5 border-white/5 text-white/40 hover:bg-white/10 hover:text-white"
@@ -313,13 +313,13 @@ function EditPostModal({ post, onClose }: { post: any; onClose: () => void }) {
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/5">
-            <button onClick={onClose} className="px-6 py-2.5 rounded-xl text-white/40 hover:text-white text-[11px] font-bold uppercase tracking-widest transition-all">
+            <button onClick={onClose} className="px-6 py-2.5 rounded-xl text-white/40 hover:text-white text-[11px] font-bold tracking-widest transition-all">
               Cancel
             </button>
             <button 
               onClick={handleUpdate}
               disabled={isPending || !content.trim()}
-              className="px-8 py-3 rounded-xl bg-white text-black hover:bg-white/90 disabled:opacity-50 text-[11px] font-bold uppercase tracking-widest transition-all shadow-xl shadow-white/5 flex items-center gap-2"
+              className="px-8 py-3 rounded-xl bg-white text-black hover:bg-white/90 disabled:opacity-50 text-[11px] font-bold tracking-widest transition-all shadow-xl shadow-white/5 flex items-center gap-2"
             >
               {isPending && <Loader2 className="animate-spin" size={14} />}
               <span>Save Changes</span>
@@ -390,23 +390,23 @@ function FeedPost({
         {/* Context Badge (Industry Standard above avatar) */}
         <div className="flex items-center gap-2 mb-3 px-1">
           {post.activity_type === 're_archive' && (
-            <div className="text-white/40 font-metadata text-[9px] uppercase font-bold tracking-widest flex items-center gap-1.5">
-              <Repeat2 size={12} className="text-white" /> {formatUsername(post.reposter_username)} Reposted
+            <div className="text-white/40 font-metadata text-[9px] font-bold tracking-widest flex items-center gap-1.5">
+              <Repeat2 size={12} className="text-white" /> {formatUsername(post.reposter_username)} reposted
             </div>
           )}
           {post.activity_type === 'echo' && (
-            <div className="text-vibe-cyan font-metadata text-[9px] uppercase font-bold tracking-widest flex items-center gap-1.5">
-              <MessageSquare size={12} /> {formatUsername(post.username)} Created a Note
+            <div className="text-vibe-cyan font-metadata text-[9px] font-bold tracking-widest flex items-center gap-1.5">
+              <MessageSquare size={12} /> {formatUsername(post.username)} created a note
             </div>
           )}
           {post.activity_type === 'dispatch' && (
-            <div className="text-accent font-metadata text-[9px] uppercase font-bold tracking-widest flex items-center gap-1.5">
-              <Sparkles size={12} /> {formatUsername(post.username)} Shared a Post
+            <div className="text-accent font-metadata text-[9px] font-bold tracking-widest flex items-center gap-1.5">
+              <Sparkles size={12} /> {formatUsername(post.username)} shared a post
             </div>
           )}
           {post.activity_type === 'screening' && (
-            <div className="text-vibe-teal font-metadata text-[9px] uppercase font-bold tracking-widest flex items-center gap-1.5">
-              <Activity size={12} /> {formatUsername(post.username)} Logged a Screening
+            <div className="text-vibe-teal font-metadata text-[9px] font-bold tracking-widest flex items-center gap-1.5">
+              <Activity size={12} /> {formatUsername(post.username)} logged a screening
             </div>
           )}
         </div>
@@ -429,15 +429,15 @@ function FeedPost({
             {/* Post Header Info */}
             <div className="flex items-start justify-between gap-2">
               <div className="flex flex-col min-w-0">
-                <Link href={`/profile/${formatUsername(post.username)}`} className="font-heading text-white text-base hover:text-white/70 transition-colors py-0 leading-none truncate">
+                <Link href={`/profile/${formatUsername(post.username)}`} className="font-heading text-white text-base hover:text-white/70 transition-colors py-0 leading-none">
                   {formatUsername(post.username) || 'Cinephile'}
                 </Link>
-                <span className="font-metadata text-[10px] text-white/30 uppercase tracking-wider mt-1">{formatDate(post.created_at)}</span>
+                <span className="font-metadata text-[10px] text-white/30 tracking-wider mt-1">{formatDate(post.created_at)}</span>
               </div>
               
               <div className="flex items-center gap-2 shrink-0">
                 <div
-                  className="px-2 py-0.5 rounded-md font-metadata text-[7px] md:text-[8px] font-bold uppercase tracking-widest"
+                  className="px-2 py-0.5 rounded-md font-metadata text-[7px] md:text-[8px] font-bold tracking-widest"
                   style={{
                     backgroundColor: `${accentColor}15`,
                     color: accentColor,
@@ -538,12 +538,12 @@ function FeedPost({
                       )}
                     </div>
                     <div className="flex flex-col justify-center min-w-0 py-1">
-                      <span className="font-metadata text-[9px] text-white/40 uppercase tracking-[0.2em] mb-1.5 font-bold">
+                      <span className="font-metadata text-[9px] text-white/40 tracking-[0.2em] mb-1.5 font-bold">
                         {MEDIA_TYPE_LABELS[post.media_type as keyof typeof MEDIA_TYPE_LABELS] || post.media_type}
                       </span>
                       <span className="font-heading text-base font-bold text-white truncate drop-shadow-sm">{post.title}</span>
                       <span className="font-metadata text-[10px] text-white/30 flex items-center gap-1.5 mt-2 transition-colors group-hover/media:text-white/60 uppercase tracking-widest font-bold">
-                        View Details <ExternalLink size={10} />
+                        View details <ExternalLink size={10} />
                       </span>
                     </div>
                   </div>
@@ -562,7 +562,7 @@ function FeedPost({
 
               <button 
                 onClick={() => onOpenComments(post.id, activityType)}
-                className="flex items-center gap-2 text-white/40 hover:text-white transition-colors text-[11px] font-metadata uppercase tracking-widest font-bold group/btn py-2 ml-4 md:ml-0"
+                className="flex items-center gap-2 text-white/40 hover:text-white transition-colors text-[11px] font-metadata tracking-widest font-bold group/btn py-2 ml-4 md:ml-0"
               >
                 <div className="p-1.5 rounded-full bg-white/5 group-hover/btn:bg-white/10 transition-colors">
                   <MessageSquare size={14} />
@@ -576,7 +576,7 @@ function FeedPost({
                   const isDispatch = post.activity_type === 'dispatch' || post.original_dispatch_id;
                   onReArchive(originalId, post.classification as ClassificationName, isDispatch ? 'dispatch' : 'entry');
                 }}
-                className="flex items-center gap-2 text-white/40 hover:text-white transition-colors text-[11px] font-metadata uppercase tracking-widest font-bold group/btn py-2 ml-auto"
+                className="flex items-center gap-2 text-white/40 hover:text-white transition-colors text-[11px] font-metadata tracking-widest font-bold group/btn py-2 ml-auto"
               >
                 <div className="p-1.5 rounded-full bg-white/5 group-hover/btn:bg-white/10 transition-colors">
                   <Repeat2 size={14} />
@@ -596,7 +596,7 @@ function FeedPost({
                 {(post.comment_count || 0) > 2 && (
                   <button 
                     onClick={() => onOpenComments(post.id, activityType)}
-                    className="text-[11px] text-white/40 hover:text-white transition-colors font-metadata uppercase tracking-widest font-bold mt-2"
+                    className="text-[11px] text-white/40 hover:text-white transition-colors font-metadata tracking-widest font-bold mt-2"
                   >
                     View all {post.comment_count} comments
                   </button>

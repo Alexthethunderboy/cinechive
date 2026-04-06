@@ -208,7 +208,7 @@ export function Sidebar() {
                       <Link 
                         href="/profile" 
                         onClick={() => setShowAccountMenu(false)}
-                        className="flex items-center gap-3 px-3 py-2.5 text-xs text-white/50 hover:text-white hover:bg-white/5 rounded-xl transition-all font-metadata uppercase tracking-widest"
+                        className="flex items-center gap-3 px-3 py-2.5 text-xs text-white/50 hover:text-white hover:bg-white/5 rounded-xl transition-all font-metadata tracking-widest"
                       >
                         <User size={14} />
                         View Profile
@@ -216,7 +216,7 @@ export function Sidebar() {
                       <Link 
                         href="/profile/settings"
                         onClick={() => setShowAccountMenu(false)}
-                        className="flex items-center gap-3 px-3 py-2.5 text-xs text-white/50 hover:text-white hover:bg-white/5 rounded-xl transition-all font-metadata uppercase tracking-widest"
+                        className="flex items-center gap-3 px-3 py-2.5 text-xs text-white/50 hover:text-white hover:bg-white/5 rounded-xl transition-all font-metadata tracking-widest"
                       >
                         <Settings size={14} />
                         Preferences
@@ -227,7 +227,7 @@ export function Sidebar() {
                           setShowAccountMenu(false);
                           signOut();
                         }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 text-xs text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all font-metadata uppercase tracking-widest"
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-xs text-rose-400 hover:bg-rose-500/10 rounded-xl transition-all font-metadata tracking-widest"
                       >
                         <LogOut size={14} />
                         Sign Out
@@ -263,10 +263,10 @@ export function Sidebar() {
                   />
 
                   <div className="flex-1 min-w-0 z-10">
-                    <p className="text-xs font-heading font-black text-white uppercase tracking-tighter italic">
+                    <p className="text-xs font-heading font-black text-white tracking-tighter italic">
                       {formatUsername(user.profile?.display_name || user.profile?.username) || 'User'}
                     </p>
-                    <p className="text-[9px] text-white/30 font-mono uppercase tracking-[0.2em] mt-0.5">
+                    <p className="text-[9px] text-white/30 font-mono tracking-[0.2em] mt-0.5">
                       {user.profile?.username ? `${formatUsername(user.profile.username)}` : 'Archive'}
                     </p>
                   </div>
@@ -284,7 +284,7 @@ export function Sidebar() {
           <Link href="/login">
             <div className="flex items-center gap-2.5 px-4 py-3 bg-white text-black rounded-card hover:bg-white/90 transition-all group shadow-xl">
               <User size={18} className="group-hover:scale-110 transition-transform" />
-              <span className="font-heading font-bold text-xs uppercase tracking-widest">Sign In</span>
+              <span className="font-heading font-bold text-xs tracking-widest">Sign in</span>
             </div>
           </Link>
         )}

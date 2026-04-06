@@ -15,9 +15,14 @@ import {
   Loader2,
   Lock,
   Eye,
-  Activity
+  Activity,
+  Sparkles,
+  RefreshCw,
+  Upload
 } from 'lucide-react';
 import GlassPanel from '@/components/ui/GlassPanel';
+import CinematicAvatar from './CinematicAvatar';
+import { createClient } from '@/lib/supabase/client';
 import { updateProfile, deleteAccount, clearHistory } from '@/app/actions/profile-actions';
 import { cn, formatUsername } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
@@ -39,6 +44,8 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
   const [displayName, setDisplayName] = useState(profile.display_name || '');
   const [bio, setBio] = useState(profile.bio || '');
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url || '');
+  const [avatarSeed, setAvatarSeed] = useState(profile.avatar_seed || '');
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
@@ -46,7 +53,8 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
       const result = await updateProfile({
         display_name: displayName,
         bio: bio,
-        avatar_url: avatarUrl
+        avatar_url: avatarUrl,
+        avatar_seed: avatarSeed
       });
       
       if (result.success) {
@@ -74,6 +82,49 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
       toast.error('Failed to delete account');
       setIsSaving(false);
     }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image must be under 2MB');
+      return;
+    }
+
+    setIsUploading(true);
+    const supabase = createClient();
+    
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${profile.id}/${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = fileName;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      setAvatarUrl(fileName); 
+      toast.success('Avatar uploaded successfully');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to upload image');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemoveAvatar = () => {
+    setAvatarUrl('');
+    toast.info('Returned to default avatar');
+  };
+
+  const handleRegenerateSeed = () => {
+    const newSeed = Math.random().toString(36).substring(7);
+    setAvatarSeed(newSeed);
+    toast.success('New vibe generated');
   };
 
   const tabs = [
@@ -130,20 +181,62 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
               <GlassPanel className="p-6 md:p-10 bg-white/5 border-white/10 shadow-2xl overflow-hidden relative">
                 {activeTab === 'identity' && (
                   <div className="space-y-8">
-                    <div className="flex flex-col md:flex-row gap-8 items-start">
-                      <div className="relative group">
-                        <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white/10 bg-surface-hover shadow-2xl">
-                          {avatarUrl ? (
-                            <img src={avatarUrl} alt="Preview" className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-4xl font-display text-white/20">
-                              {formatUsername(profile.username)[0].toUpperCase()}
-                            </div>
-                          )}
+                    <div className="flex flex-col md:flex-row gap-10 items-start">
+                      <div className="flex flex-col items-center gap-6">
+                        <div className="relative group">
+                          <CinematicAvatar 
+                            src={avatarUrl}
+                            username={profile.username}
+                            seed={avatarSeed}
+                            size="xl"
+                          />
+                          
+                          <label className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-full cursor-pointer">
+                            <input 
+                              type="file" 
+                              className="hidden" 
+                              accept="image/*"
+                              onChange={handleAvatarUpload}
+                              disabled={isUploading}
+                            />
+                            {isUploading ? (
+                              <Loader2 size={32} className="text-white animate-spin" />
+                            ) : (
+                              <Camera size={32} className="text-white" />
+                            )}
+                          </label>
                         </div>
-                        <button className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
-                          <Camera size={24} className="text-white" />
-                        </button>
+
+                        <div className="flex flex-col gap-2 w-full">
+                           <button 
+                            onClick={() => document.getElementById('avatar-upload')?.click()}
+                            className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/80 font-heading text-sm font-bold hover:bg-white/10 transition-all"
+                          >
+                            <Upload size={16} />
+                            Upload Custom
+                          </button>
+                          
+                          <div className="flex gap-2">
+                             <button 
+                              onClick={handleRegenerateSeed}
+                              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/60 font-heading text-xs font-bold hover:bg-white/10 hover:text-white transition-all"
+                            >
+                              <RefreshCw size={14} />
+                              Regen Vibe
+                            </button>
+                            
+                            {avatarUrl && (
+                              <button 
+                                onClick={handleRemoveAvatar}
+                                className="p-2 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500/20 transition-all"
+                                title="Remove Custom Avatar"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <input id="avatar-upload" type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
                       </div>
                       
                       <div className="flex-1 w-full space-y-6">
@@ -165,16 +258,6 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
                             placeholder="Write a short bit about yourself..."
                             rows={4}
                             className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-white font-heading focus:outline-none focus:ring-2 focus:ring-white/20 transition-all resize-none"
-                          />
-                        </div>
-
-                        <div className="space-y-2">
-                          <label className="text-xs font-data uppercase tracking-widest text-white/40 font-bold">Avatar URL</label>
-                          <input 
-                            value={avatarUrl}
-                            onChange={(e) => setAvatarUrl(e.target.value)}
-                            placeholder="https://..."
-                            className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-white font-heading focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
                           />
                         </div>
                       </div>

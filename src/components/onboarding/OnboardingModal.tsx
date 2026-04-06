@@ -79,14 +79,14 @@ interface OnboardingModalProps {
 export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
   const [step, setStep] = useState<StepId>(0);
   const [selectedFilms,    setSelectedFilms]    = useState<Set<string>>(new Set());
-  const [selectedStyles,   setSelectedStyles]   = useState<Set<string>>(new Set());
+  const [selectedGenres,   setSelectedGenres]   = useState<Set<string>>(new Set());
   const [selectedCreators, setSelectedCreators] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
 
   const currentStep = STEPS[step];
 
   // Dominant style color from currently selected genres
-  const firstGenreId = Array.from(selectedStyles)[0];
+  const firstGenreId = Array.from(selectedGenres)[0];
   const firstGenre = SEED_GENRES.find(g => g.value === firstGenreId);
   const styleColor = firstGenre ? CLASSIFICATION_STYLE_COLORS[firstGenre.style] : '#1a0a2e';
 
@@ -111,7 +111,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
           const film = SEED_FILMS.find((f) => f.value === v)!;
           return { category: 'movie' as const, value: v, display_name: film.display_name, poster_url: film.poster_url };
         }),
-        ...Array.from(selectedStyles).map((v) => {
+        ...Array.from(selectedGenres).map((v) => {
           const g = SEED_GENRES.find((gen) => gen.value === v)!;
           return {
             category: 'genre' as const,
@@ -137,7 +137,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
 
   const canProceed =
     step === 0 ? selectedFilms.size >= 3 :
-    step === 1 ? selectedStyles.size >= 1 :
+    step === 1 ? selectedGenres.size >= 1 :
                  selectedCreators.size >= 1;
 
   return (
@@ -172,7 +172,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
         >
           {/* Header */}
           <div className="px-8 pt-8 pb-6 border-b border-white/5 shrink-0">
-            <p className="font-data text-[10px] uppercase tracking-[0.3em] text-white/30 mb-1">
+            <p className="font-data text-[10px] tracking-[0.3em] text-white/30 mb-1">
               The Casting Call — Step {step + 1} of 3
             </p>
             <h2 className="font-display text-3xl md:text-5xl italic tracking-tighter text-white">
@@ -254,12 +254,12 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                   className="grid grid-cols-2 md:grid-cols-4 gap-4"
                 >
                   {SEED_GENRES.map((genre) => {
-                    const selected = selectedStyles.has(genre.value);
+                    const selected = selectedGenres.has(genre.value);
                     const styleBaseColor = CLASSIFICATION_STYLE_COLORS[genre.style];
                     return (
                       <motion.button
                         key={genre.value}
-                        onClick={() => toggle(selectedStyles, genre.value, setSelectedStyles)}
+                        onClick={() => toggle(selectedGenres, genre.value, setSelectedGenres)}
                         whileTap={{ scale: 0.95 }}
                         whileHover={{ scale: 1.02 }}
                         className={cn(
@@ -275,7 +275,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                           style={{ background: `radial-gradient(circle at top left, ${styleBaseColor}, transparent 60%)` }}
                         />
                         <p className="font-display text-xl italic text-white relative">{genre.label}</p>
-                        <p className="font-heading text-xs text-white/50 mt-1 leading-snug relative">{genre.desc}</p>
+                        <p className="font-heading text-[10px] text-white/50 mt-1 leading-snug relative">{genre.desc}</p>
                         {selected && (
                           <motion.div
                             initial={{ scale: 0 }}
@@ -330,10 +330,10 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                         </div>
                         <div className="text-center">
                           <p className={cn(
-                            'font-heading text-xs leading-tight transition-colors',
+                            'font-display text-sm md:text-base font-bold leading-tight transition-colors',
                             selected ? 'text-white' : 'text-white/60'
                           )}>{creator.display_name}</p>
-                          <p className="font-data text-[8px] uppercase tracking-widest text-white/30 mt-0.5">{creator.role}</p>
+                          <p className="font-data text-[9px] tracking-widest text-white/30 mt-0.5">{creator.role}</p>
                         </div>
                       </motion.button>
                     );
@@ -345,9 +345,9 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
 
           {/* Footer */}
           <div className="px-8 py-6 border-t border-white/5 flex items-center justify-between shrink-0">
-            <div className="font-data text-[10px] text-white/30 uppercase tracking-widest">
+            <div className="font-data text-[10px] text-white/30 tracking-widest">
               {step === 0 && `${selectedFilms.size} selected`}
-              {step === 1 && `${selectedStyles.size} selected`}
+              {step === 1 && `${selectedGenres.size} selected`}
               {step === 2 && `${selectedCreators.size} selected`}
             </div>
 

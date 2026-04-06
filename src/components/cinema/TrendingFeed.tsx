@@ -182,7 +182,7 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
         {(activeTab === 'anime' || activeTab === 'animation') && (
            <button 
              onClick={() => setIsFiltersOpen(true)}
-             className={`px-3 py-1 rounded-full border flex items-center gap-1.5 transition-all text-[10px] uppercase font-metadata tracking-tighter ${
+             className={`px-3 py-1 rounded-full border flex items-center gap-1.5 transition-all text-[10px] font-metadata tracking-tighter ${
                animationFilters.genres.length > 0 || animationFilters.studios.length > 0 
                 ? 'bg-white/20 border-white/30 text-white' 
                 : 'bg-white/5 border-white/5 text-white/50 hover:bg-white/10 hover:text-white'
@@ -208,7 +208,7 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
         {status === 'pending' ? (
           <div className="w-full flex flex-col items-center justify-center py-20 opacity-50 space-y-4">
             <Loader2 className="w-8 h-8 animate-spin text-vibe-cyan" />
-            <p className="font-mono text-sm tracking-widest uppercase">Loading...</p>
+            <p className="font-mono text-sm tracking-widest">Loading...</p>
           </div>
         ) : status === 'error' ? (
           <div className="w-full flex flex-col items-center justify-center py-20 space-y-4">
@@ -261,7 +261,7 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
                  {isFetchingNextPage ? (
                    <div className="flex flex-col items-center gap-4 opacity-50">
                      <Loader2 className="w-6 h-6 animate-spin text-accent" />
-                     <span className="font-data text-[10px] tracking-[0.3em] uppercase text-white/40">Synchronizing deep stream...</span>
+                     <span className="font-data text-[10px] tracking-[0.3em] text-white/40">Synchronizing deep stream...</span>
                    </div>
                  ) : hasNextPage ? (
                    <div className="h-20"></div> /* Space to trigger inView */
@@ -272,7 +272,7 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
                       </div>
                       <div className="text-center space-y-1">
                         <h4 className="font-heading text-lg italic tracking-tighter text-white">You've reached the end.</h4>
-                        <p className="font-metadata text-[9px] uppercase tracking-[0.3em] text-white/50">You've seen all current entries in this category.</p>
+                        <p className="font-metadata text-[9px] tracking-[0.3em] text-white/50">You've seen all current entries in this category.</p>
                       </div>
                    </div>
                  )}

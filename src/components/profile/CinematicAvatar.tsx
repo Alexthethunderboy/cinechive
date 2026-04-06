@@ -12,6 +12,7 @@ interface CinematicAvatarProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
   style?: ClassificationName;
+  seed?: string | null;
   showSpotlight?: boolean;
 }
 
@@ -27,15 +28,27 @@ const sizeClasses = {
  * featuring 35mm grain, color grading (LUTs), and spectral logic.
  */
 export default function CinematicAvatar({ 
-  src, 
-  username, 
+  src: initialSrc, 
+  username = "U", 
   size = 'md', 
   className, 
   style = 'Atmospheric',
+  seed,
   showSpotlight = true
 }: CinematicAvatarProps) {
   
-  const styleColor = CLASSIFICATION_STYLE_COLORS[style] || '#ffffff';
+  const { getCinematicVibe } = require('@/lib/avatar-utils');
+  const vibe = getCinematicVibe(seed, username);
+  
+  const src = initialSrc?.startsWith('http') 
+    ? initialSrc 
+    : initialSrc?.startsWith('/storage/v1/object/public/')
+      ? `https://crnjvztlpdxsugypctqu.supabase.co${initialSrc}`
+      : initialSrc 
+        ? `https://crnjvztlpdxsugypctqu.supabase.co/storage/v1/object/public/avatars/${initialSrc}`
+        : null;
+  
+  const styleColor = src ? (CLASSIFICATION_STYLE_COLORS[style] || '#ffffff') : vibe.primaryColor;
   
   // Spotlight Motion
   const mouseX = useMotionValue(0);
@@ -108,8 +121,20 @@ export default function CinematicAvatar({
              />
           </motion.div>
         ) : (
-          <div className="w-full h-full flex items-center justify-center bg-white/5 text-white/50 font-display uppercase tracking-tighter">
-            {username[0]}
+          <div 
+            className="relative w-full h-full flex items-center justify-center font-display uppercase tracking-tighter"
+            style={{ 
+              background: vibe.gradient,
+              textShadow: '0 2px 10px rgba(0,0,0,0.5)'
+            }}
+          >
+            {/* Inner Pattern Overlay for the generated vibe */}
+            <div className="absolute inset-0 opacity-40 mix-blend-overlay pointer-events-none" 
+              style={{
+                background: `radial-gradient(circle at ${vibe.center.x}% ${vibe.center.y}%, white 0%, transparent 70%)`
+              }} 
+            />
+            <span className="relative z-10 text-white/90">{username[0]}</span>
           </div>
         )}
 

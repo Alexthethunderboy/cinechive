@@ -10,6 +10,7 @@ interface CinematicAvatarProps {
   username?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   style?: ClassificationName | 'Atmospheric';
+  seed?: string | null;
   className?: string;
 }
 
@@ -21,13 +22,29 @@ const sizeMap = {
 };
 
 export default function CinematicAvatar({
-  src,
+  src: initialSrc,
   username = 'User',
   size = 'md',
   style = 'Atmospheric',
+  seed,
   className,
 }: CinematicAvatarProps) {
-  const themeColor = style === 'Atmospheric' ? 'rgba(255,255,255,0.2)' : CLASSIFICATION_STYLE_COLORS[style as ClassificationName];
+  
+  const { getCinematicVibe } = require('@/lib/avatar-utils');
+  const vibe = getCinematicVibe(seed, username);
+  
+  // Robust image source handling
+  const src = initialSrc?.startsWith('http') 
+    ? initialSrc 
+    : initialSrc?.startsWith('/storage/v1/object/public/')
+      ? `https://crnjvztlpdxsugypctqu.supabase.co${initialSrc}`
+      : initialSrc 
+        ? `https://crnjvztlpdxsugypctqu.supabase.co/storage/v1/object/public/avatars/${initialSrc}`
+        : null;
+  
+  const themeColor = src 
+    ? (style === 'Atmospheric' ? 'rgba(255,255,255,0.2)' : CLASSIFICATION_STYLE_COLORS[style as ClassificationName])
+    : vibe.primaryColor;
   const formattedUsername = formatUsername(username);
 
   return (
@@ -55,9 +72,15 @@ export default function CinematicAvatar({
             className="object-cover group-hover:scale-110 transition-transform duration-500" 
           />
         ) : (
-          <span className="uppercase font-bold tracking-tighter opacity-40">
-            {formattedUsername[0]}
-          </span>
+          <div 
+            className="w-full h-full flex items-center justify-center font-display uppercase tracking-tighter"
+            style={{ 
+              background: vibe.gradient,
+              textShadow: '0 1px 4px rgba(0,0,0,0.4)'
+            }}
+          >
+             <span className="relative z-10 text-white/80">{formattedUsername[0]}</span>
+          </div>
         )}
       </div>
 

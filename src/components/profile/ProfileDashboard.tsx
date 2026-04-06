@@ -93,6 +93,7 @@ export default function ProfileDashboard({
                 <CinematicAvatar 
                   src={profile.avatar_url} 
                   username={profile.username} 
+                  seed={profile.avatar_seed}
                   size="xl" 
                   style={styleName} 
                 />

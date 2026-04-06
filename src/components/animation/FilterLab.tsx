@@ -94,7 +94,7 @@ export function AdvancedFilters({ isOpen, onClose, activeTab, onApplyFilters, cu
                 </div>
                 <div>
                   <h2 className="text-xl font-display text-white tracking-tight leading-none">Advanced Filters</h2>
-                  <p className="text-xs text-white/50 font-mono mt-1 uppercase tracking-widest">
+                  <p className="text-xs text-white/50 font-mono mt-1 tracking-widest">
                     {activeTab === 'anime' ? 'AniList Integration' : 'TMDB Animation'}
                   </p>
                 </div>
@@ -112,7 +112,7 @@ export function AdvancedFilters({ isOpen, onClose, activeTab, onApplyFilters, cu
               
               {/* Common: Year */}
               <div className="space-y-3">
-                <label className="text-xs font-mono uppercase tracking-widest text-white/40 flex items-center gap-2">
+                <label className="text-xs font-mono tracking-widest text-white/40 flex items-center gap-2">
                    Release Year
                 </label>
                 <div className="flex gap-2">
@@ -129,7 +129,7 @@ export function AdvancedFilters({ isOpen, onClose, activeTab, onApplyFilters, cu
               {/* Genres */}
               {activeTab === 'anime' && (
                 <div className="space-y-3">
-                  <label className="text-xs font-mono uppercase tracking-widest text-white/40">
+                  <label className="text-xs font-mono tracking-widest text-white/40">
                     Genres
                   </label>
                   <div className="flex flex-wrap gap-2">
@@ -156,7 +156,7 @@ export function AdvancedFilters({ isOpen, onClose, activeTab, onApplyFilters, cu
 
               {/* Studios / Companies */}
               <div className="space-y-3">
-                <label className="text-xs font-mono uppercase tracking-widest text-white/40">
+                <label className="text-xs font-mono tracking-widest text-white/40">
                   {activeTab === 'anime' ? 'Animation Studios' : 'Production Companies'}
                 </label>
                 <div className="flex flex-wrap gap-2">
@@ -167,7 +167,7 @@ export function AdvancedFilters({ isOpen, onClose, activeTab, onApplyFilters, cu
                         key={studio}
                         onClick={() => toggleArrayItem('studios', studio)}
                         className={cn(
-                          "px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider uppercase transition-all border",
+                          "px-3 py-1.5 rounded-lg text-xs font-bold tracking-wider transition-all border",
                           isActive 
                             ? "bg-accent/20 text-accent border-accent/40" 
                             : "bg-white/5 text-white/50 border-white/5 hover:border-white/20"
@@ -182,7 +182,7 @@ export function AdvancedFilters({ isOpen, onClose, activeTab, onApplyFilters, cu
 
               {/* Format */}
               <div className="space-y-3">
-                <label className="text-xs font-mono uppercase tracking-widest text-white/40">
+                <label className="text-xs font-mono tracking-widest text-white/40">
                   Format
                 </label>
                 <div className="grid grid-cols-2 gap-2">

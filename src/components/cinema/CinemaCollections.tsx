@@ -69,7 +69,7 @@ export default function CinemaCollections() {
     return (
       <div className="w-full flex flex-col items-center justify-center py-20 opacity-30">
         <Loader2 className="w-8 h-8 animate-spin text-white mb-4" />
-        <p className="font-metadata uppercase text-white">Loading Collections...</p>
+        <p className="font-metadata text-white">Loading collections...</p>
       </div>
     );
   }
@@ -79,7 +79,7 @@ export default function CinemaCollections() {
       <div className="px-4 md:px-10 py-10">
         <GlassPanel className="p-8 border-rose-500/20 bg-rose-500/5 text-center">
           <Info className="w-6 h-6 text-white/40 mx-auto mb-3" />
-          <p className="text-white/40 font-heading text-sm uppercase tracking-widest">Unable to load curations</p>
+          <p className="text-white/40 font-heading text-sm tracking-widest">Unable to load curations</p>
         </GlassPanel>
       </div>
     );
@@ -92,13 +92,13 @@ export default function CinemaCollections() {
       <section className="px-4 md:px-10">
         <div className="flex items-end justify-between mb-6 md:mb-10">
           <div>
-            <h2 className="font-heading text-4xl md:text-5xl tracking-tighter text-white italic uppercase leading-none mb-2">
+            <h2 className="font-heading text-4xl md:text-5xl tracking-tighter text-white italic leading-none mb-2">
               Genres
             </h2>
-            <p className="text-white/40 font-metadata text-xs uppercase tracking-widest">Explore film by category</p>
+            <p className="text-white/40 font-metadata text-xs tracking-widest">Explore film by category</p>
           </div>
-          <Link href="/classifications" className="text-[10px] font-metadata text-white/30 uppercase tracking-[0.2em] border-b border-white/5 pb-1 hover:text-white transition-colors">
-            View All Categories
+          <Link href="/classifications" className="text-[10px] font-metadata text-white/30 tracking-[0.2em] border-b border-white/5 pb-1 hover:text-white transition-colors">
+            View all categories
           </Link>
         </div>
 
@@ -166,12 +166,12 @@ export default function CinemaCollections() {
                      style={{ backgroundColor: color }}
                    />
                    
-                   <span className="font-metadata text-[10px] text-white/40 group-hover:text-white transition-colors uppercase tracking-[0.2em] font-bold">
+                   <span className="font-metadata text-[10px] text-white/40 group-hover:text-white transition-colors tracking-[0.2em] font-bold">
                     {genre.name}
                   </span>
                   
                   <div className="flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity translate-y-1 group-hover:translate-y-0 duration-300">
-                    <span className="text-[8px] font-mono text-white/20 uppercase tracking-widest">Explore</span>
+                    <span className="text-[8px] font-mono text-white/20 tracking-widest">Explore</span>
                     <ChevronRight size={10} className="text-white/20" />
                   </div>
                 </div>
@@ -184,10 +184,10 @@ export default function CinemaCollections() {
       {/* 3. Curated Selections */}
       <div className="space-y-20">
         <div className="px-4 md:px-10">
-          <h2 className="font-heading text-4xl md:text-5xl tracking-tighter text-white italic uppercase leading-none mb-2">
+          <h2 className="font-heading text-4xl md:text-5xl tracking-tighter text-white italic leading-none mb-2">
             Selections
           </h2>
-          <p className="text-white/40 font-metadata text-xs uppercase tracking-widest">Curated Editorial Collections</p>
+          <p className="text-white/40 font-metadata text-xs tracking-widest">Curated editorial collections</p>
         </div>
 
         {collections.map((collection, idx) => (
@@ -204,19 +204,19 @@ export default function CinemaCollections() {
                   <div className="w-8 h-px bg-white/20" />
                   <span className="font-metadata text-white/40 text-xs">Vol. {idx + 1}</span>
                 </div>
-                <h2 className="font-heading text-4xl md:text-6xl tracking-tighter text-white italic uppercase leading-none mb-4">
+                <h2 className="font-heading text-4xl md:text-6xl tracking-tighter text-white italic leading-none mb-4">
                   {collection.title}
                 </h2>
-                <p className="text-white/60 font-metadata max-w-xl leading-relaxed uppercase text-xs">
+                <p className="text-white/60 font-metadata max-w-xl leading-relaxed text-xs">
                   {collection.description}
                 </p>
               </motion.div>
 
               <Link
                 href={`/discover/selection/${collection.slug}`}
-                className="flex items-center gap-2 text-[10px] font-metadata text-white/30 uppercase tracking-[0.2em] border-b border-white/5 pb-1 hover:text-white hover:border-white/20 transition-colors group shrink-0"
+                className="flex items-center gap-2 text-[10px] font-metadata text-white/30 tracking-[0.2em] border-b border-white/5 pb-1 hover:text-white hover:border-white/20 transition-colors group shrink-0"
               >
-                Full Catalogue <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                Full catalogue <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
               </Link>
             </div>
 
@@ -236,8 +236,8 @@ export default function CinemaCollections() {
                     <div className="w-12 h-12 rounded-full border border-white/10 flex items-center justify-center text-white/20 group-hover/more:text-white group-hover/more:scale-110 transition-all mb-4">
                       <Sparkles size={20} />
                     </div>
-                    <span className="font-metadata text-white/40 group-hover/more:text-white transition-colors text-center text-xs leading-relaxed uppercase tracking-widest">
-                      Full <br/> Catalogue
+                    <span className="font-metadata text-white/40 group-hover/more:text-white transition-colors text-center text-xs leading-relaxed tracking-widest">
+                      Full <br/> catalogue
                     </span>
                   </div>
                 </Link>

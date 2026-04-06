@@ -8,6 +8,7 @@ export interface ProfileUpdateData {
   display_name?: string | null;
   bio?: string | null;
   avatar_url?: string | null;
+  avatar_seed?: string | null;
   lastfm_username?: string | null;
 }
 
@@ -28,6 +29,7 @@ export async function updateProfile(data: ProfileUpdateData) {
       display_name: data.display_name,
       bio: data.bio,
       avatar_url: data.avatar_url,
+      avatar_seed: data.avatar_seed,
       lastfm_username: data.lastfm_username,
       updated_at: new Date().toISOString(),
     })
