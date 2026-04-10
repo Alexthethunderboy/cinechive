@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { NAV_ITEMS, SPRING_CONFIG } from '@/lib/design-tokens';
 import { Calendar, Star, Play, History, Repeat } from 'lucide-react';
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState, useRef, useMemo, useContext, createContext, ReactNode } from 'react';
 import { cn, formatUsername } from '@/lib/utils';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { AnimatePresence } from 'framer-motion';
@@ -40,54 +40,35 @@ const icons = {
 
 function NotificationIndicator({ count, pulse = true }: { count: number; pulse?: boolean }) {
   if (count <= 0) return null;
-  const urgent = count >= 10;
   return (
     <div className="absolute -top-1 -right-1">
-      {urgent ? (
-        <div className={cn(
-          "flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-vibe-rose border-2 border-black text-[8px] font-bold text-white shadow-lg",
-          pulse && "animate-pulse"
-        )}>
-          {count > 99 ? '99+' : count}
-        </div>
-      ) : (
-        <div className={cn(
-          "h-2.5 w-2.5 rounded-full bg-vibe-rose border border-black shadow-md",
-          pulse && "animate-pulse"
-        )} />
-      )}
+      <div className={cn(
+        "flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-vibe-rose border-2 border-black text-[8px] font-bold text-white shadow-lg",
+        pulse && "animate-pulse"
+      )}>
+        {count > 99 ? '99+' : count}
+      </div>
     </div>
   );
 }
 
-export function Sidebar() {
-  const pathname = usePathname();
+interface NotificationCenterContextValue {
+  showNotifCenter: boolean;
+  setShowNotifCenter: React.Dispatch<React.SetStateAction<boolean>>;
+  algoNotifs: CommunityNotification[];
+  socialNotifs: any[];
+  notifCount: number;
+  handleMarkAsRead: (id: string) => Promise<void>;
+}
+
+const NotificationCenterContext = createContext<NotificationCenterContextValue | undefined>(undefined);
+
+function useNotificationCenterValue() {
   const { user } = useAuth();
-  const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [showNotifCenter, setShowNotifCenter] = useState(false);
   const [algoNotifs, setAlgoNotifs] = useState<CommunityNotification[]>([]);
   const [socialNotifs, setSocialNotifs] = useState<any[]>([]);
   const [notifCount, setNotifCount] = useState(0);
-  const accountMenuRef = useRef<HTMLDivElement>(null);
-  const notifRef = useRef<HTMLDivElement>(null);
-
-  // Close account menu and notification center on outside click
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
-        setShowAccountMenu(false);
-      }
-      if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
-        setShowNotifCenter(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside as any);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside as any);
-    };
-  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -95,7 +76,7 @@ export function Sidebar() {
     const fetchData = async () => {
       const [algo, social] = await Promise.all([
         getAlgorithmicNotifications(),
-        getSocialNotificationsAction()
+        getSocialNotificationsAction(),
       ]);
       setAlgoNotifs(algo.notifications);
       setSocialNotifs(social);
@@ -103,7 +84,6 @@ export function Sidebar() {
 
     fetchData();
 
-    // Set up Realtime listener for Social Notifications
     const supabase = createClient();
     const channel = supabase
       .channel(`social-notifs-${user.id}`)
@@ -115,10 +95,9 @@ export function Sidebar() {
           table: 'notifications',
           filter: `user_id=eq.${user.id}`,
         },
-        async (payload) => {
+        async () => {
           const freshSocial = await getSocialNotificationsAction();
           setSocialNotifs(freshSocial);
-          // Optional: Toast or Sound effect
         }
       )
       .subscribe();
@@ -130,7 +109,6 @@ export function Sidebar() {
     };
   }, [user]);
 
-  // Combined count for the badge
   useEffect(() => {
     const summary = getNotificationCountSummary(algoNotifs.length, socialNotifs);
     setNotifCount(summary.total);
@@ -138,8 +116,59 @@ export function Sidebar() {
 
   const handleMarkAsRead = async (id: string) => {
     await markNotificationAsReadAction(id);
-    setSocialNotifs(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+    setSocialNotifs((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
   };
+
+  return {
+    showNotifCenter,
+    setShowNotifCenter,
+    algoNotifs,
+    socialNotifs,
+    notifCount,
+    handleMarkAsRead,
+  };
+}
+
+export function NotificationCenterProvider({ children }: { children: ReactNode }) {
+  const value = useNotificationCenterValue();
+  return (
+    <NotificationCenterContext.Provider value={value}>
+      {children}
+    </NotificationCenterContext.Provider>
+  );
+}
+
+function useNotificationCenter() {
+  const context = useContext(NotificationCenterContext);
+  if (!context) {
+    throw new Error('useNotificationCenter must be used within NotificationCenterProvider');
+  }
+  return context;
+}
+
+export function Sidebar() {
+  const pathname = usePathname();
+  const { user } = useAuth();
+  const { showNotifCenter, setShowNotifCenter, algoNotifs, socialNotifs, notifCount, handleMarkAsRead } = useNotificationCenter();
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+  const notifButtonRef = useRef<HTMLButtonElement>(null);
+
+  // Close account menu and notification center on outside click
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
+        setShowAccountMenu(false);
+      }
+      // Notification center handles its own outside clicks
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside as any);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside as any);
+    };
+  }, [setShowNotifCenter]);
 
   // Hide sidebar on auth pages
   if (pathname === '/login' || pathname === '/signup') return null;
@@ -162,6 +191,40 @@ export function Sidebar() {
       <div className="px-6 mb-8">
         <EverythingBar isSidebar />
       </div>
+
+      {/* Notification Bell */}
+      {user && (
+        <div className="px-6 mb-6">
+          <div className="relative">
+            <button
+              ref={notifButtonRef}
+              onClick={() => setShowNotifCenter(!showNotifCenter)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-inner transition-all group relative text-muted hover:text-white hover:bg-white/5"
+            >
+              <div className="relative">
+                <Bell size={20} className="transition-transform group-hover:scale-110" />
+                <NotificationIndicator count={notifCount} pulse={true} />
+              </div>
+              <span className="font-heading font-medium tracking-tight text-sm flex-1">
+                Notifications
+              </span>
+            </button>
+
+            {/* Notification Center */}
+            <AnimatePresence>
+              {showNotifCenter && (
+                <CommunityNotificationCenter 
+                  algorithmicNotifications={algoNotifs}
+                  socialNotifications={socialNotifs}
+                  onClose={() => setShowNotifCenter(false)}
+                  onMarkAsRead={handleMarkAsRead}
+                  position="sidebar"
+                />
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      )}
 
       <nav className="flex-1 px-4 space-y-1">
         {NAV_ITEMS.filter(item => {
@@ -190,41 +253,13 @@ export function Sidebar() {
                     {item.label}
                   </span>
 
-                  {item.label === 'Activity' && notifCount > 0 && (
-                    <div 
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setShowNotifCenter(!showNotifCenter);
-                      }}
-                      className="px-2 py-0.5 rounded-full bg-vibe-rose/10 border border-vibe-rose/20 text-[10px] font-bold text-vibe-rose hover:bg-vibe-rose/20 transition-colors cursor-pointer"
-                    >
-                      {capTo99Plus(notifCount)}
-                    </div>
-                  )}
-
                   {isActive && (
                     <motion.div layoutId="sidebar-active" className="absolute left-0 w-1 h-6 bg-white rounded-full" />
                   )}
                 </div>
               </Link>
 
-              {/* Notification Center — rendered OUTSIDE the Link to avoid nested <a> */}
-              {item.label === 'Activity' && (
-                <div ref={notifRef}>
-                  <AnimatePresence>
-                    {showNotifCenter && (
-                      <CommunityNotificationCenter 
-                        algorithmicNotifications={algoNotifs}
-                        socialNotifications={socialNotifs}
-                        onClose={() => setShowNotifCenter(false)}
-                        onMarkAsRead={handleMarkAsRead}
-                        position="sidebar"
-                      />
-                    )}
-                  </AnimatePresence>
-                </div>
-              )}
+              {/* Notification Center — only for Activity item if needed, but we moved it to dedicated bell */}
             </div>
           );
         })}
@@ -239,7 +274,7 @@ export function Sidebar() {
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute bottom-full left-0 w-full mb-3 glass border border-white/10 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-50"
+                    className="absolute bottom-full left-0 w-full mb-3 glass bg-black border border-white/10 rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] z-50"
                   >
                     {/* Projector Beam Effect */}
                     <div className="absolute inset-0 bg-conic-gradient from-white/10 via-transparent to-transparent opacity-20 pointer-events-none" />
@@ -290,7 +325,7 @@ export function Sidebar() {
 
                 <div className={cn(
                   "flex items-center gap-3.5 p-2 rounded-2xl transition-all duration-500 border relative group overflow-hidden",
-                  showAccountMenu ? "bg-white/5 border-white/20 shadow-2xl" : "hover:bg-white/5 border-transparent"
+                  showAccountMenu ? "bg-black border-white/20 shadow-2xl" : "hover:bg-white/10 border-transparent"
                 )}>
                   {/* Atmospheric Glow */}
                   <div className="absolute inset-0 bg-linear-to-tr from-white/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
@@ -349,13 +384,11 @@ export function BottomNav() {
   const [pinnedAction, setPinnedAction] = useState<'search' | 'community' | 'vault'>('search');
   const [customOrder, setCustomOrder] = useState<string[]>([]);
   const [isHiddenByScroll, setIsHiddenByScroll] = useState(false);
-  const [showNotifCenter, setShowNotifCenter] = useState(false);
-  const [algoNotifs, setAlgoNotifs] = useState<CommunityNotification[]>([]);
-  const [socialNotifs, setSocialNotifs] = useState<any[]>([]);
-  const [notifCount, setNotifCount] = useState(0);
+  const { showNotifCenter, setShowNotifCenter, algoNotifs, socialNotifs, notifCount, handleMarkAsRead } = useNotificationCenter();
   const longPressTimer = useRef<number | null>(null);
   const lastScrollY = useRef(0);
   const notifRef = useRef<HTMLDivElement>(null);
+  const notifButtonRef = useRef<HTMLButtonElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
 
   // Close popovers on outside click
@@ -381,7 +414,7 @@ export function BottomNav() {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside as any);
     };
-  }, [showPeekMenu, showCustomize]);
+  }, [showPeekMenu, showCustomize, setShowNotifCenter]);
 
   // Load preferences on mount
   useEffect(() => {
@@ -454,33 +487,6 @@ export function BottomNav() {
     window.addEventListener('resize', setAdaptive);
     return () => window.removeEventListener('resize', setAdaptive);
   }, [pathname]);
-
-  useEffect(() => {
-    if (!user) return;
-
-    const fetchData = async () => {
-      const [algo, social] = await Promise.all([
-        getAlgorithmicNotifications(),
-        getSocialNotificationsAction()
-      ]);
-      setAlgoNotifs(algo.notifications);
-      setSocialNotifs(social);
-    };
-
-    fetchData();
-    window.addEventListener(CLIENT_EVENTS.refreshNotifications, fetchData);
-    return () => window.removeEventListener(CLIENT_EVENTS.refreshNotifications, fetchData);
-  }, [user]);
-
-  useEffect(() => {
-    const summary = getNotificationCountSummary(algoNotifs.length, socialNotifs);
-    setNotifCount(summary.total);
-  }, [algoNotifs, socialNotifs]);
-
-  const handleMarkAsRead = async (id: string) => {
-    await markNotificationAsReadAction(id);
-    setSocialNotifs(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
-  };
 
   const quietHours = useMemo(() => {
     const hour = new Date().getHours();
@@ -572,10 +578,10 @@ export function BottomNav() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
             transition={motionTransition}
-            className="md:hidden fixed bottom-[calc(env(safe-area-inset-bottom)+78px)] left-3 right-3 z-[60] p-2 bg-black/95 backdrop-blur-xl border border-white/10 rounded-2xl"
+            className="md:hidden fixed top-[calc(env(safe-area-inset-top)+10px)] left-1/2 z-60 w-[min(94vw,430px)] -translate-x-1/2 p-2 bg-black border border-white/10 rounded-2xl"
           >
             <div ref={searchRef}>
-              <EverythingBar />
+              <EverythingBar onResultClick={() => setInlineSearchOpen(false)} />
             </div>
           </motion.div>
         )}
@@ -641,7 +647,6 @@ export function BottomNav() {
                 className="w-full h-full flex items-center justify-center text-white relative"
               >
                 <div className="h-3 w-3 rounded-full bg-white/80" />
-                <NotificationIndicator count={notifCount} pulse={!quietHours} />
               </motion.button>
             ) : (
               <motion.div
@@ -669,37 +674,9 @@ export function BottomNav() {
                               {item.label}
                             </span>
                           )}
-                          {item.label === 'Activity' && (
-                            <div 
-                              ref={notifRef}
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setShowNotifCenter(!showNotifCenter);
-                                triggerHaptic();
-                              }}
-                              className="absolute -top-3 -right-3 p-2 z-20"
-                            >
-                              <NotificationIndicator count={notifCount} pulse={!quietHours} />
-                            </div>
-                          )}
                         </motion.div>
                       </Link>
                       
-                      {/* Notification Center — rendered OUTSIDE the Link */}
-                      {item.label === 'Activity' && (
-                        <AnimatePresence>
-                          {showNotifCenter && (
-                            <CommunityNotificationCenter 
-                              algorithmicNotifications={algoNotifs}
-                              socialNotifications={socialNotifs}
-                              onClose={() => setShowNotifCenter(false)}
-                              onMarkAsRead={handleMarkAsRead}
-                              position="bottom"
-                            />
-                          )}
-                        </AnimatePresence>
-                      )}
                       {isActive && (
                         <motion.div layoutId="active-dot-nav" className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 bg-white rounded-full" />
                       )}
@@ -722,6 +699,38 @@ export function BottomNav() {
                     <Search size={20} className={cn(inlineSearchOpen ? "text-white" : "text-white/35")} />
                   </motion.div>
                 </button>
+                
+                {/* Notification Bell */}
+                {user && (
+                  <div className={cn("relative p-1 flex items-center justify-center", tapTarget)}>
+                    <button
+                      ref={notifButtonRef}
+                      onClick={() => {
+                        setShowNotifCenter(!showNotifCenter);
+                        triggerHaptic();
+                      }}
+                      className="flex items-center justify-center rounded-full px-2 py-1"
+                    >
+                      <div className="relative">
+                        <Bell size={20} className="text-white/35" />
+                        <NotificationIndicator count={notifCount} pulse={!quietHours} />
+                      </div>
+                    </button>
+
+                    {/* Notification Center */}
+                    <AnimatePresence>
+                      {showNotifCenter && (
+                        <CommunityNotificationCenter 
+                          algorithmicNotifications={algoNotifs}
+                          socialNotifications={socialNotifs}
+                          onClose={() => setShowNotifCenter(false)}
+                          onMarkAsRead={handleMarkAsRead}
+                          position="bottom"
+                        />
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
                 
                 <Link href={user ? "/profile" : "/login"} className={cn("p-1 flex items-center justify-center", tapTarget)}>
                   <motion.div whileTap={{ scale: 0.95 }} className="flex items-center justify-center">
@@ -765,7 +774,7 @@ export function BottomNav() {
                 initial={{ opacity: 0, y: 8, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 8, scale: 0.98 }}
-                className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-[min(92vw,360px)] rounded-2xl border border-white/10 bg-black/95 p-3"
+                className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-[min(92vw,360px)] rounded-2xl border border-white/10 bg-black p-3"
               >
                 <div className="grid grid-cols-3 gap-2">
                   {[
@@ -798,7 +807,7 @@ export function BottomNav() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
-                className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-[min(94vw,420px)] rounded-2xl border border-white/10 bg-black/95 p-4 space-y-3"
+                className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 w-[min(94vw,420px)] rounded-2xl border border-white/10 bg-black p-4 space-y-3"
               >
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] uppercase tracking-[0.2em] text-white/60">Customize Bar</p>

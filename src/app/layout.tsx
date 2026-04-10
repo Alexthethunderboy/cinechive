@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Sidebar, BottomNav } from "@/components/layout/Navigation";
+import { Sidebar, BottomNav, NotificationCenterProvider } from "@/components/layout/Navigation";
 import MeshGradient from "@/components/ui/MeshGradient";
 import QueryProvider from "@/components/providers/QueryProvider";
 import { AuthProvider } from "@/components/providers/AuthProvider";
@@ -52,19 +52,21 @@ export default function RootLayout({
       <body className="antialiased selection:bg-vibe-violet/30 selection:text-white h-dvh min-h-dvh overflow-hidden">
         <QueryProvider>
           <AuthProvider>
-            <div className="flex h-full">
-              <Sidebar />
+            <NotificationCenterProvider>
+              <div className="flex h-full">
+                <Sidebar />
 
-              <main className="flex-1 overflow-y-auto overflow-x-hidden relative pb-28 md:pb-0">
-                <MeshGradient />
-                
-                <div className="relative z-10 w-full">
-                  {children}
-                </div>
-              </main>
+                <main className="flex-1 overflow-y-auto overflow-x-hidden relative pb-28 md:pb-0">
+                  <MeshGradient />
+                  
+                  <div className="relative z-10 w-full">
+                    {children}
+                  </div>
+                </main>
 
-              <BottomNav />
-            </div>
+                <BottomNav />
+              </div>
+            </NotificationCenterProvider>
             <Toaster 
               position="top-center" 
               toastOptions={{

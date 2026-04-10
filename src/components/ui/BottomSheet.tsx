@@ -57,7 +57,7 @@ export default function BottomSheet({ isOpen, onClose, title, children, classNam
               }
             }}
             className={cn(
-              "fixed bottom-0 left-0 right-0 z-101 bg-black/95 glass border-t border-white/10 rounded-t-[32px] max-h-[90vh] overflow-hidden flex flex-col pb-safe shadow-2xl",
+              "fixed bottom-0 left-0 right-0 z-101 bg-black glass border-t border-white/10 rounded-t-[32px] max-h-[90vh] overflow-hidden flex flex-col pb-safe shadow-2xl",
               className
             )}
           >

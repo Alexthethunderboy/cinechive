@@ -296,6 +296,11 @@ export default function ClientCommunity({
               ))}
           </div>
         </div>
+        {/* Composer: Always visible */}
+        <div className="mb-6 sm:mb-10">
+          <CommunityComposer user={user} profile={profile} onPublished={handleComposerPublish} />
+        </div>
+
         <AnimatePresence mode="wait">
           {hasFetchError ? (
             <motion.div
@@ -354,7 +359,6 @@ export default function ClientCommunity({
               transition={{ duration: 0.2 }}
               className="space-y-6 md:space-y-8"
             >
-              <CommunityComposer user={user} profile={profile} onPublished={handleComposerPublish} />
             {feed.map((post, index) => (
               <FeedPost
                 key={`${activeLane}-${post.id}`}
@@ -385,7 +389,7 @@ export default function ClientCommunity({
                 No activity yet
               </p>
               <p className="font-metadata text-[10px] text-white/30 tracking-widest">
-                Use the composer to publish the first post.
+                Be the first to share your thoughts!
               </p>
             </motion.div>
           )}
@@ -656,7 +660,7 @@ function FeedPost({
                         initial={{ opacity: 0, scale: 0.95, y: -10 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                        className="absolute right-0 top-full mt-2 w-40 bg-black/95 backdrop-blur-3xl border border-white/10 rounded-2xl p-1.5 z-50 shadow-2xl"
+                        className="absolute right-0 top-full mt-2 w-40 bg-black backdrop-blur-3xl border border-white/10 rounded-2xl p-1.5 z-50 shadow-2xl"
                       >
                         {canEdit && (
                           <button

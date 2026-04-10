@@ -13,9 +13,10 @@ import { useRouter } from 'next/navigation';
 interface EverythingBarProps {
   onLocalSearch?: (query: string) => void;
   isSidebar?: boolean;
+  onResultClick?: () => void;
 }
 
-export default function EverythingBar({ onLocalSearch, isSidebar = false }: EverythingBarProps = {}) {
+export default function EverythingBar({ onLocalSearch, isSidebar = false, onResultClick }: EverythingBarProps = {}) {
   const [query, setQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -90,7 +91,7 @@ export default function EverythingBar({ onLocalSearch, isSidebar = false }: Ever
       <div className="flex flex-col gap-2">
         <GlassPanel 
           className={cn(
-            "flex items-center transition-all duration-500 border-white/10 bg-black/55",
+            "flex items-center transition-all duration-500 border-white/10 bg-black",
             isSidebar
               ? "w-full h-12 px-3 rounded-2xl overflow-hidden"
               : "w-full min-h-16 px-4 sm:px-8 py-4 sm:py-5 rounded-3xl"
@@ -167,7 +168,8 @@ export default function EverythingBar({ onLocalSearch, isSidebar = false }: Ever
               <OracleResults 
                 results={results || { movies: [], tv: [], people: [] }} 
                 isLoading={isLoading} 
-                isVisible={true} 
+                isVisible={true}
+                onResultClick={onResultClick}
               />
             </motion.div>
           )}
@@ -187,7 +189,7 @@ export default function EverythingBar({ onLocalSearch, isSidebar = false }: Ever
                   : "top-full left-0 right-0 mt-4"
               )}
             >
-              <GlassPanel className="p-4 bg-black/90 border-white/10">
+              <GlassPanel className="p-4 bg-black border-white/10">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-[10px] uppercase tracking-widest text-white/45">Recent searches</span>
                   <button

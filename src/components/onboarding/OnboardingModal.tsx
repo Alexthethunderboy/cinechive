@@ -196,7 +196,7 @@ export default function OnboardingModal({ onComplete, onSkip }: OnboardingModalP
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: -16 }}
           transition={{ type: 'spring', stiffness: 260, damping: 28 }}
-          className="relative z-10 w-full max-w-4xl max-h-[90vh] flex flex-col bg-black/60 border border-white/10 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-xl"
+          className="relative z-10 w-full max-w-4xl max-h-[90vh] flex flex-col bg-black border border-white/10 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-xl"
           role="dialog"
           aria-modal="true"
           aria-labelledby="onboarding-title"

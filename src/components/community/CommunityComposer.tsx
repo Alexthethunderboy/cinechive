@@ -278,7 +278,7 @@ export default function CommunityComposer({ user, profile, onPublished }: Commun
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
-                      className="absolute bottom-full left-0 right-auto mb-3 bg-black/95 backdrop-blur-3xl border border-white/10 rounded-3xl w-[min(92vw,340px)] shadow-[0_15px_50px_rgba(0,0,0,0.7)] z-50 overflow-hidden"
+                      className="absolute bottom-full left-1/2 -translate-x-1/2 sm:left-0 sm:right-auto sm:translate-x-0 mb-3 bg-black backdrop-blur-3xl border border-white/10 rounded-3xl w-[min(92vw,340px)] shadow-[0_15px_50px_rgba(0,0,0,0.7)] z-50 overflow-hidden"
                     >
                           <div className="p-3 border-b border-white/10 bg-white/5 flex items-center gap-3 relative overflow-hidden">
                             <div className="absolute inset-0 bg-linear-to-r from-accent/5 to-vibe-teal/5" />

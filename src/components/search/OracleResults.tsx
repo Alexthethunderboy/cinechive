@@ -17,13 +17,14 @@ interface OracleResultsProps {
   };
   isLoading: boolean;
   isVisible: boolean;
+  onResultClick?: () => void;
 }
 
 /** Convert UnifiedMedia → FeedEntity shape expected by DiscoveryCard */
 
-function CompactMediaRow({ item }: { item: UnifiedMedia }) {
+function CompactMediaRow({ item, onResultClick }: { item: UnifiedMedia; onResultClick?: () => void }) {
   return (
-    <Link href={buildMediaHref(item)} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors">
+    <Link href={buildMediaHref(item)} onClick={onResultClick} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors">
       <div className="relative w-12 h-16 rounded-md overflow-hidden bg-white/5 border border-white/10 shrink-0">
         {item.posterUrl ? (
           <Image src={item.posterUrl} alt={item.displayTitle} fill className="object-cover" />
@@ -39,19 +40,19 @@ function CompactMediaRow({ item }: { item: UnifiedMedia }) {
   );
 }
 
-export default function OracleResults({ results }: OracleResultsProps) {
+export default function OracleResults({ results, onResultClick }: OracleResultsProps) {
   const hasResults = results.movies.length > 0 || results.tv.length > 0 || results.people.length > 0;
 
   if (!hasResults) {
     return (
-      <GlassPanel className="p-12 text-center border-white/10 bg-black/80 backdrop-blur-2xl">
+      <GlassPanel className="p-12 text-center border-white/10 bg-black backdrop-blur-2xl">
         <p className="text-muted font-heading text-lg italic">No cinematic works found in the library.</p>
       </GlassPanel>
     );
   }
 
   return (
-    <GlassPanel className="p-6 border-white/10 bg-black/90 backdrop-blur-3xl shadow-2xl max-h-[80vh] overflow-y-auto custom-scrollbar">
+    <GlassPanel className="p-6 border-white/10 bg-black backdrop-blur-3xl shadow-2xl max-h-[80vh] overflow-y-auto custom-scrollbar">
       <div className="space-y-10">
         {/* People Section */}
         {results.people.length > 0 && (
@@ -60,7 +61,7 @@ export default function OracleResults({ results }: OracleResultsProps) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
               {results.people.map((person, idx) => (
                 <motion.div key={person.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}>
-                  <PersonResultCard person={person} variant="compact" />
+                  <PersonResultCard person={person} variant="compact" onResultClick={onResultClick} />
                 </motion.div>
               ))}
             </div>
@@ -74,7 +75,7 @@ export default function OracleResults({ results }: OracleResultsProps) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
               {results.movies.map((movie, idx) => (
                 <motion.div key={movie.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}>
-                  <CompactMediaRow item={movie} />
+                  <CompactMediaRow item={movie} onResultClick={onResultClick} />
                 </motion.div>
               ))}
             </div>
@@ -88,7 +89,7 @@ export default function OracleResults({ results }: OracleResultsProps) {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
               {results.tv.map((show, idx) => (
                 <motion.div key={show.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}>
-                  <CompactMediaRow item={show} />
+                  <CompactMediaRow item={show} onResultClick={onResultClick} />
                 </motion.div>
               ))}
             </div>

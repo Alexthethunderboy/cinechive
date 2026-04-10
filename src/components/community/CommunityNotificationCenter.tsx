@@ -38,12 +38,12 @@ export function CommunityNotificationCenter({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 10, scale: 0.95 }}
       className={cn(
-        "absolute w-[92vw] sm:w-[22rem] md:w-96 max-h-[80vh] md:max-h-[600px] glass border border-white/10 rounded-2xl shadow-2xl z-60 overflow-hidden flex flex-col",
+        "absolute w-[92vw] sm:w-[22rem] md:w-96 max-h-[80vh] md:max-h-[600px] glass bg-black border border-white/10 rounded-2xl shadow-2xl z-60 overflow-hidden flex flex-col",
         positionClasses
       )}
     >
       {/* Header & Tabs */}
-      <div className="bg-white/5 border-b border-white/5">
+      <div className="bg-black border-b border-white/5">
         <div className="p-4 flex items-center justify-between">
           <h3 className="font-heading text-xs tracking-[0.2em] uppercase flex items-center gap-2 text-white/40">
             <Bell size={12} />
@@ -134,7 +134,7 @@ export function CommunityNotificationCenter({
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-white/5 bg-white/2 text-center">
+      <div className="p-4 border-t border-white/5 bg-black text-center">
         <Link 
           href="/activity" 
           onClick={onClose}

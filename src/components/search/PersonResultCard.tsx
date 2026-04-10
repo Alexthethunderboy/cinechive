@@ -12,12 +12,13 @@ interface PersonResultCardProps {
     knownFor?: string | null;
   };
   variant?: 'compact' | 'full';
+  onResultClick?: () => void;
 }
 
-export default function PersonResultCard({ person, variant = 'full' }: PersonResultCardProps) {
+export default function PersonResultCard({ person, variant = 'full', onResultClick }: PersonResultCardProps) {
   if (variant === 'compact') {
     return (
-      <Link href={`/media/person/${person.id}`} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors">
+      <Link href={`/media/person/${person.id}`} onClick={onResultClick} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors">
         <div className="relative w-10 h-10 rounded-full overflow-hidden border border-white/10 bg-white/5 shrink-0">
           {person.profileUrl ? (
             <Image src={person.profileUrl} alt={person.name} fill className="object-cover" />
@@ -36,7 +37,7 @@ export default function PersonResultCard({ person, variant = 'full' }: PersonRes
   }
 
   return (
-    <Link href={`/media/person/${person.id}`} className="group block">
+    <Link href={`/media/person/${person.id}`} onClick={onResultClick} className="group block">
       <div className="aspect-3/4 rounded-card overflow-hidden relative border border-white/10 group-hover:border-accent/40 transition-all bg-white/5">
         {person.profileUrl ? (
           <Image
