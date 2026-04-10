@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Star, MessageSquare } from 'lucide-react';
-import { getMediaSocialStatsAction } from '@/lib/media-social-actions';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Star } from 'lucide-react';
+import { getMediaCommunityRatingAction } from '@/lib/media-social-actions';
+import { motion } from 'framer-motion';
 
 interface CommunityRatingProps {
   mediaId: string;
@@ -12,14 +12,29 @@ interface CommunityRatingProps {
 
 export default function CommunityRating({ mediaId, mediaType }: CommunityRatingProps) {
   const [stats, setStats] = useState<{ average: number, count: number } | null>(null);
+  const [isError, setIsError] = useState(false);
 
   useEffect(() => {
     async function loadStats() {
-      const data = await getMediaSocialStatsAction(mediaId, mediaType);
-      setStats(data);
+      try {
+        setIsError(false);
+        const data = await getMediaCommunityRatingAction(mediaId, mediaType);
+        setStats(data);
+      } catch (error) {
+        setIsError(true);
+        console.error('[CommunityRating] load failed', { mediaId, mediaType, error });
+      }
     }
     loadStats();
   }, [mediaId, mediaType]);
+
+  if (isError) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="font-metadata text-[10px] uppercase tracking-widest text-white/35">Community score unavailable</span>
+      </div>
+    );
+  }
 
   if (!stats || stats.count === 0) return null;
 

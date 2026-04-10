@@ -3,6 +3,7 @@ import ClientCommunity from '@/components/community/ClientCommunity';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { Metadata } from 'next';
+import { getSuggestedUsersAction } from '@/lib/social-actions';
 
 export const metadata: Metadata = {
   title: 'Community | CineChive',
@@ -18,10 +19,11 @@ export default async function CommunityPage() {
   }
 
   // Fetch feeds and profile in parallel
-  const [globalResult, followingResult, profileRes] = await Promise.all([
+  const [globalResult, followingResult, profileRes, suggestedPeople] = await Promise.all([
     getCommunityFeed(false),
     getCommunityFeed(true),
-    supabase.from('profiles').select('*').eq('id', user.id).single()
+    supabase.from('profiles').select('*').eq('id', user.id).single(),
+    getSuggestedUsersAction(),
   ]);
 
   return (
@@ -29,6 +31,9 @@ export default async function CommunityPage() {
       initialFeed={globalResult.feed}
       initialFollowingFeed={followingResult.feed}
       preferredStyles={globalResult.preferredStyles}
+      initialGlobalFeedError={globalResult.hadError}
+      initialFollowingFeedError={followingResult.hadError}
+      suggestedPeople={suggestedPeople}
       userId={user.id}
       user={user}
       profile={profileRes.data}

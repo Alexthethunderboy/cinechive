@@ -65,14 +65,14 @@ export class SearchService {
   /**
    * Fetches full entity graph for a movie/tv show
    */
-  static async getDeepEntityDetails(id: string, type: 'movie' | 'tv'): Promise<{ media: UniversalMedia, raw: any }> {
+  static async getDeepEntityDetails(id: string, type: 'movie' | 'tv', region: string = 'US'): Promise<{ media: UniversalMedia, raw: any }> {
     const numericId = parseInt(id.replace(/^[a-z]+-/, ''));
     const mediaDetails = type === 'movie' 
       ? await getMovieDetails(numericId)
       : await getTvDetails(numericId);
 
     return {
-      media: UniversalTransformer.fromTMDB(mediaDetails, type),
+      media: UniversalTransformer.fromTMDB(mediaDetails, type, region),
       raw: mediaDetails
     };
   }

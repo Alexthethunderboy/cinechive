@@ -41,7 +41,7 @@ export default function DeepDiveSection({ tmdbId, type, title, posterUrl, data }
         </div>
         <div className="flex items-center gap-4 text-muted/40 font-data text-[10px] uppercase tracking-widest">
           <Database size={14} />
-          <span>Verified Production Data</span>
+          <span>Source-Derived Production Data</span>
         </div>
       </div>
 
@@ -71,23 +71,6 @@ export default function DeepDiveSection({ tmdbId, type, title, posterUrl, data }
               </div>
             </div>
 
-            <div className="p-6 rounded-card border border-white/5 bg-surface/20">
-              <span className="font-data text-[9px] uppercase tracking-widest text-muted block mb-4">Film Details</span>
-              <div className="space-y-3">
-                 <div className="flex justify-between items-center text-xs">
-                    <span className="text-muted/60">Edition</span>
-                    <span className="font-heading text-white/40">Collector's Edition</span>
-                 </div>
-                 <div className="flex justify-between items-center text-xs">
-                    <span className="text-muted/60">Integrity</span>
-                    <span className="font-heading text-accent/60">Verified</span>
-                 </div>
-                 <div className="flex justify-between items-center text-xs">
-                    <span className="text-muted/60">Deep Linked</span>
-                    <span className="font-heading text-white/40">Yes</span>
-                 </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>

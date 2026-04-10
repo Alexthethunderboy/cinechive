@@ -34,7 +34,7 @@ export default async function Home() {
       retries--;
     }
     
-    fullUser = { ...user, profile };
+    fullUser = { ...user, profile, profileBootstrapPending: !profile };
   }
 
   return <ClientHome user={fullUser} />;

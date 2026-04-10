@@ -6,6 +6,7 @@ import { getTrending, searchMedia, enrichWithDirector, getMovieDetails } from '.
 import { ClassificationName, CLASSIFICATION_COLORS } from './design-tokens';
 import { mapTMDBToUnified, UnifiedMedia, DetailedMedia } from './api/mapping';
 import { MediaFetcher } from './api/MediaFetcher';
+import { toCanonicalMediaId } from './media-identity';
 
 /**
  * Unified Search Server Action
@@ -110,7 +111,6 @@ export async function archiveMediaAction(data: {
     // Non-blocking error: the library entry is saved anyway.
   }
 
-  revalidatePath('/community');
   revalidatePath('/vault');
   revalidatePath('/activity');
   revalidatePath(`/media/${data.mediaType}/${data.mediaId}`);
@@ -198,9 +198,32 @@ export async function getIsInVaultAction(mediaId: string) {
     .select('is_vault')
     .eq('user_id', user.id)
     .eq('external_id', mediaId)
+    .eq('is_vault', true)
     .maybeSingle() as any);
 
   return !!data?.is_vault;
+}
+
+export async function getSavedVaultMediaKeysAction(): Promise<string[]> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await (supabase
+    .from('media_entries')
+    .select('media_type, external_id')
+    .eq('user_id', user.id)
+    .eq('is_vault', true) as any);
+
+  if (error || !data) return [];
+  const keys = new Set<string>();
+  for (const row of data) {
+    const rawId = String(row.external_id || '');
+    const canonicalId = toCanonicalMediaId({ id: rawId, type: row.media_type });
+    keys.add(`${row.media_type}:${rawId}`);
+    keys.add(`${row.media_type}:${canonicalId}`);
+  }
+  return Array.from(keys);
 }
 
 /**
@@ -212,6 +235,7 @@ export async function getCommunityFeed(friendsOnly = false) {
   const { data: { user } } = await supabase.auth.getUser();
 
   let followingIds: string[] = [];
+  let followerIds: string[] = [];
 
   if (friendsOnly && user) {
     const { data: follows } = await (supabase
@@ -223,13 +247,29 @@ export async function getCommunityFeed(friendsOnly = false) {
 
     // If user follows nobody, return empty rather than falling back to global
     if (followingIds.length === 0) {
-      return { feed: [], preferredStyles: [], isEmpty: true };
+      return { feed: [], preferredStyles: [], isEmpty: true, hadError: false };
     }
+  }
+
+  if (user && !friendsOnly) {
+    const [followingRes, followersRes] = await Promise.all([
+      (supabase
+        .from('follows') as any)
+        .select('following_id')
+        .eq('follower_id', user.id),
+      (supabase
+        .from('follows') as any)
+        .select('follower_id')
+        .eq('following_id', user.id),
+    ]);
+    followingIds = (followingRes.data ?? []).map((f: any) => f.following_id);
+    followerIds = (followersRes.data ?? []).map((f: any) => f.follower_id);
   }
 
   let query = (supabase
     .from('feed_activity') as any)
     .select('*')
+    .eq('activity_type', 'dispatch')
     .order('created_at', { ascending: false })
     .limit(40);
 
@@ -241,14 +281,14 @@ export async function getCommunityFeed(friendsOnly = false) {
 
   if (error) {
     console.error("Community fetch failed:", error.message || error);
-    return { feed: [], preferredStyles: [], isEmpty: false };
+    return { feed: [], preferredStyles: [], isEmpty: false, hadError: true };
   }
 
   const rawFeed = data as any[];
   const activityIds = rawFeed.map(p => p.id);
 
-  // Fetch reactions and comments in bulk
-  const [reactionsRes, userReactionsRes, commentsRes] = await Promise.all([
+  // Fetch reactions, comments, and reposts in bulk
+  const [reactionsRes, userReactionsRes, commentsRes, repostsRes, userRepostsRes] = await Promise.all([
     (supabase
       .from('reactions') as any)
       .select('activity_id')
@@ -262,7 +302,16 @@ export async function getCommunityFeed(friendsOnly = false) {
       .from('comments') as any)
       .select('id, activity_id, body, created_at, profiles:user_id (username)')
       .in('activity_id', activityIds)
-      .order('created_at', { ascending: false })
+      .order('created_at', { ascending: false }),
+    (supabase
+      .from('activity_reposts') as any)
+      .select('activity_id, user_id')
+      .in('activity_id', activityIds),
+    user ? (supabase
+      .from('activity_reposts') as any)
+      .select('activity_id')
+      .eq('user_id', user.id)
+      .in('activity_id', activityIds) : Promise.resolve({ data: [] }),
   ]);
 
   const reactionCounts: Record<string, number> = {};
@@ -294,13 +343,34 @@ export async function getCommunityFeed(friendsOnly = false) {
     commentsByActivity[actId].reverse();
   }
 
+  const repostCounts: Record<string, number> = {};
+  const repostedByFollowingCounts: Record<string, number> = {};
+  const repostPreviewUsernames: Record<string, string[]> = {};
+  const followingSet = new Set(followingIds);
+  const followerSet = new Set(followerIds);
+
+  (repostsRes.data || []).forEach((r: any) => {
+    repostCounts[r.activity_id] = (repostCounts[r.activity_id] || 0) + 1;
+    if (followingSet.has(r.user_id)) {
+      repostedByFollowingCounts[r.activity_id] = (repostedByFollowingCounts[r.activity_id] || 0) + 1;
+    }
+  });
+
+  const userReposts = new Set((userRepostsRes.data || []).map((r: any) => r.activity_id));
+
   // Map social data to feed
   const feedWithSocial = rawFeed.map(post => ({
     ...post,
     reaction_count: reactionCounts[post.id] || 0,
     has_reacted: userReactions.has(post.id),
     comment_count: commentCounts[post.id] || 0,
-    recent_comments: commentsByActivity[post.id] || []
+    recent_comments: commentsByActivity[post.id] || [],
+    repost_count: repostCounts[post.id] || 0,
+    reposted_by_following_count: repostedByFollowingCounts[post.id] || 0,
+    has_reposted: userReposts.has(post.id),
+    reposted_by_usernames: repostPreviewUsernames[post.id] || [],
+    follows_you: followerSet.has(post.user_id),
+    is_mutual: followerSet.has(post.user_id) && followingSet.has(post.user_id),
   }));
 
   let preferredStyles: string[] = [];
@@ -311,7 +381,7 @@ export async function getCommunityFeed(friendsOnly = false) {
       .from('user_onboarding_tastes') as any)
       .select('value')
       .eq('user_id', user.id)
-      .eq('category', 'style');
+      .in('category', ['style', 'genre']);
 
     if (tastes && tastes.length > 0) {
       preferredStyles = tastes.map((t: any) => t.value);
@@ -326,7 +396,7 @@ export async function getCommunityFeed(friendsOnly = false) {
     }
   }
 
-  return { feed: feedWithSocial, preferredStyles, isEmpty: false };
+  return { feed: feedWithSocial, preferredStyles, isEmpty: false, hadError: false };
 }
 
 /**
@@ -369,45 +439,58 @@ export async function getVaultEntries() {
  */
 export async function reArchiveMediaAction(data: {
   originalEntryId: string;
-  type?: 'entry' | 'dispatch';
+  type?: 'entry' | 'dispatch' | 'screening';
   comment?: string;
   classification?: ClassificationName;
 }) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Authentication required.");
+  const activityType = data.type || 'entry';
 
-  let moodTagId: number | null = null;
-  if (data.classification) {
-    const { data: mood } = await (supabase
-      .from('mood_tags')
-      .select('id')
-      .eq('label', data.classification)
-      .single() as any);
-    moodTagId = mood?.id || null;
-  }
+  const { data: existing } = await (supabase
+    .from('activity_reposts') as any)
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('activity_id', data.originalEntryId)
+    .maybeSingle();
 
-  const payload: any = {
-    user_id: user.id,
-    mood_tag_id: moodTagId,
-    comment: data.comment || null,
-  };
-
-  if (data.type === 'dispatch') {
-    payload.original_dispatch_id = data.originalEntryId;
+  let reposted = false;
+  if (existing) {
+    const { error } = await (supabase
+      .from('activity_reposts') as any)
+      .delete()
+      .eq('id', existing.id);
+    if (error) throw new Error(error.message);
+    reposted = false;
   } else {
-    payload.original_entry_id = data.originalEntryId;
+    const { error } = await (supabase.from('activity_reposts') as any).insert({
+      user_id: user.id,
+      activity_id: data.originalEntryId,
+      activity_type: activityType,
+    });
+    if (error && error.code !== '23505') {
+      throw new Error(error.message);
+    }
+    reposted = true;
   }
 
-  const { error } = await (supabase.from('re_archives') as any).insert(payload);
-
-  if (error) {
-    console.error("Re-archive failed:", error);
-    throw new Error(error.message);
-  }
+  const [{ count: repostCount }, { data: follows }, { data: repostRows }] = await Promise.all([
+    (supabase.from('activity_reposts') as any)
+      .select('id', { count: 'exact', head: true })
+      .eq('activity_id', data.originalEntryId),
+    (supabase.from('follows') as any)
+      .select('following_id')
+      .eq('follower_id', user.id),
+    (supabase.from('activity_reposts') as any)
+      .select('user_id')
+      .eq('activity_id', data.originalEntryId),
+  ]);
+  const followingSet = new Set((follows || []).map((f: any) => f.following_id));
+  const repostedByFollowingCount = (repostRows || []).reduce((acc: number, row: any) => acc + (followingSet.has(row.user_id) ? 1 : 0), 0);
 
   revalidatePath('/community');
-  return { success: true };
+  return { success: true, reposted, repostCount: repostCount ?? 0, repostedByFollowingCount };
 }
 
 /**
@@ -456,7 +539,7 @@ export async function getCurrentUser() {
 
   const { data: profile } = await (supabase
     .from('profiles')
-    .select('id, username, display_name, avatar_url, bio, onboarding_completed, created_at')
+    .select('id, username, display_name, avatar_url, avatar_seed, avatar_mode, avatar_character, avatar_animation, bio, onboarding_completed, created_at')
     .eq('id', user.id)
     .single() as any);
 
@@ -767,7 +850,10 @@ export async function getUserCollectionsAction() {
   if (!user) return [];
 
   const { data, error } = await (supabase.from('collections') as any)
-    .select(`*`)
+    .select(`
+      *,
+      collection_items(count)
+    `)
     .eq('user_id', user.id)
     .order('created_at', { ascending: false });
 
@@ -776,7 +862,10 @@ export async function getUserCollectionsAction() {
     return [];
   }
 
-  return data;
+  return (data || []).map((collection: any) => ({
+    ...collection,
+    item_count: collection.collection_items?.[0]?.count ?? 0,
+  }));
 }
 
 export async function getCollectionDetailsAction(collectionId: string) {
@@ -808,21 +897,22 @@ export async function getCollectionDetailsAction(collectionId: string) {
 }
 
 export async function getSharedCollectionAction(shareToken: string) {
-  const supabase = await createClient();
-  
-  const { data: collection, error } = await (supabase.from('collections') as any)
-    .select(`
-      *,
-      collection_items (*),
-      profiles (username, avatar_url)
-    `)
-    .eq('share_token', shareToken)
-    .single();
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(shareToken)) {
+    return null;
+  }
 
-  if (error || !collection) {
+  const supabase = await createClient();
+
+  const { data: payload, error } = await (supabase as any).rpc('get_shared_collection', {
+    p_share_token: shareToken
+  });
+
+  if (error || !payload) {
     console.error("Failed to fetch shared collection:", error);
     return null;
   }
 
-  return collection;
+  return payload;
 }

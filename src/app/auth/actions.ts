@@ -26,7 +26,16 @@ function formatAuthError(error: { message: string }, username: string, email: st
     .replace(/email/gi, 'Username');
 }
 
+function getSafeReturnPath(raw: FormDataEntryValue | null): string {
+  const value = typeof raw === 'string' ? raw : '';
+  if (!value.startsWith('/')) return '/';
+  if (value.startsWith('//')) return '/';
+  if (value.startsWith('/login') || value.startsWith('/signup') || value.startsWith('/auth')) return '/';
+  return value;
+}
+
 export async function signUp(formData: FormData) {
+  const returnTo = getSafeReturnPath(formData.get('returnTo'));
   const supabase = await createClient();
   const username = (formData.get('username') as string)?.trim();
   const password = formData.get('password') as string;
@@ -63,10 +72,11 @@ export async function signUp(formData: FormData) {
   // Profile row is created automatically by the DB trigger (on_auth_user_created).
   // No manual insert needed here — that caused a duplicate key violation.
 
-  redirect('/');
+  redirect(returnTo);
 }
 
 export async function login(formData: FormData) {
+  const returnTo = getSafeReturnPath(formData.get('returnTo'));
   const supabase = await createClient();
   const username = (formData.get('username') as string)?.trim();
   const password = formData.get('password') as string;
@@ -99,7 +109,7 @@ export async function login(formData: FormData) {
     return { error: formatAuthError(authRes.error, username, email) };
   }
 
-  redirect('/');
+  redirect(returnTo);
 }
 
 export async function signOut() {

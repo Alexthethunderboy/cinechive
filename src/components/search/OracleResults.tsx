@@ -1,11 +1,13 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Film, User } from 'lucide-react';
+import { Film, Tv } from 'lucide-react';
 import GlassPanel from '@/components/ui/GlassPanel';
-import { DiscoveryCard } from '@/components/cinema/DiscoveryCard';
 import { UnifiedMedia } from '@/lib/api/mapping';
 import Link from 'next/link';
+import Image from 'next/image';
+import { buildMediaHref } from '@/lib/media-identity';
+import PersonResultCard from './PersonResultCard';
 
 interface OracleResultsProps {
   results: {
@@ -18,6 +20,24 @@ interface OracleResultsProps {
 }
 
 /** Convert UnifiedMedia → FeedEntity shape expected by DiscoveryCard */
+
+function CompactMediaRow({ item }: { item: UnifiedMedia }) {
+  return (
+    <Link href={buildMediaHref(item)} className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors">
+      <div className="relative w-12 h-16 rounded-md overflow-hidden bg-white/5 border border-white/10 shrink-0">
+        {item.posterUrl ? (
+          <Image src={item.posterUrl} alt={item.displayTitle} fill className="object-cover" />
+        ) : null}
+      </div>
+      <div className="min-w-0">
+        <p className="font-heading text-sm truncate">{item.displayTitle}</p>
+        <p className="text-[10px] text-white/40 uppercase tracking-widest truncate">
+          {item.type} {item.releaseYear ? `• ${item.releaseYear}` : ''}
+        </p>
+      </div>
+    </Link>
+  );
+}
 
 export default function OracleResults({ results }: OracleResultsProps) {
   const hasResults = results.movies.length > 0 || results.tv.length > 0 || results.people.length > 0;
@@ -36,31 +56,12 @@ export default function OracleResults({ results }: OracleResultsProps) {
         {/* People Section */}
         {results.people.length > 0 && (
           <section>
-            <Header icon={<User size={18} />} title="CAST & CREW" count={results.people.length} />
-            <div className="flex gap-4 overflow-x-auto pb-4 pt-2 custom-scrollbar">
+            <Header icon={<Film size={18} />} title="CAST & CREW" count={results.people.length} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
               {results.people.map((person, idx) => (
-                <Link key={person.id} href={`/media/person/${person.id}`}>
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    className="shrink-0 group cursor-pointer"
-                  >
-                    <div className="w-24 text-center">
-                      <div className="w-20 h-20 mx-auto rounded-full overflow-hidden border-2 border-white/5 group-hover:border-accent transition-colors mb-2">
-                        {person.profileUrl ? (
-                          <img src={person.profileUrl} alt={person.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full bg-white/5 flex items-center justify-center">
-                            <User className="text-muted/30" />
-                          </div>
-                        )}
-                      </div>
-                      <p className="font-heading text-xs truncate group-hover:text-white/60 transition-colors">{person.name}</p>
-                      <p className="text-[10px] text-muted uppercase tracking-widest mt-1 opacity-50">{person.knownFor}</p>
-                    </div>
-                  </motion.div>
-                </Link>
+                <motion.div key={person.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}>
+                  <PersonResultCard person={person} variant="compact" />
+                </motion.div>
               ))}
             </div>
           </section>
@@ -70,15 +71,10 @@ export default function OracleResults({ results }: OracleResultsProps) {
         {results.movies.length > 0 && (
           <section>
             <Header icon={<Film size={18} />} title="CINEMA" count={results.movies.length} />
-            <div className="grid grid-cols-2 gap-6 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
               {results.movies.map((movie, idx) => (
-                <motion.div
-                  key={movie.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.06 }}
-                >
-                  <DiscoveryCard media={movie} index={idx} />
+                <motion.div key={movie.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}>
+                  <CompactMediaRow item={movie} />
                 </motion.div>
               ))}
             </div>
@@ -88,16 +84,11 @@ export default function OracleResults({ results }: OracleResultsProps) {
         {/* TV Shows */}
         {results.tv.length > 0 && (
           <section>
-            <Header icon={<Film size={18} className="text-vibe-cyan" />} title="TELEVISION" count={results.tv.length} />
-            <div className="grid grid-cols-2 gap-6 pt-2">
+            <Header icon={<Tv size={18} className="text-vibe-cyan" />} title="TELEVISION" count={results.tv.length} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
               {results.tv.map((show, idx) => (
-                <motion.div
-                  key={show.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: idx * 0.06 }}
-                >
-                  <DiscoveryCard media={show} index={idx} />
+                <motion.div key={show.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.03 }}>
+                  <CompactMediaRow item={show} />
                 </motion.div>
               ))}
             </div>

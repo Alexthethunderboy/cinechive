@@ -6,7 +6,7 @@ export interface ScriptInfo {
 
 export class ScriptService {
   /**
-   * Predicts script locations based on movie title and external IDs
+   * Returns best-effort script URL candidates by title.
    */
   static async findScript(title?: string, imdbId?: string): Promise<ScriptInfo[]> {
     if (!title) return [];
@@ -36,15 +36,5 @@ export class ScriptService {
     // Note: In a production server-side action, we could perform HEAD requests 
     // to confirm which one exists. For now, we return the predictions.
     return candidates;
-  }
-
-  /**
-   * Generates a request for a script that isn't found
-   */
-  static async requestScript(tmdbId: string, title: string) {
-    // This would typically log to a DB/Table for admin review
-    console.log(`Script requested for ${title} (${tmdbId})`);
-    // Placeholder for actual DB insert
-    return { success: true };
   }
 }

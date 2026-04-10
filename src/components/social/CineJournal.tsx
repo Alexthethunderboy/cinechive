@@ -58,6 +58,14 @@ export default function CineJournal({ userId, isOwnProfile }: CineJournalProps) 
           <History size={24} />
         </div>
         <p className="text-xs font-metadata text-white/20 uppercase tracking-[0.2em] italic">No screenings logged in the journal yet</p>
+        {isOwnProfile && (
+          <Link
+            href="/discover"
+            className="inline-flex px-4 py-2 rounded-full border border-white/10 text-[10px] tracking-widest text-white/60 hover:text-white hover:border-white/30 transition-colors"
+          >
+            Log your first screening
+          </Link>
+        )}
       </div>
     );
   }

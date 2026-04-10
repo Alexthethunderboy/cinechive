@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, ExternalLink, Mail, Loader2, Check } from 'lucide-react';
+import { FileText, ExternalLink } from 'lucide-react';
 import GlassPanel from '@/components/ui/GlassPanel';
-import { ScriptInfo, ScriptService } from '@/lib/services/ScriptService';
+import { ScriptInfo } from '@/lib/services/ScriptService';
 
 interface ScriptViewerProps {
   tmdbId: string;
@@ -12,27 +11,16 @@ interface ScriptViewerProps {
   scripts: ScriptInfo[];
 }
 
-export default function ScriptViewer({ tmdbId, title, scripts }: ScriptViewerProps) {
-  const [isRequesting, setIsRequesting] = useState(false);
-  const [requestStatus, setRequestStatus] = useState<'idle' | 'success'>('idle');
-
-  async function handleRequest() {
-    setIsRequesting(true);
-    await ScriptService.requestScript(tmdbId, title);
-    setIsRequesting(false);
-    setRequestStatus('success');
-    setTimeout(() => setRequestStatus('idle'), 3000);
-  }
-
+export default function ScriptViewer({ scripts }: ScriptViewerProps) {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h3 className="font-display text-3xl uppercase italic tracking-tighter flex items-center gap-3">
           <FileText className="text-accent" />
-          The Final Draft
+          Script References
         </h3>
         <span className="font-data text-[10px] text-muted uppercase tracking-[0.3em]">
-          Screenplay Library
+          Community Links
         </span>
       </div>
 
@@ -45,7 +33,7 @@ export default function ScriptViewer({ tmdbId, title, scripts }: ScriptViewerPro
           <div className="max-w-xl">
             <h4 className="font-heading text-xl text-white mb-2">Director's Script Vault</h4>
             <p className="text-muted text-sm leading-relaxed">
-              Explore the blueprint of the narrative. Study the structure, dialogue, and pacing as envisioned by the creators.
+              Explore possible screenplay sources. Links are best-effort suggestions and may not always contain a full script.
             </p>
           </div>
 
@@ -71,30 +59,12 @@ export default function ScriptViewer({ tmdbId, title, scripts }: ScriptViewerPro
               </a>
             ))}
 
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleRequest}
-              disabled={isRequesting || requestStatus === 'success'}
-              className="px-6 py-3 rounded-inner bg-accent/10 border border-accent/20 hover:bg-accent/20 transition-all flex items-center gap-3"
-            >
-              {isRequesting ? (
-                <Loader2 size={14} className="animate-spin text-accent" />
-              ) : requestStatus === 'success' ? (
-                <Check size={14} className="text-emerald-400" />
-              ) : (
-                <Mail size={14} className="text-accent" />
-              )}
-              <span className="font-data text-[10px] uppercase tracking-widest font-bold text-white">
-                {requestStatus === 'success' ? 'Request Sent' : 'Request Script'}
-              </span>
-            </motion.button>
           </div>
 
           <div className="pt-4 flex items-center gap-4 text-[10px] font-data text-muted/60 uppercase tracking-widest">
             <span className="flex items-center gap-1"><div className="w-1 h-1 rounded-full bg-accent" /> PDF FORMAT</span>
-            <span className="flex items-center gap-1"><div className="w-1 h-1 rounded-full bg-accent" /> STUDIO EDITION</span>
-            <span className="flex items-center gap-1"><div className="w-1 h-1 rounded-full bg-accent" /> ENTHUSIAST ONLY</span>
+            <span className="flex items-center gap-1"><div className="w-1 h-1 rounded-full bg-accent" /> COMMUNITY SOURCES</span>
+            <span className="flex items-center gap-1"><div className="w-1 h-1 rounded-full bg-accent" /> UNVERIFIED LINKS</span>
           </div>
         </div>
       </GlassPanel>

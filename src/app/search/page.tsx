@@ -8,8 +8,7 @@ import { motion } from 'framer-motion';
 import EverythingBar from '@/components/search/EverythingBar';
 import { DiscoveryCard } from '@/components/cinema/DiscoveryCard';
 import { Film, Tv, Users, Loader2, Search } from 'lucide-react';
-import Link from 'next/link';
-import Image from 'next/image';
+import PersonResultCard from '@/components/search/PersonResultCard';
 
 function SearchContent() {
   const searchParams = useSearchParams();
@@ -42,7 +41,7 @@ function SearchContent() {
           <Search size={48} className="text-white/5" />
           <div className="space-y-4">
             <h2 className="font-heading text-4xl md:text-5xl tracking-tighter italic uppercase text-white/40">No Results Found</h2>
-            <p className="font-metadata text-xs text-white/20 uppercase tracking-widest">We couldn't find any records for "{query}".</p>
+            <p className="font-metadata text-xs text-white/20 uppercase tracking-widest">We could not find any records for &quot;{query}&quot;.</p>
           </div>
         </div>
       ) : (
@@ -93,27 +92,7 @@ function SearchContent() {
                     transition={{ delay: i * 0.05 }}
                     className="group"
                   >
-                    <Link href={`/media/person/${person.id}`}>
-                      <div className="aspect-3/4 rounded-card overflow-hidden relative border border-white/10 group-hover:border-accent/40 transition-all bg-white/5">
-                        {person.profileUrl ? (
-                          <Image
-                            src={person.profileUrl}
-                            alt={person.name}
-                            fill
-                            className="object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-white/5">
-                            <Users size={32} />
-                          </div>
-                        )}
-                        <div className="absolute inset-0 bg-linear-to-t from-black/90 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <div className="absolute bottom-4 left-4 right-4 translate-y-2 group-hover:translate-y-0 transition-transform">
-                          <p className="font-heading text-sm text-white truncate">{person.name}</p>
-                          <p className="font-metadata text-[10px] text-white/40 uppercase truncate">{person.knownFor}</p>
-                        </div>
-                      </div>
-                    </Link>
+                    <PersonResultCard person={person} variant="full" />
                   </motion.div>
                 ))}
               </div>

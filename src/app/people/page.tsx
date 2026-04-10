@@ -1,4 +1,4 @@
-import { getSuggestedUsersAction } from '@/lib/social-actions';
+import { getSuggestedUsersAction, getFollowersAction, getFollowingAction } from '@/lib/social-actions';
 import ClientPeople from '@/components/social/ClientPeople';
 import { Metadata } from 'next';
 import { createClient } from '@/lib/supabase/server';
@@ -17,9 +17,17 @@ export default async function PeoplePage() {
     redirect('/login?returnTo=/people');
   }
 
-  const suggestions = await getSuggestedUsersAction();
+  const [suggestions, followers, following] = await Promise.all([
+    getSuggestedUsersAction(),
+    getFollowersAction(user.id),
+    getFollowingAction(user.id),
+  ]);
 
   return (
-    <ClientPeople initialSuggestions={suggestions} />
+    <ClientPeople
+      initialSuggestions={suggestions}
+      initialFollowers={followers}
+      initialFollowing={following}
+    />
   );
 }

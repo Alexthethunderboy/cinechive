@@ -8,9 +8,8 @@ import {
   Plus, 
   Search, 
   ChevronRight,
-  Loader2,
-  Trash2,
-  Share2
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import GlassPanel from '../ui/GlassPanel';
 import { DiscoveryCard } from '../cinema/DiscoveryCard';
@@ -18,6 +17,7 @@ import { UnifiedMedia } from '@/lib/api/mapping';
 import { cn } from '@/lib/utils';
 import NewCollectionModal from './NewCollectionModal';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface VaultClientProps {
   initialCollections: any[];
@@ -26,6 +26,7 @@ interface VaultClientProps {
 
 export default function VaultClient({ initialCollections, initialSavedMedia }: VaultClientProps) {
   const [activeTab, setActiveTab] = useState<'collections' | 'saved'>('collections');
+  const [savedView, setSavedView] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
 
@@ -39,20 +40,20 @@ export default function VaultClient({ initialCollections, initialSavedMedia }: V
   );
 
   return (
-    <div className="min-h-screen pt-24 pb-20 px-4 md:px-10 max-w-7xl mx-auto">
+    <div className="min-h-screen pt-24 pb-20 px-3 sm:px-4 md:px-10 max-w-7xl mx-auto">
       {/* Header */}
       <header className="mb-12">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 mb-8">
           <div>
             <h1 className="font-heading text-5xl md:text-7xl tracking-tighter text-white italic uppercase leading-none mb-2">
-              The Vault
+              Library
             </h1>
             <p className="text-white/40 font-metadata text-xs uppercase tracking-[0.3em]">
               Your Personal Cinematheque
             </p>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 w-full md:w-auto">
             <div className="relative group/search">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-hover/search:text-white/40 transition-colors" />
               <input 
@@ -60,13 +61,13 @@ export default function VaultClient({ initialCollections, initialSavedMedia }: V
                 placeholder="Search Archive..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="bg-white/5 border border-white/10 rounded-full py-2 pl-10 pr-4 text-xs font-metadata text-white placeholder:text-white/20 focus:outline-none focus:border-white/30 transition-all w-64"
+                className="bg-white/5 border border-white/10 rounded-full py-2 pl-10 pr-4 text-xs font-metadata text-white placeholder:text-white/20 focus:outline-none focus:border-white/30 transition-all w-full sm:w-64"
               />
             </div>
             
             <button 
               onClick={() => setIsNewModalOpen(true)}
-              className="flex items-center gap-2 bg-white text-black px-4 py-2 rounded-full font-metadata text-[10px] uppercase tracking-widest font-bold hover:bg-white/90 transition-all"
+              className="flex items-center justify-center gap-2 bg-white text-black px-4 py-2 rounded-full font-metadata text-[10px] uppercase tracking-widest font-bold hover:bg-white/90 transition-all whitespace-nowrap"
             >
               <Plus size={14} /> New Collection
             </button>
@@ -74,7 +75,7 @@ export default function VaultClient({ initialCollections, initialSavedMedia }: V
         </div>
 
         {/* Tabs */}
-        <div className="flex border-b border-white/5 gap-8">
+        <div className="flex border-b border-white/5 gap-6 overflow-x-auto scrollbar-hide">
           <button 
             onClick={() => setActiveTab('collections')}
             className={cn(
@@ -99,6 +100,22 @@ export default function VaultClient({ initialCollections, initialSavedMedia }: V
               <motion.div layoutId="tab-underline" className="absolute bottom-0 left-0 right-0 h-px bg-white" />
             )}
           </button>
+          {activeTab === 'saved' && (
+            <div className="ml-auto flex items-center gap-2 pb-3">
+              <button
+                onClick={() => setSavedView('grid')}
+                className={cn("p-2 rounded-inner transition-colors", savedView === 'grid' ? "bg-white/10 text-white" : "text-white/30 hover:text-white")}
+              >
+                <LayoutGrid size={16} />
+              </button>
+              <button
+                onClick={() => setSavedView('list')}
+                className={cn("p-2 rounded-inner transition-colors", savedView === 'list' ? "bg-white/10 text-white" : "text-white/30 hover:text-white")}
+              >
+                <List size={16} />
+              </button>
+            </div>
+          )}
         </div>
       </header>
 
@@ -126,11 +143,35 @@ export default function VaultClient({ initialCollections, initialSavedMedia }: V
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <div>
               {filteredSaved.length > 0 ? (
-                filteredSaved.map((media, idx) => (
-                  <DiscoveryCard key={media.id} media={media} index={idx} isAlreadySaved={true} />
-                ))
+                savedView === 'grid' ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    {filteredSaved.map((media, idx) => (
+                      <DiscoveryCard key={media.id} media={media} index={idx} />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredSaved.map((media) => (
+                      <Link key={media.id} href={`/media/${media.type}/${media.sourceId}`}>
+                        <GlassPanel className="p-3 bg-white/3 border-white/10 hover:border-white/20 transition-all">
+                          <div className="flex items-center gap-3">
+                            <div className="relative w-10 h-14 rounded overflow-hidden bg-white/5 shrink-0">
+                              {media.posterUrl && (
+                                <Image src={media.posterUrl} alt={media.displayTitle} fill className="object-cover" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-white truncate font-heading">{media.displayTitle}</p>
+                              <p className="text-[10px] text-white/40 uppercase tracking-widest">{media.type}</p>
+                            </div>
+                          </div>
+                        </GlassPanel>
+                      </Link>
+                    ))}
+                  </div>
+                )
               ) : (
                 <EmptyState 
                   icon={<Bookmark size={40} className="text-white/10" />}
@@ -152,7 +193,7 @@ export default function VaultClient({ initialCollections, initialSavedMedia }: V
 }
 
 function CollectionCard({ collection }: { collection: any }) {
-  const itemCount = collection.collection_items?.[0]?.count || 0;
+  const itemCount = collection.item_count ?? collection.collection_items?.[0]?.count ?? 0;
 
   return (
     <Link href={`/vault/collections/${collection.id}`}>

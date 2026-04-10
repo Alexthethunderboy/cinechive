@@ -3,7 +3,17 @@
 import { motion } from 'framer-motion';
 import { cn, formatUsername } from '@/lib/utils';
 import { ClassificationName, CLASSIFICATION_STYLE_COLORS } from '@/lib/design-tokens';
+import { getCinematicVibe } from '@/lib/avatar-utils';
 import Image from 'next/image';
+import {
+  AvatarAnimation,
+  AvatarCharacter,
+  AvatarMode,
+  AVATAR_CHARACTER_CONFIG,
+  sanitizeAvatarAnimation,
+  sanitizeAvatarCharacter,
+  sanitizeAvatarMode,
+} from '@/lib/avatar-character';
 
 interface CinematicAvatarProps {
   src?: string | null;
@@ -11,6 +21,9 @@ interface CinematicAvatarProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   style?: ClassificationName | 'Atmospheric';
   seed?: string | null;
+  avatarMode?: AvatarMode | string | null;
+  avatarCharacter?: AvatarCharacter | string | null;
+  avatarAnimation?: AvatarAnimation | string | null;
   className?: string;
 }
 
@@ -27,10 +40,12 @@ export default function CinematicAvatar({
   size = 'md',
   style = 'Atmospheric',
   seed,
+  avatarMode,
+  avatarCharacter,
+  avatarAnimation,
   className,
 }: CinematicAvatarProps) {
   
-  const { getCinematicVibe } = require('@/lib/avatar-utils');
   const vibe = getCinematicVibe(seed, username);
   
   // Robust image source handling
@@ -46,6 +61,24 @@ export default function CinematicAvatar({
     ? (style === 'Atmospheric' ? 'rgba(255,255,255,0.2)' : CLASSIFICATION_STYLE_COLORS[style as ClassificationName])
     : vibe.primaryColor;
   const formattedUsername = formatUsername(username);
+  const mode = sanitizeAvatarMode(avatarMode);
+  const character = sanitizeAvatarCharacter(avatarCharacter);
+  const animation = sanitizeAvatarAnimation(avatarAnimation);
+  const characterConfig = AVATAR_CHARACTER_CONFIG[character];
+  const isCharacterMode = mode === 'character';
+
+  const characterAnim =
+    animation === 'pulse'
+      ? { scale: [1, 1.06, 1] }
+      : animation === 'orbit'
+        ? { rotate: [0, 8, 0, -8, 0] }
+        : { y: [0, -2, 0] };
+
+  const characterTransition = {
+    duration: animation === 'orbit' ? 5 : 3,
+    repeat: Infinity,
+    ease: 'easeInOut' as const,
+  };
 
   return (
     <div className={cn("relative shrink-0", className)}>
@@ -64,7 +97,16 @@ export default function CinematicAvatar({
         "relative rounded-full overflow-hidden border-2 border-white/10 bg-surface-hover shadow-2xl flex items-center justify-center font-display text-muted",
         sizeMap[size]
       )}>
-        {src ? (
+        {isCharacterMode ? (
+          <motion.div
+            animate={characterAnim}
+            transition={characterTransition}
+            className="w-full h-full flex items-center justify-center font-display uppercase tracking-tight text-white"
+            style={{ background: characterConfig.gradient }}
+          >
+            <span className="text-white/95">{characterConfig.glyph}</span>
+          </motion.div>
+        ) : src ? (
           <Image 
             src={src} 
             alt={formattedUsername} 

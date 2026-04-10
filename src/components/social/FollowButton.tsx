@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { UserPlus, UserCheck, Loader2 } from 'lucide-react';
@@ -13,6 +13,8 @@ interface FollowButtonProps {
   initialFollowing?: boolean;
   size?: 'sm' | 'md';
   className?: string;
+  onFollowChange?: (isFollowing: boolean) => void;
+  refreshOnSuccess?: boolean;
 }
 
 export default function FollowButton({
@@ -20,11 +22,17 @@ export default function FollowButton({
   initialFollowing = false,
   size = 'md',
   className,
+  onFollowChange,
+  refreshOnSuccess = true,
 }: FollowButtonProps) {
   const router = useRouter();
   const [isFollowing, setIsFollowing] = useState(initialFollowing);
   const [isHovered, setIsHovered] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    setIsFollowing(initialFollowing);
+  }, [initialFollowing]);
 
   async function handleClick() {
     // Optimistic update
@@ -41,8 +49,11 @@ export default function FollowButton({
         setIsFollowing(prev);
         toast.error(result.error);
       } else {
+        onFollowChange?.(!prev);
         toast.success(prev ? 'Unfollowed' : 'Following');
-        router.refresh();
+        if (refreshOnSuccess) {
+          router.refresh();
+        }
       }
     });
   }

@@ -92,7 +92,7 @@ export default function TriviaModule({ trivia, mediaId, mediaType, mediaTitle, p
 
                 <div className="pt-4 border-t border-white/5 flex items-center justify-between">
                   <span className="font-data text-[8px] text-muted uppercase tracking-widest">
-                    Source: CineChive / IMDb
+                    Sources: TMDB + IMDb (inferred)
                   </span>
                   <div className="flex gap-1">
                     <div className="w-1 h-1 rounded-full bg-accent/40" />

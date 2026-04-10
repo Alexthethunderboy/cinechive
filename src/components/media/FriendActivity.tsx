@@ -6,7 +6,7 @@ import { getFriendActivityAction } from '@/lib/media-social-actions';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
-import { cn, formatUsername } from '@/lib/utils';
+import { formatUsername } from '@/lib/utils';
 
 interface FriendActivityProps {
   mediaId: string;
@@ -15,14 +15,29 @@ interface FriendActivityProps {
 
 export default function FriendActivity({ mediaId, mediaType }: FriendActivityProps) {
   const [friends, setFriends] = useState<any[]>([]);
+  const [isError, setIsError] = useState(false);
 
   useEffect(() => {
     async function loadFriends() {
-      const data = await getFriendActivityAction(mediaId, mediaType);
-      setFriends(data);
+      try {
+        setIsError(false);
+        const data = await getFriendActivityAction(mediaId, mediaType);
+        setFriends(data);
+      } catch (error) {
+        setIsError(true);
+        console.error('[FriendActivity] load failed', { mediaId, mediaType, error });
+      }
     }
     loadFriends();
   }, [mediaId, mediaType]);
+
+  if (isError) {
+    return (
+      <div className="pt-4 border-t border-white/5">
+        <p className="font-metadata text-[10px] uppercase tracking-widest text-white/35">Friend activity unavailable</p>
+      </div>
+    );
+  }
 
   if (friends.length === 0) return null;
 

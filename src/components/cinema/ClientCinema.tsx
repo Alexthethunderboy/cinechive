@@ -1,52 +1,9 @@
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Film, Search, Flame, Loader2 } from 'lucide-react';
-import { BentoGrid, BentoItem } from '@/components/ui/BentoGrid';
-import MediaCard from '@/components/ui/MediaCard';
-import GlassPanel from '@/components/ui/GlassPanel';
-import { cn } from '@/lib/utils';
-import { UnifiedMedia } from '@/lib/api/mapping';
-import { ClassificationName, CLASSIFICATION_COLORS, MEDIA_TYPE_LABELS } from '@/lib/design-tokens';
-import { unifiedSearchAction } from '@/lib/actions';
 import EverythingBar from '@/components/search/EverythingBar';
 import { TrendingFeed } from './TrendingFeed';
-
-interface ClientCinemaProps {
-  initialTrending: (UnifiedMedia & { span: any })[];
-}
-
-export default function ClientCinema({ initialTrending }: ClientCinemaProps) {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<(UnifiedMedia & { span: any })[]>([]);
-  const [isPending, startTransition] = useTransition();
-
-  const displayItems = query.length >= 2 ? results : initialTrending;
-
-  useEffect(() => {
-    if (query.length < 2) {
-      setResults([]);
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      startTransition(async () => {
-        try {
-          const data = await unifiedSearchAction(query, 'video');
-          setResults(data.map((item, i) => ({
-            ...item,
-            span: i % 4 === 0 || i % 4 === 3 ? 'large' : 'tall'
-          })));
-        } catch (error) {
-          console.error("Cinema search failed:", error);
-        }
-      });
-    }, 400);
-
-    return () => clearTimeout(timer);
-  }, [query]);
-
+export default function ClientCinema() {
   return (
     <div className="pt-6 pb-24 md:py-16 px-4 md:px-10 max-w-7xl mx-auto">
       <header className="mb-12">

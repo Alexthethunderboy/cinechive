@@ -7,9 +7,11 @@ import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { DetailedMedia } from '@/lib/api/mapping';
 import { toast } from 'sonner';
+import MediaPreferenceButtons from './MediaPreferenceButtons';
 
 interface MediaHeroProps {
   media: DetailedMedia;
+  mediaId: string;
   isSaving: boolean;
   saveStatus: 'idle' | 'success' | 'error';
   isAlreadySaved?: boolean;
@@ -19,8 +21,15 @@ interface MediaHeroProps {
   user?: any;
 }
 
-export default function MediaHero({ media, isSaving, saveStatus, isAlreadySaved = false, onSave, onOpenSaveDialog, onOpenJournal, user }: MediaHeroProps) {
+export default function MediaHero({ media, mediaId, isSaving, saveStatus, isAlreadySaved = false, onSave, onOpenSaveDialog, onOpenJournal, user }: MediaHeroProps) {
   const router = useRouter();
+  const handleBack = () => {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+      return;
+    }
+    router.push('/discover');
+  };
 
   return (
     <section className="relative h-[50vh] md:h-[70vh] w-full overflow-hidden">
@@ -46,7 +55,7 @@ export default function MediaHero({ media, isSaving, saveStatus, isAlreadySaved 
         <motion.button
           whileHover={{ x: -5 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => router.back()}
+          onClick={handleBack}
           className="glass p-2.5 rounded-full hover:border-accent/30 transition-colors text-white/40 hover:text-accent"
         >
           <ChevronLeft size={20} />
@@ -115,6 +124,13 @@ export default function MediaHero({ media, isSaving, saveStatus, isAlreadySaved 
               </motion.button>
             )}
             <div className="flex gap-2">
+              <MediaPreferenceButtons
+                mediaId={mediaId}
+                mediaType={media.type}
+                title={media.displayTitle}
+                posterUrl={media.posterUrl}
+              />
+
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}

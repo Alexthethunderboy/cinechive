@@ -82,6 +82,14 @@ export default function CineLists({ userId, isOwnProfile }: CineListsProps) {
               <p className="text-sm font-heading text-white font-bold mb-1">No collections found</p>
               <p className="text-[10px] font-metadata text-white/20 uppercase tracking-widest leading-relaxed">This cinephile hasn't curated any public lists yet</p>
            </div>
+           {isOwnProfile && (
+             <Link
+               href="/vault"
+               className="inline-flex px-4 py-2 rounded-full border border-white/10 text-[10px] tracking-widest text-white/60 hover:text-white hover:border-white/30 transition-colors"
+             >
+               Create first list
+             </Link>
+           )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

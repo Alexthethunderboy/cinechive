@@ -56,7 +56,16 @@ export interface UniversalMedia {
   trailerUrl?: string | null;
   duration?: string | null;
   recommendations?: { id: string; title: string; posterUrl: string | null; type: 'movie' | 'tv' | 'anime' }[];
-  providers?: { provider_id: number; provider_name: string; logo_path: string | null }[];
+  providers?: {
+    provider_id: number;
+    provider_name: string;
+    logo_path: string | null;
+    type: 'flatrate' | 'rent' | 'buy';
+    display_priority: number | null;
+    watchUrl: string | null;
+    region: string;
+    isFallbackRegion?: boolean;
+  }[];
   business?: { budget: number; revenue: number };
   crew?: { id: string; name: string; role: string; profileUrl: string | null }[];
   soundtrack?: { title: string; artist: string; previewUrl: string | null }[];
@@ -91,7 +100,7 @@ export class UniversalTransformer {
   /**
    * Transforms TMDB raw data into UniversalMedia.
    */
-  static fromTMDB(item: any, forceType?: 'movie' | 'tv' | 'animation'): UniversalMedia {
+  static fromTMDB(item: any, forceType?: 'movie' | 'tv' | 'animation', region: string = 'US'): UniversalMedia {
     const isTv = forceType === 'tv' || item.media_type === 'tv' || (!item.title && !!item.name);
     const type = forceType || (isTv ? 'tv' : 'movie');
     
@@ -135,13 +144,25 @@ export class UniversalTransformer {
     const trailer = item.videos?.results?.find((v: any) => v.type === 'Trailer' && v.site === 'YouTube')?.key;
 
     // Providers
-    const providersData = item['watch/providers']?.results?.US;
-    const allProviders = [...(providersData?.flatrate || []), ...(providersData?.buy || []), ...(providersData?.rent || [])];
-    const uniqueProviders = Array.from(new Map(allProviders.map(p => [p.provider_id, p])).values()).map((p: any) => ({
-      provider_id: p.provider_id,
-      provider_name: p.provider_name,
-      logo_path: p.logo_path ? `https://image.tmdb.org/t/p/original${p.logo_path}` : null
-    }));
+    const providerResults = item['watch/providers']?.results || {};
+    const typedProviders = Object.entries(providerResults).flatMap(([providerRegion, providerData]: [string, any]) => [
+      ...((providerData?.flatrate || []).map((p: any) => ({ ...p, type: 'flatrate' as const, region: providerRegion, watchUrl: providerData?.link || null }))),
+      ...((providerData?.rent || []).map((p: any) => ({ ...p, type: 'rent' as const, region: providerRegion, watchUrl: providerData?.link || null }))),
+      ...((providerData?.buy || []).map((p: any) => ({ ...p, type: 'buy' as const, region: providerRegion, watchUrl: providerData?.link || null }))),
+    ]);
+    const uniqueProviders = Array.from(
+      new Map(typedProviders.map((p: any) => [`${p.provider_id}-${p.type}`, p])).values()
+    )
+      .sort((a: any, b: any) => (a.display_priority ?? 9999) - (b.display_priority ?? 9999))
+      .map((p: any) => ({
+        provider_id: p.provider_id,
+        provider_name: p.provider_name,
+        logo_path: p.logo_path ? `https://image.tmdb.org/t/p/original${p.logo_path}` : null,
+        type: p.type,
+        display_priority: p.display_priority ?? null,
+        watchUrl: p.watchUrl || null,
+        region: p.region || String(region || 'US').toUpperCase()
+      }));
 
     return {
       id: `tmdb-${item.id}`,

@@ -5,18 +5,37 @@ import GlassPanel from '@/components/ui/GlassPanel';
 import { formatDate } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
+import { Activity } from 'lucide-react';
+import ProfileEmptyState from './ProfileEmptyState';
 
 interface ActivityHubProps {
-  entries: any[];
+  entries: Array<{
+    id: string;
+    media_type: string;
+    media_id?: string;
+    external_id?: string;
+    poster_url?: string | null;
+    title: string;
+    created_at?: string;
+    classification?: string | null;
+  }>;
 }
 
 export default function ActivityHub({ entries }: ActivityHubProps) {
   if (entries.length === 0) {
-    return <div className="py-20 text-center text-white/20 font-heading border border-dashed border-white/5 rounded-3xl uppercase tracking-widest italic">No recent activity detected</div>;
+    return (
+      <ProfileEmptyState
+        icon={Activity}
+        title="No Recent Activity"
+        body="Your latest logs will appear here."
+        ctaLabel="Discover titles"
+        ctaHref="/discover"
+      />
+    );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
       {entries.slice(0, 9).map((entry, index) => (
         <motion.div
           key={entry.id}
@@ -24,9 +43,9 @@ export default function ActivityHub({ entries }: ActivityHubProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: index * 0.05 }}
         >
-          <Link href={`/media/${entry.media_type}/${entry.media_id}`}>
-            <GlassPanel className="p-4 bg-white/3 border-white/5 hover:border-white/10 hover:bg-white/6 transition-all group h-full flex items-center gap-4">
-              <div className="relative w-16 aspect-2/3 rounded-lg overflow-hidden shrink-0 bg-surface-hover shadow-lg">
+          <Link href={`/media/${entry.media_type}/${entry.media_id || entry.external_id}`}>
+            <GlassPanel className="p-4 md:p-5 bg-white/3 border-white/8 hover:border-white/20 hover:bg-white/6 transition-all group h-full flex items-center gap-4 rounded-2xl">
+              <div className="relative w-16 md:w-20 aspect-2/3 rounded-lg overflow-hidden shrink-0 bg-surface-hover shadow-lg">
                 {entry.poster_url && (
                   <Image 
                     src={entry.poster_url} 
@@ -37,14 +56,14 @@ export default function ActivityHub({ entries }: ActivityHubProps) {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <span className="font-data text-[8px] text-accent font-bold uppercase tracking-widest">
-                  {entry.vibe || 'UNLOGGED'}
+                <span className="inline-flex px-2 py-0.5 rounded-md font-data text-[9px] text-accent font-bold uppercase tracking-widest bg-accent/10 border border-accent/20 mb-2">
+                  {entry.classification || 'UNLOGGED'}
                 </span>
-                <h3 className="font-display text-xl text-white truncate font-bold group-hover:text-accent transition-colors">
+                <h3 className="font-display text-lg md:text-xl text-white truncate font-bold group-hover:text-accent transition-colors">
                   {entry.title}
                 </h3>
-                <p className="font-data text-[9px] text-white/40 uppercase mt-1">
-                  Logged {formatDate(entry.created_at)}
+                <p className="font-data text-[10px] text-white/40 uppercase mt-1 tracking-wider">
+                  Logged {formatDate(entry.created_at || new Date().toISOString())}
                 </p>
               </div>
             </GlassPanel>

@@ -162,6 +162,7 @@ export async function getUserActivityHistory(): Promise<UserActivityItem[]> {
     .from('feed_activity')
     .select('*')
     .eq('user_id', user.id)
+    .eq('activity_type', 'dispatch')
     .order('created_at', { ascending: false })
     .limit(30) as any);
 

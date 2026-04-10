@@ -3,12 +3,14 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { createNotificationInternal } from './social-notification-actions';
+import type { SocialActionResult } from './social-types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function getAuthorIdForActivity(activityId: string, activityType: string): Promise<string | null> {
   const supabase = await createClient();
   let table = 'media_entries';
+  if (activityType === 're_archive') table = 're_archives';
   if (activityType === 'echo') table = 'echoes';
   if (activityType === 'dispatch') table = 'dispatches';
   if (activityType === 'screening') table = 'cine_journal';
@@ -23,10 +25,10 @@ async function getAuthorIdForActivity(activityId: string, activityType: string):
 
 // ─── Reactions ────────────────────────────────────────────────────────────────
 
-export async function toggleReactionAction(activityId: string, activityType: 'entry' | 're_archive' | 'echo' | 'dispatch' | 'screening') {
+export async function toggleReactionAction(activityId: string, activityType: 'entry' | 're_archive' | 'echo' | 'dispatch' | 'screening'): Promise<SocialActionResult & { reacted?: boolean }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: 'Authentication required.' };
+  if (!user) return { error: 'Authentication required.', code: 'AUTH_REQUIRED' };
 
   // Check if exists
   const { data: existing } = await (supabase
@@ -38,14 +40,18 @@ export async function toggleReactionAction(activityId: string, activityType: 'en
 
   if (existing) {
     // Unlike
-    await (supabase.from('reactions') as any).delete().eq('id', existing.id);
+    const { error } = await (supabase.from('reactions') as any).delete().eq('id', existing.id);
+    if (error) return { error: error.message, code: 'UNKNOWN_ERROR' };
   } else {
     // Like
-    await (supabase.from('reactions') as any).insert({
+    const { error } = await (supabase.from('reactions') as any).insert({
       user_id: user.id,
       activity_id: activityId,
       activity_type: activityType
     });
+    if (error && error.code !== '23505') {
+      return { error: error.message, code: 'UNKNOWN_ERROR' };
+    }
 
     // Phase 5 Social Sync: New Reaction Notification
     const authorId = await getAuthorIdForActivity(activityId, activityType);
@@ -102,12 +108,12 @@ export async function getCommentsAction(activityId: string): Promise<CommentWith
   }));
 }
 
-export async function postCommentAction(activityId: string, activityType: string, body: string) {
+export async function postCommentAction(activityId: string, activityType: string, body: string): Promise<SocialActionResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: 'Authentication required.' };
+  if (!user) return { error: 'Authentication required.', code: 'AUTH_REQUIRED' };
 
-  if (!body.trim()) return { error: 'Comment cannot be empty.' };
+  if (!body.trim()) return { error: 'Comment cannot be empty.', code: 'VALIDATION_ERROR' };
 
   const { error } = await (supabase.from('comments') as any).insert({
     user_id: user.id,
@@ -116,12 +122,28 @@ export async function postCommentAction(activityId: string, activityType: string
     body: body.trim()
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: error.message, code: 'UNKNOWN_ERROR' };
 
   // Phase 5 Social Sync: New Comment Notification
   const authorId = await getAuthorIdForActivity(activityId, activityType);
   if (authorId) {
     await createNotificationInternal(authorId, 'comment', user.id, activityId, 'activity', { preview: body.substring(0, 50) });
+  }
+
+  // Mention notifications: supports @username in comments.
+  const mentionMatches = Array.from(new Set((body.match(/@([a-zA-Z0-9._-]+)/g) || []).map((m) => m.slice(1).toLowerCase())));
+  if (mentionMatches.length > 0) {
+    const { data: mentionedProfiles } = await (supabase
+      .from('profiles') as any)
+      .select('id, username')
+      .in('username', mentionMatches);
+    for (const mentioned of mentionedProfiles || []) {
+      if (mentioned.id !== user.id) {
+        await createNotificationInternal(mentioned.id, 'mention', user.id, activityId, 'activity', {
+          preview: body.substring(0, 80),
+        });
+      }
+    }
   }
 
   revalidatePath('/community');

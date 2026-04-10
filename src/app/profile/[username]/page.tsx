@@ -1,5 +1,10 @@
 import { getProfileByUsername } from '@/lib/onboarding-actions';
-import { getFollowStatusAction, getFollowCountsAction } from '@/lib/social-actions';
+import {
+  getFollowStatusAction,
+  getFollowCountsAction,
+  getFollowersAction,
+  getFollowingAction,
+} from '@/lib/social-actions';
 import ProfileDashboard from '@/components/profile/ProfileDashboard';
 import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
@@ -35,9 +40,11 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   const isOwnProfile = user?.id === data.profile.id;
 
   // Social stats
-  const [followStatus, followCounts] = await Promise.all([
+  const [followStatus, followCounts, followers, following] = await Promise.all([
     isOwnProfile ? Promise.resolve(false) : getFollowStatusAction(data.profile.id),
-    getFollowCountsAction(data.profile.id)
+    getFollowCountsAction(data.profile.id),
+    getFollowersAction(data.profile.id),
+    getFollowingAction(data.profile.id),
   ]);
 
   return (
@@ -50,6 +57,8 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
       isOwnProfile={isOwnProfile}
       initialFollowStatus={!!followStatus}
       followCounts={followCounts}
+      followers={followers}
+      following={following}
     />
   );
 }

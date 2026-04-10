@@ -5,35 +5,45 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, Loader2, Search, Zap, Sparkles, ChevronRight, History, Activity as ActivityIcon, MessageSquare, Repeat2 } from 'lucide-react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { getAlgorithmicNotifications, getUserActivityHistory, CommunityNotification, UserActivityItem } from '@/lib/community-actions';
+import { getSocialNotificationsAction } from '@/lib/social-notification-actions';
 import Link from 'next/link';
 import Image from 'next/image';
 import GlassPanel from '@/components/ui/GlassPanel';
+import { CLIENT_EVENTS } from '@/lib/client-events';
+import { capTo99Plus, getNotificationCountSummary } from '@/lib/notification-utils';
+import { cn } from '@/lib/utils';
 
 export default function ActivityPage() {
   const { user, loading } = useAuth();
   const [notifications, setNotifications] = useState<CommunityNotification[]>([]);
+  const [socialNotifications, setSocialNotifications] = useState<Array<{ is_read?: boolean }>>([]);
   const [history, setHistory] = useState<UserActivityItem[]>([]);
   const [topInterests, setTopInterests] = useState<string[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lane, setLane] = useState<'all' | 'social' | 'cinema' | 'history'>('all');
 
   useEffect(() => {
     const fetchData = () => {
       if (user) {
         Promise.all([
           getAlgorithmicNotifications(),
-          getUserActivityHistory()
-        ]).then(([notifs, hist]) => {
+          getUserActivityHistory(),
+          getSocialNotificationsAction()
+        ]).then(([notifs, hist, social]) => {
           setNotifications(notifs.notifications);
           setTopInterests(notifs.topInterests);
           setHistory(hist);
+          setSocialNotifications(social as Array<{ is_read?: boolean }>);
         });
       }
     };
 
     fetchData();
-    window.addEventListener('refresh-notifications', fetchData);
-    return () => window.removeEventListener('refresh-notifications', fetchData);
+    window.addEventListener(CLIENT_EVENTS.refreshNotifications, fetchData);
+    return () => window.removeEventListener(CLIENT_EVENTS.refreshNotifications, fetchData);
   }, [user]);
+
+  const countSummary = getNotificationCountSummary(notifications.length, socialNotifications);
 
   if (loading) {
     return (
@@ -67,7 +77,10 @@ export default function ActivityPage() {
         </div>
         <div className="flex flex-col items-end gap-2">
           <div className="text-[10px] font-mono text-vibe-gold bg-vibe-gold/10 px-3 py-1 rounded-full border border-vibe-gold/20">
-            {notifications.length} New Alerts
+            {capTo99Plus(countSummary.total)} Total Alerts
+          </div>
+          <div className="text-[9px] font-mono text-white/50">
+            {countSummary.cinema} cinema · {countSummary.socialUnread} social unread
           </div>
           {topInterests.length > 0 && (
             <div className="flex items-center gap-2">
@@ -76,6 +89,26 @@ export default function ActivityPage() {
             </div>
           )}
         </div>
+      </div>
+
+      <div className="mb-8 flex flex-wrap items-center gap-2">
+        {[
+          { id: 'all', label: `All (${countSummary.total + history.length})` },
+          { id: 'social', label: `Social (${countSummary.socialUnread})` },
+          { id: 'cinema', label: `Cinema (${countSummary.cinema})` },
+          { id: 'history', label: `My History (${history.length})` },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setLane(tab.id as 'all' | 'social' | 'cinema' | 'history')}
+            className={cn(
+              "px-3 py-1.5 rounded-full text-[10px] uppercase tracking-widest border transition-colors",
+              lane === tab.id ? "bg-white text-black border-white" : "bg-white/5 text-white/60 border-white/10 hover:text-white"
+            )}
+          >
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Onboarding Notice */}
@@ -140,7 +173,7 @@ export default function ActivityPage() {
          </motion.div>
       )}
 
-      {/* Personal Activity History */}
+      {(lane === 'all' || lane === 'history') && (
       <div className="space-y-4 mb-16">
         <div className="space-y-2 flex items-center justify-between">
            <div className="flex items-center gap-2">
@@ -192,7 +225,9 @@ export default function ActivityPage() {
           )}
         </div>
       </div>
+      )}
 
+      {(lane === 'all' || lane === 'cinema') && (
       <div className="space-y-2 mb-6 flex items-center justify-between">
          <div className="flex items-center gap-2">
            <ActivityIcon size={14} className="text-vibe-gold/40" />
@@ -200,7 +235,9 @@ export default function ActivityPage() {
          </div>
          <div className="h-px bg-white/5 flex-1 ml-4" />
       </div>
+      )}
 
+      {(lane === 'all' || lane === 'cinema') && (
       <div className="space-y-4">
         <AnimatePresence mode="popLayout">
           {notifications.length === 0 ? (
@@ -263,6 +300,18 @@ export default function ActivityPage() {
           )}
         </AnimatePresence>
       </div>
+      )}
+
+      {lane === 'social' && (
+        <div className="py-14 text-center rounded-2xl bg-white/2 border border-white/10">
+          <p className="text-[11px] uppercase tracking-widest text-white/60">
+            Social alerts are available from the Activity bell center.
+          </p>
+          <p className="mt-2 text-[10px] text-white/35">
+            Social unread: {countSummary.socialUnread}
+          </p>
+        </div>
+      )}
     </div>
   );
 }

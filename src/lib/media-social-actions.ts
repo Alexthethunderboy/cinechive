@@ -3,69 +3,94 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
+export type MediaPreference = 'like' | 'dislike';
+
 /**
- * Upsert a community rating (1-10) for a piece of media.
+ * Upsert the user's preference for a piece of media.
  */
-export async function upsertMediaRatingAction(mediaId: string, mediaType: string, rating: number) {
+export async function setMediaPreferenceAction(input: {
+  mediaId: string;
+  mediaType: string;
+  reaction: MediaPreference | null;
+  title?: string;
+  posterUrl?: string | null;
+}) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Authentication required' };
 
-  const { error } = await (supabase.from('media_ratings') as any).upsert({
+  if (!input.reaction) {
+    const { error } = await (supabase.from('media_reactions') as any)
+      .delete()
+      .eq('user_id', user.id)
+      .eq('media_id', input.mediaId)
+      .eq('media_type', input.mediaType);
+
+    if (error) return { error: error.message };
+    revalidatePath('/vault');
+    revalidatePath(`/media/${input.mediaType}/${input.mediaId}`);
+    return { success: true, reaction: null };
+  }
+
+  const payload = {
     user_id: user.id,
-    media_id: mediaId,
-    media_type: mediaType,
-    rating,
+    media_id: input.mediaId,
+    media_type: input.mediaType,
+    reaction: input.reaction,
+    title: input.title || null,
+    poster_url: input.posterUrl || null,
     updated_at: new Date().toISOString()
+  };
+
+  const { error } = await (supabase.from('media_reactions') as any).upsert(payload, {
+    onConflict: 'user_id,media_id,media_type'
   });
 
   if (error) return { error: error.message };
-  revalidatePath(`/media/${mediaType}/${mediaId}`);
-  return { success: true };
+  revalidatePath('/vault');
+  revalidatePath(`/media/${input.mediaType}/${input.mediaId}`);
+  return { success: true, reaction: input.reaction };
 }
 
 /**
- * Upsert a community review for a piece of media.
+ * Get current user's preference for media.
  */
-export async function upsertMediaReviewAction(mediaId: string, mediaType: string, content: string, isSpoiler: boolean = false) {
+export async function getMediaPreferenceAction(mediaId: string, mediaType: string): Promise<MediaPreference | null> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: 'Authentication required' };
+  if (!user) return null;
 
-  const { error } = await (supabase.from('media_reviews') as any).upsert({
-    user_id: user.id,
-    media_id: mediaId,
-    media_type: mediaType,
-    content,
-    is_spoiler: isSpoiler,
-    updated_at: new Date().toISOString()
-  });
+  const { data } = await (supabase.from('media_reactions') as any)
+    .select('reaction')
+    .eq('user_id', user.id)
+    .eq('media_id', mediaId)
+    .eq('media_type', mediaType)
+    .maybeSingle();
 
-  if (error) return { error: error.message };
-  revalidatePath(`/media/${mediaType}/${mediaId}`);
-  return { success: true };
+  return (data?.reaction as MediaPreference | undefined) || null;
 }
 
 /**
- * Get community statistics for a piece of media.
+ * Get social preference statistics for a media item.
  */
 export async function getMediaSocialStatsAction(mediaId: string, mediaType: string) {
   const supabase = await createClient();
-  
-  const { data: ratings, error } = await (supabase.from('media_ratings') as any)
-    .select('rating')
+
+  const { data: reactions, error } = await (supabase.from('media_reactions') as any)
+    .select('reaction')
     .eq('media_id', mediaId)
     .eq('media_type', mediaType);
 
-  if (error || !ratings) return { average: 0, count: 0 };
+  if (error || !reactions) return { likes: 0, dislikes: 0 };
 
-  const total = ratings.reduce((sum: number, r: any) => sum + r.rating, 0);
-  const average = ratings.length > 0 ? (total / ratings.length).toFixed(1) : 0;
+  let likes = 0;
+  let dislikes = 0;
+  reactions.forEach((row: any) => {
+    if (row.reaction === 'like') likes += 1;
+    if (row.reaction === 'dislike') dislikes += 1;
+  });
 
-  return {
-    average: Number(average),
-    count: ratings.length
-  };
+  return { likes, dislikes };
 }
 
 /**
@@ -101,4 +126,56 @@ export async function getFriendActivityAction(mediaId: string, mediaType: string
     username: e.profiles.username,
     avatarUrl: e.profiles.avatar_url
   }));
+}
+
+/**
+ * Get public dispatch posts that explicitly attached this media.
+ */
+export async function getPostsByMediaAction(mediaId: string, mediaType: string) {
+  const supabase = await createClient();
+  const mediaRef = [{ id: mediaId, type: mediaType }];
+
+  const { data, error } = await (supabase.from('dispatches') as any)
+    .select(`
+      id,
+      content,
+      media_refs,
+      created_at,
+      profiles:user_id (username, avatar_url)
+    `)
+    .contains('media_refs', mediaRef)
+    .order('created_at', { ascending: false })
+    .limit(20);
+
+  if (error || !data) return [];
+
+  return data.map((post: any) => ({
+    id: post.id,
+    content: post.content,
+    media_refs: post.media_refs || [],
+    created_at: post.created_at,
+    username: post.profiles?.username || 'user',
+    avatar_url: post.profiles?.avatar_url || null,
+  }));
+}
+
+/**
+ * Get community rating statistics for a media item.
+ */
+export async function getMediaCommunityRatingAction(mediaId: string, mediaType: string) {
+  const supabase = await createClient();
+
+  const { data: ratings, error } = await (supabase.from('media_ratings') as any)
+    .select('rating')
+    .eq('media_id', mediaId)
+    .eq('media_type', mediaType);
+
+  if (error || !ratings || ratings.length === 0) {
+    return { average: 0, count: 0 };
+  }
+
+  const total = ratings.reduce((sum: number, row: any) => sum + row.rating, 0);
+  const average = Math.round((total / ratings.length) * 10) / 10; // Round to 1 decimal place
+
+  return { average, count: ratings.length };
 }

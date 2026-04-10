@@ -95,7 +95,7 @@ export async function getTrending(
 
 export async function getMovieDetails(id: number) {
   const url = getUrl(`/movie/${id}`, { 
-    append_to_response: 'credits,videos,images,recommendations,release_dates,keywords,external_ids' 
+    append_to_response: 'credits,videos,images,recommendations,release_dates,keywords,external_ids,watch/providers' 
   });
   const res = await fetch(url, {
     next: { revalidate: 86400 },
@@ -116,7 +116,7 @@ export async function getPersonDetails(id: number) {
 
 export async function getTvDetails(id: number) {
   const url = getUrl(`/tv/${id}`, { 
-    append_to_response: 'credits,videos,images,recommendations,keywords,external_ids' 
+    append_to_response: 'credits,videos,images,recommendations,keywords,external_ids,watch/providers' 
   });
   const res = await fetch(url, {
     next: { revalidate: 86400 },

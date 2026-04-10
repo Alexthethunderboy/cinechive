@@ -2,6 +2,17 @@ import { UniversalMedia, UniversalTransformer } from './UniversalTransformer';
 
 export type FeedEntity = UniversalMedia;
 
+export class MediaFetcherError extends Error {
+  status?: number;
+  code?: string;
+  constructor(message: string, options?: { status?: number; code?: string }) {
+    super(message);
+    this.name = 'MediaFetcherError';
+    this.status = options?.status;
+    this.code = options?.code;
+  }
+}
+
 // Simple rate limiter implementation
 class RateLimiter {
   private queue: (() => void)[] = [];
@@ -47,6 +58,7 @@ const tmdbRateLimiter = new RateLimiter(38, 10000);
 
 export class MediaFetcher {
   private static TMDB_BASE = 'https://api.themoviedb.org/3';
+  private static tmdbAuthWarningShown = false;
   
   private static getUrl(path: string, params: Record<string, any> = {}) {
     const url = new URL(`${this.TMDB_BASE}${path}`);
@@ -62,8 +74,15 @@ export class MediaFetcher {
     const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) {
       const errorText = await res.text();
+      if (res.status === 401) {
+        if (!this.tmdbAuthWarningShown) {
+          console.warn('TMDB API key is invalid or missing. Media search/features are temporarily unavailable.');
+          this.tmdbAuthWarningShown = true;
+        }
+        throw new MediaFetcherError('TMDB auth failed', { status: 401, code: 'TMDB_AUTH' });
+      }
       console.error(`TMDB fetch failed [${res.status}]: ${errorText}`);
-      throw new Error(`TMDB fetch failed: ${res.status}`);
+      throw new MediaFetcherError(`TMDB fetch failed: ${res.status}`, { status: res.status, code: 'TMDB_FETCH' });
     }
     return res.json();
   }
@@ -282,11 +301,32 @@ export class MediaFetcher {
     }
   }
   static async searchMedia(query: string, page: number = 1): Promise<UniversalMedia[]> {
-    const url = this.getUrl('/search/multi', { query, page });
-    const data = await this.fetchWithRateLimit(url);
-    return data.results
-      .filter((item: any) => item.media_type === 'movie' || item.media_type === 'tv')
-      .map((item: any) => UniversalTransformer.fromTMDB(item, item.media_type));
+    const normalizedQuery = query.trim();
+    if (!normalizedQuery) return [];
+
+    // Use movie search directly so "Attach Film" is movie-first and comprehensive.
+    const [primary, secondary] = await Promise.all([
+      this.fetchWithRateLimit(this.getUrl('/search/movie', {
+        query: normalizedQuery,
+        page,
+        include_adult: false,
+      })),
+      this.fetchWithRateLimit(this.getUrl('/search/movie', {
+        query: normalizedQuery,
+        page: page + 1,
+        include_adult: false,
+      })),
+    ]);
+
+    const deduped = new Map<number, any>();
+    for (const item of [...(primary.results || []), ...(secondary.results || [])]) {
+      if (!item?.id || deduped.has(item.id)) continue;
+      deduped.set(item.id, item);
+    }
+
+    return Array.from(deduped.values())
+      .sort((a: any, b: any) => (b.popularity || 0) - (a.popularity || 0))
+      .map((item: any) => UniversalTransformer.fromTMDB(item, 'movie'));
   }
 }
 

@@ -42,42 +42,23 @@ export async function saveOnboardingTastes(selections: OnboardingSelection[]) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Authentication required.' };
 
-  // Delete existing tastes for this user so re-runs are clean
-  await (supabase
-    .from('user_onboarding_tastes')
-    .delete()
-    .eq('user_id', user.id) as any);
-
-  const sb = supabase as any;
-
-  if (selections.length > 0) {
-    const rows = selections.map((s) => ({
-      user_id: user.id,
-      category: s.category,
-      value: s.value,
-      display_name: s.display_name || null,
-      poster_url: s.poster_url || null,
-    }));
-
-    const { error: insertError } = await sb
-      .from('user_onboarding_tastes')
-      .insert(rows);
-
-    if (insertError) {
-      console.error('saveOnboardingTastes insert error:', insertError);
-      return { error: insertError.message };
-    }
+  const movieCount = selections.filter((s) => s.category === 'movie').length;
+  const genreCount = selections.filter((s) => s.category === 'genre').length;
+  const creatorCount = selections.filter((s) => s.category === 'creator').length;
+  if (movieCount < 3 || genreCount < 1 || creatorCount < 1) {
+    return { error: 'Please complete all onboarding steps before continuing.' };
   }
 
-  // Mark onboarding complete on the profile
-  const { error: profileError } = await sb
-    .from('profiles')
-    .update({ onboarding_completed: true })
-    .eq('id', user.id);
+  const { data, error } = await (supabase as any).rpc('complete_onboarding', {
+    p_selections: selections,
+  });
 
-  if (profileError) {
-    console.error('saveOnboardingTastes profile update error:', profileError);
-    return { error: profileError.message };
+  if (error) {
+    console.error('saveOnboardingTastes rpc error:', error);
+    return { error: error.message };
+  }
+  if (!data?.ok) {
+    return { error: data?.error || 'Could not save onboarding preferences.' };
   }
 
   revalidatePath('/');

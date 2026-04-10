@@ -16,7 +16,6 @@ import {
   Lock,
   Eye,
   Activity,
-  Sparkles,
   RefreshCw,
   Upload
 } from 'lucide-react';
@@ -27,6 +26,14 @@ import { updateProfile, deleteAccount, clearHistory } from '@/app/actions/profil
 import { cn, formatUsername } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import {
+  AVATAR_ANIMATION_OPTIONS,
+  AVATAR_CHARACTER_CONFIG,
+  AVATAR_CHARACTER_OPTIONS,
+  sanitizeAvatarAnimation,
+  sanitizeAvatarCharacter,
+  sanitizeAvatarMode,
+} from '@/lib/avatar-character';
 
 interface ProfileSettingsUIProps {
   profile: any;
@@ -45,6 +52,9 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
   const [bio, setBio] = useState(profile.bio || '');
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url || '');
   const [avatarSeed, setAvatarSeed] = useState(profile.avatar_seed || '');
+  const [avatarMode, setAvatarMode] = useState(sanitizeAvatarMode(profile.avatar_mode));
+  const [avatarCharacter, setAvatarCharacter] = useState(sanitizeAvatarCharacter(profile.avatar_character));
+  const [avatarAnimation, setAvatarAnimation] = useState(sanitizeAvatarAnimation(profile.avatar_animation));
   const [isUploading, setIsUploading] = useState(false);
 
   const handleSaveProfile = async () => {
@@ -54,7 +64,10 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
         display_name: displayName,
         bio: bio,
         avatar_url: avatarUrl,
-        avatar_seed: avatarSeed
+        avatar_seed: avatarSeed,
+        avatar_mode: avatarMode,
+        avatar_character: avatarCharacter,
+        avatar_animation: avatarAnimation,
       });
       
       if (result.success) {
@@ -88,8 +101,8 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 2 * 1024 * 1024) {
-      toast.error('Image must be under 2MB');
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Avatar must be under 5MB');
       return;
     }
 
@@ -99,7 +112,6 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${profile.id}/${Math.random().toString(36).substring(2)}.${fileExt}`;
-      const filePath = fileName;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
@@ -107,7 +119,8 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
 
       if (uploadError) throw uploadError;
 
-      setAvatarUrl(fileName); 
+      setAvatarUrl(fileName);
+      setAvatarMode('image');
       toast.success('Avatar uploaded successfully');
     } catch (error: any) {
       toast.error(error.message || 'Failed to upload image');
@@ -134,8 +147,8 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
   ];
 
   return (
-    <div className="min-h-screen pb-20 pt-10 px-4 md:px-10 max-w-5xl mx-auto">
-      <div className="mb-10 flex items-center gap-4">
+    <div className="min-h-screen pb-20 pt-10 px-3 sm:px-4 md:px-10 max-w-5xl mx-auto">
+      <div className="mb-8 sm:mb-10 flex items-center gap-3 sm:gap-4">
         <button 
           onClick={() => router.back()}
           className="p-2 rounded-full hover:bg-white/10 transition-colors text-white/60 hover:text-white"
@@ -143,8 +156,8 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
           <ChevronLeft size={24} />
         </button>
         <div>
-          <h1 className="text-3xl md:text-4xl font-display font-bold text-white tracking-tight">Settings</h1>
-          <p className="text-white/40 font-heading text-sm">Manage your profile and account preferences</p>
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold text-white tracking-tight">Settings</h1>
+          <p className="text-white/40 font-heading text-xs sm:text-sm">Manage your profile and account preferences</p>
         </div>
       </div>
 
@@ -188,6 +201,9 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
                             src={avatarUrl}
                             username={profile.username}
                             seed={avatarSeed}
+                            avatarMode={avatarMode}
+                            avatarCharacter={avatarCharacter}
+                            avatarAnimation={avatarAnimation}
                             size="xl"
                           />
                           
@@ -195,7 +211,7 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
                             <input 
                               type="file" 
                               className="hidden" 
-                              accept="image/*"
+                              accept="image/*,.gif,.webp"
                               onChange={handleAvatarUpload}
                               disabled={isUploading}
                             />
@@ -208,6 +224,30 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
                         </div>
 
                         <div className="flex flex-col gap-2 w-full">
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              onClick={() => setAvatarMode('image')}
+                              className={cn(
+                                'px-3 py-2 rounded-xl border text-xs font-heading font-bold transition-all',
+                                avatarMode === 'image'
+                                  ? 'bg-white text-black border-white'
+                                  : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                              )}
+                            >
+                              Upload Mode
+                            </button>
+                            <button
+                              onClick={() => setAvatarMode('character')}
+                              className={cn(
+                                'px-3 py-2 rounded-xl border text-xs font-heading font-bold transition-all',
+                                avatarMode === 'character'
+                                  ? 'bg-white text-black border-white'
+                                  : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                              )}
+                            >
+                              Character Mode
+                            </button>
+                          </div>
                            <button 
                             onClick={() => document.getElementById('avatar-upload')?.click()}
                             className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/80 font-heading text-sm font-bold hover:bg-white/10 transition-all"
@@ -236,10 +276,52 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
                             )}
                           </div>
                         </div>
-                        <input id="avatar-upload" type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
+                        <input id="avatar-upload" type="file" className="hidden" accept="image/*,.gif,.webp" onChange={handleAvatarUpload} />
                       </div>
                       
                       <div className="flex-1 w-full space-y-6">
+                        {avatarMode === 'character' && (
+                          <div className="space-y-4 p-4 rounded-xl border border-white/10 bg-white/5">
+                            <div>
+                              <p className="text-xs font-data uppercase tracking-widest text-white/40 font-bold mb-2">Character preset</p>
+                              <div className="grid grid-cols-2 gap-2">
+                                {AVATAR_CHARACTER_OPTIONS.map((option) => (
+                                  <button
+                                    key={option}
+                                    onClick={() => setAvatarCharacter(option)}
+                                    className={cn(
+                                      'px-3 py-2 rounded-lg border text-xs font-heading font-bold transition-all',
+                                      avatarCharacter === option
+                                        ? 'bg-white text-black border-white'
+                                        : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                                    )}
+                                  >
+                                    {AVATAR_CHARACTER_CONFIG[option].label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-xs font-data uppercase tracking-widest text-white/40 font-bold mb-2">Animation style</p>
+                              <div className="flex gap-2 flex-wrap">
+                                {AVATAR_ANIMATION_OPTIONS.map((option) => (
+                                  <button
+                                    key={option}
+                                    onClick={() => setAvatarAnimation(option)}
+                                    className={cn(
+                                      'px-3 py-1.5 rounded-lg border text-xs font-heading font-bold transition-all capitalize',
+                                      avatarAnimation === option
+                                        ? 'bg-white text-black border-white'
+                                        : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                                    )}
+                                  >
+                                    {option}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
                         <div className="space-y-2">
                           <label className="text-xs font-data uppercase tracking-widest text-white/40 font-bold">Display Name</label>
                           <input 

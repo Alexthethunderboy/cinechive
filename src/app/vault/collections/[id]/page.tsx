@@ -1,12 +1,23 @@
 import { getCollectionDetailsAction } from '@/lib/actions';
 import { notFound } from 'next/navigation';
 import { DiscoveryCard } from '@/components/cinema/DiscoveryCard';
-import { Share2, Trash2, ChevronLeft, Plus, FolderHeart } from 'lucide-react';
+import { Trash2, ChevronLeft, FolderHeart } from 'lucide-react';
 import Link from 'next/link';
 import ShareButton from '@/components/vault/ShareButton';
+import { toCanonicalMediaId } from '@/lib/media-identity';
+import { UniversalMedia } from '@/lib/api/UniversalTransformer';
 
 interface PageProps {
   params: Promise<{ id: string }>;
+}
+
+interface CollectionItem {
+  id: string;
+  media_id: string;
+  media_type: UniversalMedia['type'];
+  title: string;
+  poster_url: string | null;
+  year: number | null;
 }
 
 export default async function CollectionDetailPage({ params }: PageProps) {
@@ -48,16 +59,19 @@ export default async function CollectionDetailPage({ params }: PageProps) {
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {collection.collection_items && collection.collection_items.length > 0 ? (
-          collection.collection_items.map((item: any, idx: number) => (
+          collection.collection_items.map((item: CollectionItem, idx: number) => (
             <DiscoveryCard 
               key={item.id} 
               media={{
-                id: item.media_id,
-                sourceId: item.media_id.split('-')[1] || item.media_id,
+                id: toCanonicalMediaId({ id: item.media_id, type: item.media_type }),
+                sourceId: toCanonicalMediaId({ id: item.media_id, type: item.media_type }),
                 type: item.media_type,
                 displayTitle: item.title,
                 posterUrl: item.poster_url,
+                backdropUrl: null,
                 releaseYear: item.year,
+                releaseDate: null,
+                status: null,
                 // These are required by DiscoveryCard but might be missing, 
                 // so we provide defaults to avoid breakage
                 source: 'tmdb',
@@ -66,7 +80,7 @@ export default async function CollectionDetailPage({ params }: PageProps) {
                 classification: 'Atmospheric',
                 rating: { average: 0, count: 0, showBadge: false },
                 popularity: 0,
-              } as any} 
+              } as UniversalMedia}
               index={idx} 
             />
           ))

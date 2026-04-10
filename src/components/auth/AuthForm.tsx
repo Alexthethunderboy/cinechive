@@ -17,6 +17,7 @@ const USERNAME_REGEX = /^[a-zA-Z0-9._-]+$/;
 
 export default function AuthForm({ mode }: AuthFormProps) {
   const searchParams = useSearchParams();
+  const returnTo = searchParams.get('returnTo') || '/';
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -117,6 +118,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
           </header>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <input type="hidden" name="returnTo" value={returnTo} />
             {/* Username */}
             <div className="space-y-2">
               <label className="text-xs uppercase font-bold tracking-widest text-muted ml-1">Username</label>
@@ -154,7 +156,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-white/60 transition-colors"
-                  tabIndex={-1}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
@@ -183,7 +185,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted hover:text-white/60 transition-colors"
-                    tabIndex={-1}
+                    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
                   >
                     {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
@@ -238,7 +240,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
               {mode === 'login' ? "No library yet?" : "Already a curator?"}
               {' '}
               <Link
-                href={mode === 'login' ? '/signup' : '/login'}
+                href={`${mode === 'login' ? '/signup' : '/login'}?returnTo=${encodeURIComponent(returnTo)}`}
                 className="text-white hover:text-white/60 transition-colors font-bold ml-1"
               >
                 {mode === 'login' ? 'CREATE ONE' : 'SIGN IN'}

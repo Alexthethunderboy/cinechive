@@ -1,4 +1,4 @@
--- 20260406_avatar_system.sql
+-- Avatar System: Storage bucket + RLS policies + avatar_seed column
 -- 1. Ensure the avatars bucket exists
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('avatars', 'avatars', true)

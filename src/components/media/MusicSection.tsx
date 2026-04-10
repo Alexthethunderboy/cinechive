@@ -113,9 +113,9 @@ export default function MusicSection({ soundtrack, composers }: MusicSectionProp
             <p className="font-heading text-white/20 italic mb-4">
               Detailed scene-by-scene tracking is being analyzed.
             </p>
-            <button className="px-6 py-2 rounded-full border border-accent/20 text-accent font-data text-[10px] uppercase tracking-widest hover:bg-accent hover:text-black transition-all">
-              Contribute Track Findings
-            </button>
+            <p className="font-data text-[10px] uppercase tracking-widest text-white/40">
+              No verified soundtrack links yet
+            </p>
           </GlassPanel>
         )}
       </div>

@@ -4,6 +4,21 @@ import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 
 export type NotificationType = 'follow' | 'reaction' | 'comment' | 'mention';
+export interface SocialNotificationRecord {
+  id: string;
+  user_id: string;
+  actor_id: string;
+  type: NotificationType;
+  created_at: string;
+  is_read: boolean;
+  target_id?: string | null;
+  target_type?: string | null;
+  metadata?: Record<string, any> | null;
+  actor?: {
+    username: string;
+    avatar_url: string | null;
+  };
+}
 
 /**
  * Fetch social notifications for the current user.
@@ -27,7 +42,34 @@ export async function getSocialNotificationsAction() {
     return [];
   }
 
-  return data as any[];
+  const raw = (data as SocialNotificationRecord[]) || [];
+
+  // Reduce notification noise by grouping recent reaction/comment events from same actor.
+  const grouped: SocialNotificationRecord[] = [];
+  for (const notif of raw) {
+    const isGroupable = notif.type === 'reaction' || notif.type === 'comment';
+    if (!isGroupable) {
+      grouped.push(notif);
+      continue;
+    }
+    const existing = grouped.find((g) =>
+      g.type === notif.type &&
+      g.actor_id === notif.actor_id &&
+      g.target_type === notif.target_type &&
+      Math.abs(new Date(g.created_at).getTime() - new Date(notif.created_at).getTime()) < 30 * 60 * 1000
+    );
+    if (existing) {
+      existing.metadata = {
+        ...(existing.metadata || {}),
+        grouped_count: (existing.metadata?.grouped_count || 1) + 1,
+      };
+      existing.is_read = existing.is_read && notif.is_read;
+    } else {
+      grouped.push(notif);
+    }
+  }
+
+  return grouped.slice(0, 50);
 }
 
 /**

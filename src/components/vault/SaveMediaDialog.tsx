@@ -21,6 +21,7 @@ import {
 } from '@/lib/actions';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { emitRefreshNotifications } from '@/lib/client-events';
 
 interface SaveMediaDialogProps {
   isOpen: boolean;
@@ -76,7 +77,7 @@ export default function SaveMediaDialog({ isOpen, onClose, media }: SaveMediaDia
       setIsVault(result.status === 'added');
       toast.success(result.status === 'added' ? "Saved to Vault" : "Removed from Vault");
       if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(10);
-      window.dispatchEvent(new CustomEvent('refresh-notifications'));
+      emitRefreshNotifications();
     } catch (error) {
       toast.error("Failed to update vault");
     } finally {
@@ -90,7 +91,7 @@ export default function SaveMediaDialog({ isOpen, onClose, media }: SaveMediaDia
       await addMediaToCollectionAction(collectionId, media);
       toast.success(`Added to collection`);
       if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(10);
-      window.dispatchEvent(new CustomEvent('refresh-notifications'));
+      emitRefreshNotifications();
       // We don't close immediately to allow multiple additions
     } catch (error) {
       toast.error("Failed to add to collection");

@@ -83,7 +83,7 @@ export default function TechnicalLab({ specs }: TechnicalLabProps) {
             <div className="p-6 bg-accent/5 border border-accent/10 rounded-card flex items-center justify-center gap-4">
               <div className="h-[2px] flex-1 bg-linear-to-r from-transparent to-accent/20" />
               <span className="font-data text-[8px] text-accent/40 uppercase tracking-[0.5em]">
-                Verified Studio Specs
+                Best-Effort Source Match
               </span>
               <div className="h-[2px] flex-1 bg-linear-to-r from-accent/20 to-transparent" />
             </div>

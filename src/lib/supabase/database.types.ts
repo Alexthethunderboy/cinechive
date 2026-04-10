@@ -15,6 +15,10 @@ export interface Database {
           username: string;
           display_name: string | null;
           avatar_url: string | null;
+          avatar_seed: string | null;
+          avatar_mode: 'image' | 'character' | null;
+          avatar_character: string | null;
+          avatar_animation: 'float' | 'pulse' | 'orbit' | null;
           bio: string | null;
           trakt_token: string | null;
           lastfm_username: string | null;
@@ -28,6 +32,10 @@ export interface Database {
           username: string;
           display_name?: string | null;
           avatar_url?: string | null;
+          avatar_seed?: string | null;
+          avatar_mode?: 'image' | 'character' | null;
+          avatar_character?: string | null;
+          avatar_animation?: 'float' | 'pulse' | 'orbit' | null;
           bio?: string | null;
           trakt_token?: string | null;
           lastfm_username?: string | null;
@@ -41,6 +49,10 @@ export interface Database {
           username?: string;
           display_name?: string | null;
           avatar_url?: string | null;
+          avatar_seed?: string | null;
+          avatar_mode?: 'image' | 'character' | null;
+          avatar_character?: string | null;
+          avatar_animation?: 'float' | 'pulse' | 'orbit' | null;
           bio?: string | null;
           trakt_token?: string | null;
           lastfm_username?: string | null;

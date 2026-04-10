@@ -1,36 +1,58 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Enterarchive (CineChive)
 
-## Getting Started
+A cinematic archive and social discovery app built with Next.js App Router and Supabase.
 
-First, run the development server:
+## Tech Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- Next.js 16 + React 19 + TypeScript
+- Supabase (Auth, Postgres, RLS, Realtime)
+- TanStack React Query
+- Tailwind CSS v4 + Framer Motion
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Project Structure
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `src/app`: App Router pages and route handlers
+- `src/components`: UI and feature components
+- `src/lib`: server actions, API adapters, and domain services
+- `supabase/schema.sql`: base schema reference
+- `supabase/migrations`: canonical SQL migrations
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Local Setup
 
-## Learn More
+1. Install dependencies:
+   - `npm install`
+2. Create local env file:
+   - `cp .env.local.example .env.local`
+3. Fill required variables in `.env.local`:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `TMDB_API_KEY`
+4. Start dev server:
+   - `npm run dev`
 
-To learn more about Next.js, take a look at the following resources:
+## Database Migrations
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Run SQL files in `supabase/migrations` in timestamp order.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Recent contract-hardening migration:
+- `supabase/migrations/20260408_contract_hardening.sql`
 
-## Deploy on Vercel
+It includes:
+- notifications insert policy alignment
+- reactions activity type constraint alignment
+- dispatches `updated_at` support
+- collections policy cleanup
+- shared collection token RPC (`get_shared_collection`)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Scripts
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `npm run dev`: start local app
+- `npm run build`: production build
+- `npm run start`: run production build
+- `npm run lint`: lint workspace
+
+## Notes
+
+- Shared collections are resolved through the `get_shared_collection` RPC.
+- Auth and route access are enforced in `src/middleware.ts`.
+- Community features (follow/reaction/comment notifications) rely on RLS policies in Supabase.

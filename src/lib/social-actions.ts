@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { createNotificationInternal } from './social-notification-actions';
+import type { SocialActionResult } from './social-types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,11 +25,11 @@ export interface FollowCounts {
 /**
  * Follow a user. Returns { success } or { error }.
  */
-export async function followUserAction(targetUserId: string) {
+export async function followUserAction(targetUserId: string): Promise<SocialActionResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: 'Authentication required.' };
-  if (user.id === targetUserId) return { error: 'Cannot follow yourself.' };
+  if (!user) return { error: 'Authentication required.', code: 'AUTH_REQUIRED' };
+  if (user.id === targetUserId) return { error: 'Cannot follow yourself.', code: 'VALIDATION_ERROR' };
 
   const { error } = await (supabase.from('follows') as any).insert({
     follower_id: user.id,
@@ -38,8 +39,11 @@ export async function followUserAction(targetUserId: string) {
   if (error) {
     // Unique constraint means already following — treat as success
     if (error.code === '23505') return { success: true };
-    return { error: error.message };
+    return { error: error.message, code: 'UNKNOWN_ERROR' };
   }
+
+  // Create follow notification for the recipient.
+  await createNotificationInternal(targetUserId, 'follow', user.id, user.id, 'profile');
 
   revalidatePath('/community');
   revalidatePath('/people');
@@ -50,10 +54,10 @@ export async function followUserAction(targetUserId: string) {
 /**
  * Unfollow a user. Returns { success } or { error }.
  */
-export async function unfollowUserAction(targetUserId: string) {
+export async function unfollowUserAction(targetUserId: string): Promise<SocialActionResult> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: 'Authentication required.' };
+  if (!user) return { error: 'Authentication required.', code: 'AUTH_REQUIRED' };
 
   const { error } = await (supabase
     .from('follows') as any)
@@ -61,7 +65,7 @@ export async function unfollowUserAction(targetUserId: string) {
     .eq('follower_id', user.id)
     .eq('following_id', targetUserId);
 
-  if (error) return { error: error.message };
+  if (error) return { error: error.message, code: 'UNKNOWN_ERROR' };
 
   revalidatePath('/community');
   revalidatePath('/people');
@@ -205,7 +209,7 @@ export async function getSuggestedUsersAction(): Promise<FollowUser[]> {
   const { data, error } = await (supabase
     .from('profiles') as any)
     .select('id, username, display_name, avatar_url, bio')
-    .not('id', 'in', `(${excluded.join(',')})`)
+    .not('id', 'in', `(${excluded.map((id) => `"${id}"`).join(',')})`)
     .limit(10);
 
   if (error) return [];

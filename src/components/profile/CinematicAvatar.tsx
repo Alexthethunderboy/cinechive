@@ -5,6 +5,16 @@ import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { ClassificationName, CLASSIFICATION_STYLE_COLORS } from '@/lib/design-tokens';
+import { getCinematicVibe } from '@/lib/avatar-utils';
+import {
+  AvatarAnimation,
+  AvatarCharacter,
+  AvatarMode,
+  AVATAR_CHARACTER_CONFIG,
+  sanitizeAvatarAnimation,
+  sanitizeAvatarCharacter,
+  sanitizeAvatarMode,
+} from '@/lib/avatar-character';
 
 interface CinematicAvatarProps {
   src?: string | null;
@@ -14,6 +24,9 @@ interface CinematicAvatarProps {
   style?: ClassificationName;
   seed?: string | null;
   showSpotlight?: boolean;
+  avatarMode?: AvatarMode | string | null;
+  avatarCharacter?: AvatarCharacter | string | null;
+  avatarAnimation?: AvatarAnimation | string | null;
 }
 
 const sizeClasses = {
@@ -34,10 +47,12 @@ export default function CinematicAvatar({
   className, 
   style = 'Atmospheric',
   seed,
-  showSpotlight = true
+  showSpotlight = true,
+  avatarMode,
+  avatarCharacter,
+  avatarAnimation,
 }: CinematicAvatarProps) {
   
-  const { getCinematicVibe } = require('@/lib/avatar-utils');
   const vibe = getCinematicVibe(seed, username);
   
   const src = initialSrc?.startsWith('http') 
@@ -49,6 +64,18 @@ export default function CinematicAvatar({
         : null;
   
   const styleColor = src ? (CLASSIFICATION_STYLE_COLORS[style] || '#ffffff') : vibe.primaryColor;
+  const mode = sanitizeAvatarMode(avatarMode);
+  const character = sanitizeAvatarCharacter(avatarCharacter);
+  const animation = sanitizeAvatarAnimation(avatarAnimation);
+  const characterConfig = AVATAR_CHARACTER_CONFIG[character];
+  const isCharacterMode = mode === 'character';
+
+  const characterAnim =
+    animation === 'pulse'
+      ? { scale: [1, 1.06, 1] }
+      : animation === 'orbit'
+        ? { rotate: [0, 8, 0, -8, 0] }
+        : { y: [0, -2, 0] };
   
   // Spotlight Motion
   const mouseX = useMotionValue(0);
@@ -100,7 +127,20 @@ export default function CinematicAvatar({
         />
 
         {/* Content */}
-        {src ? (
+        {isCharacterMode ? (
+          <motion.div
+            className="relative w-full h-full flex items-center justify-center font-display uppercase tracking-tight text-white"
+            style={{ background: characterConfig.gradient }}
+            animate={characterAnim}
+            transition={{
+              duration: animation === 'orbit' ? 5 : 3,
+              repeat: Infinity,
+              ease: 'easeInOut',
+            }}
+          >
+            <span className="relative z-10 text-white/95">{characterConfig.glyph}</span>
+          </motion.div>
+        ) : src ? (
           <motion.div 
             className="relative w-full h-full"
             animate={{ 

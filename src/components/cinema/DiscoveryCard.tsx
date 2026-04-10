@@ -2,29 +2,25 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Star, Bookmark, Loader2, Check, Bell, BellOff, Plus } from 'lucide-react';
+import { Star, Bell, BellOff } from 'lucide-react';
 import { UniversalMedia } from '@/lib/api/UniversalTransformer';
 import { cn, formatDate, getReleaseStatus } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
-import { archiveMediaAction } from '@/lib/actions';
 import { toggleReminder, getReminderStatus } from '@/app/actions/radar-actions';
 import { isAfter, startOfToday } from 'date-fns';
 import { toast } from 'sonner';
-import SaveMediaDialog from '../vault/SaveMediaDialog';
+import { buildMediaHref, toCanonicalMediaId } from '@/lib/media-identity';
+import MediaPreferenceButtons from '@/components/media/MediaPreferenceButtons';
 
 interface DiscoveryCardProps {
   media: UniversalMedia;
   index: number;
-  isAlreadySaved?: boolean;
 }
 
-export function DiscoveryCard({ media: initialMedia, index, isAlreadySaved = false }: DiscoveryCardProps) {
+export function DiscoveryCard({ media: initialMedia }: DiscoveryCardProps) {
   const [media] = useState<UniversalMedia>(initialMedia);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isSaved, setIsSaved] = useState(isAlreadySaved);
   const [isReminded, setIsReminded] = useState(false);
-  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
 
   const isUpcoming = media.releaseDate ? isAfter(new Date(media.releaseDate), startOfToday()) : false;
   const releaseStatus = getReleaseStatus(media.releaseDate, media.type);
@@ -34,43 +30,6 @@ export function DiscoveryCard({ media: initialMedia, index, isAlreadySaved = fal
       getReminderStatus(String(media.sourceId), media.type).then(setIsReminded);
     }
   }, [media.sourceId, media.type, isUpcoming]);
-
-  const handleSaveToVault = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (isSaving || isSaved) return;
-    
-    setIsSaving(true);
-    try {
-      const result = await archiveMediaAction({
-        mediaId: media.id,
-        mediaType: media.type,
-        title: media.displayTitle,
-        posterUrl: media.posterUrl,
-        classification: 'Atmospheric', 
-      });
-      
-      if (result && 'error' in result) {
-        toast.error(result.error as string);
-        return;
-      }
-      
-      setIsSaved(true);
-      if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(10);
-      toast.success("Added to library");
-    } catch (error) {
-       console.error("Failed to add to watchlist:", error);
-       toast.error("Failed to add to library");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleOpenSaveDialog = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsSaveDialogOpen(true);
-  };
 
   const handleToggleReminder = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -91,10 +50,11 @@ export function DiscoveryCard({ media: initialMedia, index, isAlreadySaved = fal
   };
 
   return (
-    <Link
-      href={`/media/${media.type}/${media.sourceId}`}
-      className="relative flex flex-col w-full rounded-2xl overflow-hidden bg-black border border-white/5 group transition-all duration-500 hover:shadow-[0_0_40px_rgba(255,255,255,0.05)]"
-    >
+    <>
+      <Link
+        href={buildMediaHref(media)}
+        className="relative flex flex-col w-full rounded-2xl overflow-hidden bg-black border border-white/5 group transition-all duration-500 hover:shadow-[0_0_40px_rgba(255,255,255,0.05)]"
+      >
       {/* Base Card Image Container (2:3 aspect ratio) */}
       <div className="relative w-full aspect-2/3 overflow-hidden">
         {media.posterUrl ? (
@@ -103,7 +63,7 @@ export function DiscoveryCard({ media: initialMedia, index, isAlreadySaved = fal
             alt={media.displayTitle}
             fill
             className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110 brightness-90 group-hover:brightness-100"
-            sizes="(max-width: 768px) 50vw, 25vw"
+            sizes="(max-width: 639px) 92vw, (max-width: 768px) 50vw, 25vw"
           />
         ) : (
           <div className="w-full h-full bg-white/5 flex flex-col items-center justify-center">
@@ -136,20 +96,13 @@ export function DiscoveryCard({ media: initialMedia, index, isAlreadySaved = fal
              </span>
              
              {!isUpcoming && (
-               <div className="flex gap-1">
-                  <motion.button 
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleOpenSaveDialog}
-                    className={cn(
-                      "p-1 md:p-1.5 rounded-md backdrop-blur-md transition-all flex items-center justify-center border",
-                      isSaved ? "bg-white text-black border-white" : "bg-black/40 border-white/10 text-white/50 hover:text-white"
-                    )}
-                    title="Save & Curate"
-                  >
-                    <Bookmark className={cn("w-2.5 md:w-3.5 h-2.5 md:h-3.5", isSaved && "fill-current")} fill={isSaved ? "currentColor" : "none"} />
-                  </motion.button>
-               </div>
+               <MediaPreferenceButtons
+                 mediaId={toCanonicalMediaId(media)}
+                 mediaType={media.type}
+                 title={media.displayTitle}
+                 posterUrl={media.posterUrl}
+                 compact
+               />
              )}
 
              {isUpcoming && (
@@ -194,11 +147,7 @@ export function DiscoveryCard({ media: initialMedia, index, isAlreadySaved = fal
           </div>
         </div>
       </div>
-      <SaveMediaDialog 
-        isOpen={isSaveDialogOpen} 
-        onClose={() => setIsSaveDialogOpen(false)} 
-        media={media} 
-      />
-    </Link>
+      </Link>
+    </>
   );
 }

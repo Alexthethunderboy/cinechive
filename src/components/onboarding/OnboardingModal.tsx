@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Check, ChevronRight, Loader2, Film, Palette, Users } from 'lucide-react';
 import Image from 'next/image';
@@ -74,14 +74,18 @@ const STEPS = [
 
 interface OnboardingModalProps {
   onComplete: () => void;
+  onSkip: () => void;
 }
 
-export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
+export default function OnboardingModal({ onComplete, onSkip }: OnboardingModalProps) {
   const [step, setStep] = useState<StepId>(0);
   const [selectedFilms,    setSelectedFilms]    = useState<Set<string>>(new Set());
   const [selectedGenres,   setSelectedGenres]   = useState<Set<string>>(new Set());
   const [selectedCreators, setSelectedCreators] = useState<Set<string>>(new Set());
   const [isPending, startTransition] = useTransition();
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [attemptedNext, setAttemptedNext] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   const currentStep = STEPS[step];
 
@@ -97,7 +101,10 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
   }
 
   function handleNext() {
+    setAttemptedNext(true);
+    if (!canProceed) return;
     if (step < 2) {
+      setAttemptedNext(false);
       setStep((s) => (s + 1) as StepId);
     } else {
       handleFinish();
@@ -127,8 +134,10 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
 
       const result = await saveOnboardingTastes(selections);
       if (result?.error) {
+        setSubmitError(result.error as string);
         toast.error('Could not save your preferences. Try again.');
       } else {
+        setSubmitError(null);
         toast.success('Curator profile updated.');
         onComplete();
       }
@@ -139,6 +148,25 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
     step === 0 ? selectedFilms.size >= 3 :
     step === 1 ? selectedGenres.size >= 1 :
                  selectedCreators.size >= 1;
+
+  useEffect(() => {
+    dialogRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape' && !isPending) {
+        onSkip();
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [isPending, onSkip]);
+
+  const remainingCount =
+    step === 0 ? Math.max(0, 3 - selectedFilms.size) :
+    step === 1 ? Math.max(0, 1 - selectedGenres.size) :
+                 Math.max(0, 1 - selectedCreators.size);
 
   return (
     <AnimatePresence>
@@ -169,13 +197,18 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
           exit={{ opacity: 0, scale: 0.96, y: -16 }}
           transition={{ type: 'spring', stiffness: 260, damping: 28 }}
           className="relative z-10 w-full max-w-4xl max-h-[90vh] flex flex-col bg-black/60 border border-white/10 rounded-2xl overflow-hidden shadow-2xl backdrop-blur-xl"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="onboarding-title"
+          tabIndex={-1}
+          ref={dialogRef}
         >
           {/* Header */}
           <div className="px-8 pt-8 pb-6 border-b border-white/5 shrink-0">
             <p className="font-data text-[10px] tracking-[0.3em] text-white/30 mb-1">
               The Casting Call — Step {step + 1} of 3
             </p>
-            <h2 className="font-display text-3xl md:text-5xl italic tracking-tighter text-white">
+            <h2 id="onboarding-title" className="font-display text-3xl md:text-5xl italic tracking-tighter text-white">
               {currentStep.label}
             </h2>
             <p className="font-heading text-sm text-white/50 mt-1">{currentStep.hint}</p>
@@ -207,7 +240,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.25 }}
-                  className="grid grid-cols-4 md:grid-cols-8 gap-3"
+                  className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3"
                 >
                   {SEED_FILMS.map((film) => {
                     const selected = selectedFilms.has(film.value);
@@ -218,6 +251,8 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                         whileTap={{ scale: 0.93 }}
                         whileHover={{ scale: 1.04, y: -3 }}
                         className="relative aspect-[2/3] rounded-lg overflow-hidden group focus:outline-none"
+                        aria-pressed={selected}
+                        aria-label={`${selected ? 'Selected' : 'Select'} ${film.display_name}`}
                       >
                         {film.poster_url && (
                           <Image src={film.poster_url} alt={film.display_name} fill className="object-cover" />
@@ -269,6 +304,8 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                             : 'border-white/8 bg-white/3 hover:border-white/20'
                         )}
                         style={selected ? { boxShadow: `0 0 24px ${styleBaseColor}60` } : {}}
+                        aria-pressed={selected}
+                        aria-label={`${selected ? 'Selected' : 'Select'} ${genre.label}`}
                       >
                         <div
                           className="absolute inset-0 rounded-xl opacity-30 pointer-events-none transition-opacity"
@@ -299,7 +336,7 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.25 }}
-                  className="grid grid-cols-3 md:grid-cols-5 gap-4"
+                  className="grid grid-cols-2 md:grid-cols-5 gap-4"
                 >
                   {SEED_CREATORS.map((creator) => {
                     const selected = selectedCreators.has(creator.value);
@@ -310,6 +347,8 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
                         whileTap={{ scale: 0.94 }}
                         whileHover={{ scale: 1.04, y: -2 }}
                         className="flex flex-col items-center gap-2 group focus:outline-none"
+                        aria-pressed={selected}
+                        aria-label={`${selected ? 'Selected' : 'Select'} ${creator.display_name}`}
                       >
                         <div className={cn(
                           'relative w-16 h-16 md:w-20 md:h-20 rounded-full overflow-hidden border-2 transition-all duration-200',
@@ -345,38 +384,75 @@ export default function OnboardingModal({ onComplete }: OnboardingModalProps) {
 
           {/* Footer */}
           <div className="px-8 py-6 border-t border-white/5 flex items-center justify-between shrink-0">
-            <div className="font-data text-[10px] text-white/30 tracking-widest">
+            <div className="space-y-1">
+              <div className="font-data text-[10px] text-white/30 tracking-widest">
               {step === 0 && `${selectedFilms.size} selected`}
               {step === 1 && `${selectedGenres.size} selected`}
               {step === 2 && `${selectedCreators.size} selected`}
+              </div>
+              {remainingCount > 0 && (
+                <p className="font-data text-[10px] text-amber-300/80 tracking-widest uppercase">
+                  Select {remainingCount} more to continue
+                </p>
+              )}
+              {attemptedNext && !canProceed && (
+                <p className="font-data text-[10px] text-rose-300/80 tracking-widest uppercase">
+                  Complete this step before continuing
+                </p>
+              )}
+              {submitError && (
+                <p className="font-data text-[10px] text-rose-300/90 tracking-widest uppercase">
+                  {submitError}
+                </p>
+              )}
             </div>
-
-            <motion.button
-              onClick={handleNext}
-              disabled={!canProceed || isPending}
-              whileHover={canProceed && !isPending ? { scale: 1.04 } : {}}
-              whileTap={canProceed && !isPending ? { scale: 0.97 } : {}}
-              className={cn(
-                'flex items-center gap-2 px-6 py-3 rounded-full font-heading text-sm font-semibold transition-all duration-200',
-                canProceed && !isPending
-                  ? 'bg-white text-black hover:bg-white/90'
-                  : 'bg-white/10 text-white/30 cursor-not-allowed'
+            <div className="flex items-center gap-2">
+              {step > 0 && (
+                <button
+                  onClick={() => {
+                    setAttemptedNext(false);
+                    setStep((s) => (s - 1) as StepId);
+                  }}
+                  disabled={isPending}
+                  className="px-4 py-2 rounded-full text-white/70 border border-white/20 hover:bg-white/10 transition-colors disabled:opacity-50"
+                >
+                  Back
+                </button>
               )}
-            >
-              {isPending ? (
-                <>
-                  <Loader2 size={14} className="animate-spin" />
-                  Saving...
-                </>
-              ) : step < 2 ? (
-                <>
-                  Continue
-                  <ChevronRight size={14} />
-                </>
-              ) : (
-                'Enter CineChive'
-              )}
-            </motion.button>
+              <button
+                onClick={onSkip}
+                disabled={isPending}
+                className="px-4 py-2 rounded-full text-white/50 border border-white/10 hover:text-white/80 hover:border-white/20 transition-colors disabled:opacity-50"
+              >
+                Skip for now
+              </button>
+              <motion.button
+                onClick={handleNext}
+                disabled={isPending}
+                whileHover={!isPending ? { scale: 1.04 } : {}}
+                whileTap={!isPending ? { scale: 0.97 } : {}}
+                className={cn(
+                  'flex items-center gap-2 px-6 py-3 rounded-full font-heading text-sm font-semibold transition-all duration-200',
+                  canProceed && !isPending
+                    ? 'bg-white text-black hover:bg-white/90'
+                    : 'bg-white/10 text-white/50'
+                )}
+              >
+                {isPending ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" />
+                    Saving...
+                  </>
+                ) : step < 2 ? (
+                  <>
+                    Continue
+                    <ChevronRight size={14} />
+                  </>
+                ) : (
+                  'Enter CineChive'
+                )}
+              </motion.button>
+            </div>
           </div>
         </motion.div>
       </motion.div>

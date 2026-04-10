@@ -1,5 +1,7 @@
+ 'use client';
+
 import React, { useState, useEffect } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
 import { getTrendingFeedAction, getAnimeFeedAction, getAnimationFeedAction, getDocumentaryFeedAction } from '@/lib/feed-actions';
 import { UniversalMedia } from '@/lib/api/UniversalTransformer';
@@ -9,9 +11,8 @@ import { AdvancedFilters, FilterState } from '@/components/animation/FilterLab';
 import { Loader2, Film, Tv, Sparkles, Wand2, Filter, Library } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
+function TrendingFeedInner({ isVisible = true }: { isVisible?: boolean }) {
   const [activeTab, setActiveTab] = useState<'movie' | 'tv' | 'anime' | 'animation' | 'documentary'>('movie');
-  const [localQuery, setLocalQuery] = useState('');
   
   // FilterLab State
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
@@ -82,25 +83,11 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
 
   const allItems = data?.pages.flatMap((page: any) => page.results) || [];
 
-  // Client-side filtering strategy (Combined Search Query + FilterLab)
+  // Client-side filtering strategy (FilterLab for anime/animation tabs)
   const filteredItems = React.useMemo(() => {
     let items = allItems as UniversalMedia[];
-    
-    // 1. Local Search Query
-    if (localQuery) {
-      const q = localQuery.toLowerCase();
-      items = items.filter(item => {
-        return (
-           item.displayTitle.toLowerCase().includes(q) ||
-           item.genres?.some((g: string) => g.toLowerCase().includes(q)) ||
-           (item.director || item.creator || '').toLowerCase().includes(q) ||
-           (item.englishTitle && item.englishTitle.toLowerCase().includes(q)) ||
-           (item.romajiTitle && item.romajiTitle.toLowerCase().includes(q))
-        );
-      });
-    }
 
-    // 2. FilterLab logic strictly for Anime/Animation tabs
+    // FilterLab logic strictly for Anime/Animation tabs
     if (activeTab === 'anime' || activeTab === 'animation') {
        if (animationFilters.year) {
           items = items.filter(i => String(i.releaseYear) === animationFilters.year);
@@ -117,7 +104,7 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
     }
 
     return items;
-  }, [allItems, localQuery, animationFilters, activeTab]);
+  }, [allItems, animationFilters, activeTab]);
 
   return (
     <div className="flex flex-col">
@@ -217,11 +204,6 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
           </div>
         ) : (
           <>
-            {filteredItems.length === 0 && localQuery ? (
-               <div className="w-full py-20 text-center text-white/50 font-mono">
-                  No matches found in the current stream for "{localQuery}".
-               </div>
-            ) : (
             <motion.div 
               variants={{
                 hidden: { opacity: 0 },
@@ -234,7 +216,7 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
               }}
               initial="hidden"
               animate="show"
-              className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8"
             >
               {filteredItems.map((item, i) => (
                 <motion.div 
@@ -251,10 +233,8 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
                 </motion.div>
               ))}
             </motion.div>
-            )}
 
             {/* InView trigger for Infinite Scroll */}
-            {!localQuery && (
                <div ref={ref} className="w-full py-12 flex flex-col items-center justify-center mt-20 relative">
                  <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-white/10 to-transparent" />
                  
@@ -264,7 +244,7 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
                      <span className="font-data text-[10px] tracking-[0.3em] text-white/40">Synchronizing deep stream...</span>
                    </div>
                  ) : hasNextPage ? (
-                   <div className="h-20"></div> /* Space to trigger inView */
+                  <div className="h-20" />
                  ) : (
                    <div className="flex flex-col items-center gap-6 py-10 opacity-30">
                       <div className="w-12 h-12 rounded-full border border-dashed border-white/20 flex items-center justify-center">
@@ -277,11 +257,32 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
                    </div>
                  )}
                </div>
-            )}
           </>
         )}
       </div>
 
     </div>
+  );
+}
+
+export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: {
+          queries: {
+            staleTime: 60 * 1000,
+            gcTime: 10 * 60 * 1000,
+            retry: 1,
+            refetchOnWindowFocus: false,
+          },
+        },
+      })
+  );
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TrendingFeedInner isVisible={isVisible} />
+    </QueryClientProvider>
   );
 }

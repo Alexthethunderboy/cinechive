@@ -9,6 +9,8 @@ import { formatDateBadge } from '@/lib/date-utils';
 import { toggleReminder, getReminderStatus } from '@/app/actions/radar-actions';
 import Image from 'next/image';
 import { toast } from 'sonner';
+import Link from 'next/link';
+import { buildMediaHref } from '@/lib/media-identity';
 
 interface ReleaseRadarCardProps {
   item: UniversalMedia;
@@ -47,21 +49,27 @@ export default function ReleaseRadarCard({ item }: ReleaseRadarCardProps) {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       whileHover={{ y: -5 }}
-      className="group relative bg-white/5 border border-white/10 rounded-2xl overflow-hidden aspect-2/3 md:aspect-auto md:h-[400px]"
+      className="group relative bg-white/5 border border-white/10 rounded-xl sm:rounded-2xl overflow-hidden aspect-[3/4] sm:aspect-2/3 md:aspect-auto md:h-[400px]"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Background Image / Video Preview */}
+      <Link href={buildMediaHref(item)} className="absolute inset-0 z-10" aria-label={`Open details for ${item.displayTitle}`} />
       <div className="absolute inset-0">
-        <motion.img
+        <motion.div
           layoutId={`radar-poster-${item.id}-${item.sourceId}`}
-          src={item.posterUrl || '/placeholder-poster.jpg'}
-          alt={item.displayTitle}
           className={cn(
             "absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110",
             isHovered && item.trailerUrl ? "opacity-40" : "opacity-100"
           )}
-        />
+        >
+          <Image
+            src={item.posterUrl || '/placeholder-poster.jpg'}
+            alt={item.displayTitle}
+            fill
+            className="object-cover"
+          />
+        </motion.div>
         
         {/* Muted Looping Video Preview on Hover */}
         {isHovered && item.trailerUrl && (
@@ -82,7 +90,7 @@ export default function ReleaseRadarCard({ item }: ReleaseRadarCardProps) {
       </div>
 
       <div className="absolute top-2 left-2 z-20">
-        <div className="bg-white text-black p-1 md:p-1.5 rounded-lg flex flex-col items-center justify-center min-w-8 md:min-w-[45px] shadow-2xl border border-white/20">
+        <div className="bg-white text-black p-1 md:p-1.5 rounded-lg flex flex-col items-center justify-center min-w-7 sm:min-w-8 md:min-w-[45px] shadow-2xl border border-white/20">
           <span className="text-base md:text-lg font-bold leading-none">{day}</span>
           <span className="text-[8px] md:text-[9px] font-data font-bold tracking-wider">{month}</span>
         </div>
@@ -101,8 +109,8 @@ export default function ReleaseRadarCard({ item }: ReleaseRadarCardProps) {
       </div>
 
       {/* Content */}
-      <div className="absolute inset-x-0 bottom-0 p-3 md:p-4 z-20">
-        <div className="mb-2 flex items-center gap-2">
+      <div className="absolute inset-x-0 bottom-0 p-2.5 sm:p-3 md:p-4 z-20">
+        <div className="mb-2 flex items-center gap-1.5 sm:gap-2">
           {item.type === 'anime' && (
             <span className="text-[8px] font-data bg-rose-500/20 text-rose-400 px-2 py-0.5 rounded border border-rose-500/30 uppercase tracking-widest">Anime</span>
           )}
@@ -111,13 +119,13 @@ export default function ReleaseRadarCard({ item }: ReleaseRadarCardProps) {
           )}
         </div>
         
-        <h3 className="text-lg font-heading font-bold text-white mb-1 line-clamp-1 group-hover:text-accent transition-colors">
+        <h3 className="text-base sm:text-lg font-heading font-bold text-white mb-1 line-clamp-1 group-hover:text-accent transition-colors">
           {item.displayTitle}
         </h3>
 
         {/* Hype Meter */}
         <div className="space-y-1 mb-2 md:mb-4">
-          <div className="flex items-center justify-between text-[10px] font-data text-white/40 uppercase tracking-tighter">
+          <div className="flex items-center justify-between text-[9px] sm:text-[10px] font-data text-white/40 uppercase tracking-tighter">
             <span>Anticipation Meter</span>
             <span className="text-white/80">{item.hypeLevel || 0}%</span>
           </div>
@@ -131,29 +139,30 @@ export default function ReleaseRadarCard({ item }: ReleaseRadarCardProps) {
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2 md:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleToggleNotify}
             className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 md:gap-2 py-1.5 md:py-2 rounded-xl border transition-all duration-300",
+              "flex-1 flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 py-1.5 md:py-2 rounded-xl border transition-all duration-300 min-w-0",
               isNotified 
                 ? "bg-accent text-black border-accent" 
                 : "bg-white/10 text-white border-white/10 hover:bg-white/20"
             )}
           >
             {isNotified ? <BellOff size={12} className="md:w-[14px] md:h-[14px]" /> : <Bell size={12} className="md:w-[14px] md:h-[14px]" />}
-            <span className="text-[9px] md:text-[10px] font-data font-bold uppercase tracking-widest">
+            <span className="text-[8px] sm:text-[9px] md:text-[10px] font-data font-bold uppercase tracking-wide sm:tracking-widest truncate">
               {isNotified ? 'Dismiss' : 'Notify Me'}
             </span>
           </motion.button>
           
-          <motion.button 
-            whileTap={{ scale: 0.95 }}
-            className="p-2 rounded-xl bg-white/10 text-white border border-white/10 hover:bg-white/20 transition-all"
+          <Link
+            href={buildMediaHref(item)}
+            className="p-2 rounded-xl bg-white/10 text-white border border-white/10 hover:bg-white/20 transition-all z-20"
+            aria-label={`View details for ${item.displayTitle}`}
           >
             <Info size={14} />
-          </motion.button>
+          </Link>
         </div>
       </div>
     </motion.div>

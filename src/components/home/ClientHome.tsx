@@ -24,11 +24,15 @@ export default function ClientHome({ user }: ClientHomeProps) {
   
   // Show onboarding modal for new users who haven't completed it
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [hasCheckedOnboardingDeferral, setHasCheckedOnboardingDeferral] = useState(false);
 
   useEffect(() => {
-    if (user && user.profile && user.profile.onboarding_completed === false) {
+    const deferredUntil = Number(localStorage.getItem('onboardingDeferredUntil') || '0');
+    const isDeferred = Date.now() < deferredUntil;
+    if (user && (!user.profile || user.profile.onboarding_completed === false) && !isDeferred) {
       setShowOnboarding(true);
     }
+    setHasCheckedOnboardingDeferral(true);
   }, [user]);
 
   useEffect(() => {
@@ -100,7 +104,7 @@ export default function ClientHome({ user }: ClientHomeProps) {
           opacity: isVisible ? 1 : 0
         }}
         transition={{ duration: 0.3, ease: "easeInOut" }}
-        className="flex justify-center mb-6 md:mb-12 px-4 sticky top-24 z-50 pointer-events-none"
+        className="flex justify-center mb-6 md:mb-12 px-3 sm:px-4 sticky top-20 sm:top-24 z-50 pointer-events-none"
       >
         <div className="glass p-1 md:p-1.5 rounded-full flex items-center gap-1 shadow-2xl relative overflow-hidden group pointer-events-auto">
           <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
@@ -128,7 +132,7 @@ export default function ClientHome({ user }: ClientHomeProps) {
                 
                 <IconComponent size={12} className={cn("md:w-3.5 md:h-3.5", isActive ? `${mode.color} scale-110` : "scale-100")} />
 
-                <span className="font-metadata font-bold text-[10px] md:text-xs">
+                <span className="font-metadata font-bold text-[9px] sm:text-[10px] md:text-xs">
                   {mode.label}
                 </span>
 
@@ -155,8 +159,14 @@ export default function ClientHome({ user }: ClientHomeProps) {
       </div>
 
       {/* Onboarding Flow for New Users */}
-      {showOnboarding && (
-        <OnboardingModal onComplete={() => setShowOnboarding(false)} />
+      {hasCheckedOnboardingDeferral && showOnboarding && (
+        <OnboardingModal
+          onComplete={() => setShowOnboarding(false)}
+          onSkip={() => {
+            localStorage.setItem('onboardingDeferredUntil', String(Date.now() + 24 * 60 * 60 * 1000));
+            setShowOnboarding(false);
+          }}
+        />
       )}
     </div>
   );

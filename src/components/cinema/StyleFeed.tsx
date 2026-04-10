@@ -90,7 +90,7 @@ export function StyleFeed({ slug, initialMovies, initialTv }: StyleFeedProps) {
               Films
             </h2>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
             {allMovies.map((item, i) => (
               <DiscoveryCard key={`movie-${item.sourceId}-${i}`} media={item} index={i} />
             ))}
@@ -110,7 +110,7 @@ export function StyleFeed({ slug, initialMovies, initialTv }: StyleFeedProps) {
               Series
             </h2>
           </div>
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8">
             {allTv.map((item, i) => (
               <DiscoveryCard key={`tv-${item.sourceId}-${i}`} media={item} index={i} />
             ))}

@@ -3,26 +3,15 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CommunityNotification } from '@/lib/community-actions';
+import type { SocialNotificationRecord } from '@/lib/social-notification-actions';
 import { Bell, Play, Calendar, Star, Heart, MessageSquare, UserPlus, Sparkles, Globe, User, Users } from 'lucide-react';
 import { cn, formatDate, formatUsername } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
 
-interface SocialNotification {
-  id: string;
-  type: 'follow' | 'reaction' | 'comment' | 'mention';
-  created_at: string;
-  is_read: boolean;
-  actor: {
-    username: string;
-    avatar_url: string | null;
-  };
-  metadata?: any;
-}
-
 interface UnifiedNotificationCenterProps {
   algorithmicNotifications: CommunityNotification[];
-  socialNotifications: SocialNotification[];
+  socialNotifications: SocialNotificationRecord[];
   onClose: () => void;
   onMarkAsRead: (id: string) => void;
   position?: 'sidebar' | 'bottom';
@@ -49,7 +38,7 @@ export function CommunityNotificationCenter({
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 10, scale: 0.95 }}
       className={cn(
-        "absolute w-85 md:w-96 max-h-[600px] glass border border-white/10 rounded-2xl shadow-2xl z-60 overflow-hidden flex flex-col",
+        "absolute w-[92vw] sm:w-[22rem] md:w-96 max-h-[80vh] md:max-h-[600px] glass border border-white/10 rounded-2xl shadow-2xl z-60 overflow-hidden flex flex-col",
         positionClasses
       )}
     >
@@ -171,7 +160,7 @@ function EmptyState({ icon, message }: { icon: React.ReactNode, message: string 
   );
 }
 
-function SocialNotificationItem({ notif, onClick }: { notif: SocialNotification, onClick: () => void }) {
+function SocialNotificationItem({ notif, onClick }: { notif: SocialNotificationRecord, onClick: () => void }) {
   const icons = {
     follow: <UserPlus size={14} className="text-vibe-teal" />,
     reaction: <Heart size={14} className="text-vibe-rose fill-vibe-rose" />,
@@ -185,10 +174,11 @@ function SocialNotificationItem({ notif, onClick }: { notif: SocialNotification,
     comment: "commented on your post",
     mention: "mentioned you",
   };
+  const groupedCount = Number(notif.metadata?.grouped_count || 1);
 
   return (
     <Link 
-      href={notif.type === 'follow' ? `/profile/${formatUsername(notif.actor.username)}` : '/community'}
+      href={notif.type === 'follow' ? `/profile/${formatUsername(notif.actor?.username || 'user')}` : '/community'}
       onClick={onClick}
       className={cn(
         "group block p-3 rounded-xl transition-all border border-transparent hover:border-white/5 relative overflow-hidden",
@@ -201,11 +191,11 @@ function SocialNotificationItem({ notif, onClick }: { notif: SocialNotification,
       <div className="flex gap-3 items-center">
         <div className="relative w-10 h-10 shrink-0">
           <div className="w-full h-full rounded-full overflow-hidden border border-white/10 group-hover:border-white/20 transition-colors">
-            {notif.actor.avatar_url ? (
-              <Image src={notif.actor.avatar_url} alt={notif.actor.username} fill className="object-cover" />
+            {notif.actor?.avatar_url ? (
+              <Image src={notif.actor.avatar_url} alt={notif.actor?.username || 'user'} fill className="object-cover" />
             ) : (
               <div className="w-full h-full bg-white/5 flex items-center justify-center text-xs font-bold text-white/20 lowercase">
-                {formatUsername(notif.actor.username)[0]}
+                {formatUsername(notif.actor?.username || 'u')[0]}
               </div>
             )}
           </div>
@@ -215,8 +205,11 @@ function SocialNotificationItem({ notif, onClick }: { notif: SocialNotification,
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-heading text-white">
-            <span className="font-bold underline decoration-white/10 underline-offset-2">{formatUsername(notif.actor.username)}</span>
-            <span className="text-white/60 ml-1.5">{messages[notif.type]}</span>
+            <span className="font-bold underline decoration-white/10 underline-offset-2">{formatUsername(notif.actor?.username || 'user')}</span>
+            <span className="text-white/60 ml-1.5">
+              {messages[notif.type]}
+              {groupedCount > 1 ? ` (${groupedCount}x)` : ''}
+            </span>
           </p>
           {notif.metadata?.preview && (
             <p className="text-[10px] text-white/30 italic truncate mt-0.5">

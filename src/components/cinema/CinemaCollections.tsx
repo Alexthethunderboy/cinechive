@@ -152,7 +152,7 @@ export default function CinemaCollections() {
         </div>
 
         {/* 2. Secondary Genres (Compact Grid) */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mt-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 mt-8">
           {SECONDARY_GENRES.map((genre) => {
             const color = GENRE_COLORS[genre.id] || '#FFFFFF';
             return (
