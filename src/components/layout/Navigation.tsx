@@ -503,7 +503,7 @@ export function BottomNav() {
     if (pathname.startsWith('/community')) {
       return [
         { id: 'compose', label: 'Compose', href: '#compose' },
-        { id: 'activity', label: 'Alerts', href: '/activity' },
+        { id: 'activity', label: 'Alerts', href: '/notifications' },
       ];
     }
     if (pathname.startsWith('/vault')) {

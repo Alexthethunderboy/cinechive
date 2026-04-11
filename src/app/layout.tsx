@@ -5,6 +5,7 @@ import MeshGradient from "@/components/ui/MeshGradient";
 import QueryProvider from "@/components/providers/QueryProvider";
 import { AuthProvider } from "@/components/providers/AuthProvider";
 import { Toaster } from 'sonner';
+import { SiteTour } from "@/components/onboarding/SiteTour";
 
 export const metadata: Metadata = {
   title: {
@@ -66,6 +67,7 @@ export default function RootLayout({
 
                 <BottomNav />
               </div>
+              <SiteTour />
             </NotificationCenterProvider>
             <Toaster 
               position="top-center" 

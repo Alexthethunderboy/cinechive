@@ -62,7 +62,7 @@ export const NAV_ITEMS = [
   { label: 'Movies', href: '/', icon: 'home' },
   { label: 'Community', href: '/community', icon: 'zap' },
   { label: 'People', href: '/people', icon: 'user' },
-  { label: 'Activity', href: '/activity', icon: 'activity' },
+  { label: 'Activity', href: '/notifications', icon: 'activity' },
   { label: 'Discover', href: '/discover', icon: 'globe' },
   { label: 'Library', href: '/vault', icon: 'layers' },
 ] as const;
