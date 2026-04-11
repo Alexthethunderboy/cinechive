@@ -47,7 +47,7 @@ export function CommunityNotificationCenter({
         <div className="p-4 flex items-center justify-between">
           <h3 className="font-heading text-xs tracking-[0.2em] uppercase flex items-center gap-2 text-white/40">
             <Bell size={12} />
-            Notifications
+            Activity
           </h3>
           <button 
             onClick={onClose}
@@ -136,7 +136,7 @@ export function CommunityNotificationCenter({
       {/* Footer */}
       <div className="p-4 border-t border-white/5 bg-black text-center">
         <Link 
-          href="/activity" 
+          href="/notifications" 
           onClick={onClose}
           className="text-[9px] font-metadata uppercase tracking-[0.3em] text-white/30 hover:text-accent transition-colors"
         >

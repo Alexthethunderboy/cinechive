@@ -206,7 +206,7 @@ export function Sidebar() {
                 <NotificationIndicator count={notifCount} pulse={true} />
               </div>
               <span className="font-heading font-medium tracking-tight text-sm flex-1">
-                Notifications
+                Activity
               </span>
             </button>
 
