@@ -112,7 +112,7 @@ export async function archiveMediaAction(data: {
   }
 
   revalidatePath('/vault');
-  revalidatePath('/activity');
+  revalidatePath('/notifications');
   revalidatePath(`/media/${data.mediaType}/${data.mediaId}`);
   return { success: true };
 }
@@ -137,7 +137,7 @@ export async function removeMediaEntryAction(mediaId: string, mediaType: string)
   }
 
   revalidatePath('/vault');
-  revalidatePath('/activity');
+  revalidatePath('/notifications');
   revalidatePath(`/media/${mediaType}/${mediaId}`);
   return { success: true };
 }
@@ -183,7 +183,7 @@ export async function toggleArchiveMediaAction(data: {
 
     if (error) return { error: error.message };
     revalidatePath('/vault');
-    revalidatePath('/activity');
+    revalidatePath('/notifications');
     return { success: true, status: 'added' };
   }
 }

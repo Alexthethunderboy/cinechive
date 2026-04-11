@@ -136,11 +136,11 @@ export function CommunityNotificationCenter({
       {/* Footer */}
       <div className="p-4 border-t border-white/5 bg-black text-center">
         <Link 
-          href="/activity" 
+          href="/notifications" 
           onClick={onClose}
           className="text-[9px] font-metadata uppercase tracking-[0.3em] text-white/30 hover:text-accent transition-colors"
         >
-          View Full Activity Hub →
+          View Full Notifications Hub →
         </Link>
       </div>
     </motion.div>
@@ -149,7 +149,7 @@ export function CommunityNotificationCenter({
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function EmptyState({ icon, message }: { icon: React.ReactNode, message: string }) {
+export function EmptyState({ icon, message }: { icon: React.ReactNode, message: string }) {
   return (
     <div className="py-20 text-center space-y-4">
       <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto text-white/20">
@@ -160,13 +160,17 @@ function EmptyState({ icon, message }: { icon: React.ReactNode, message: string 
   );
 }
 
-function SocialNotificationItem({ notif, onClick }: { notif: SocialNotificationRecord, onClick: () => void }) {
+export function SocialNotificationIcon({ type, size = 14, className }: { type: NotificationType, size?: number, className?: string }) {
   const icons = {
-    follow: <UserPlus size={14} className="text-vibe-teal" />,
-    reaction: <Heart size={14} className="text-vibe-rose fill-vibe-rose" />,
-    comment: <MessageSquare size={14} className="text-vibe-cyan" />,
-    mention: <Sparkles size={14} className="text-vibe-purple" />,
+    follow: <UserPlus size={size} className={cn("text-vibe-teal", className)} />,
+    reaction: <Heart size={size} className={cn("text-vibe-rose fill-vibe-rose", className)} />,
+    comment: <MessageSquare size={size} className={cn("text-vibe-cyan", className)} />,
+    mention: <Sparkles size={size} className={cn("text-vibe-purple", className)} />,
   };
+  return icons[type] || null;
+}
+
+export function SocialNotificationItem({ notif, onClick }: { notif: SocialNotificationRecord, onClick: () => void }) {
 
   const messages = {
     follow: "started following you",
@@ -200,7 +204,7 @@ function SocialNotificationItem({ notif, onClick }: { notif: SocialNotificationR
             )}
           </div>
           <div className="absolute -bottom-1 -right-1 p-1 bg-surface rounded-full shadow-lg border border-white/10">
-            {icons[notif.type]}
+            <SocialNotificationIcon type={notif.type} />
           </div>
         </div>
         <div className="flex-1 min-w-0">
@@ -225,7 +229,7 @@ function SocialNotificationItem({ notif, onClick }: { notif: SocialNotificationR
   );
 }
 
-function CinemaNotificationItem({ notif, onClick }: { notif: CommunityNotification, onClick: () => void }) {
+export function CinemaNotificationItem({ notif, onClick }: { notif: CommunityNotification, onClick: () => void }) {
   return (
     <Link 
       key={notif.id} 

@@ -42,11 +42,11 @@ When you click a movie, we don't just show you a poster. We give you:
 *   **Dispatches**: These are like mini-blog posts. You can share thorough thoughts on a film with your followers.
 *   **TikTok-style Reposts**: Found a cool post? "Collect" it, and it show up on your feed as a repost, giving credit to the original creator.
 *   **Following**: Build a network of other cinephiles whose taste you trust.
-*   **Activity Feed**: Chronological feed of community activity
+*   **Notifications Hub**: Chronological feed of your alerts and community interactions
 *   **Social Reactions**: Like/unlike activities, posts, and media entries
 *   **Comments**: Threaded conversations on posts and activities
 *   **Mentions**: @username mentions in posts and comments
-*   **Notifications**: Real-time notifications for follows, reactions, comments, mentions
+*   **Notifications Hub**: Real-time notifications for follows, reactions, comments, mentions, and cinema alerts.
 *   **Community Search**: Find users and posts in the community
 
 #### 5. CineJournal & Ratings
@@ -73,7 +73,7 @@ When you click a movie, we don't just show you a poster. We give you:
 *   **Friend Recommendations**: See what friends are watching/saving
 *   **Taste Compatibility**: Match scores with other users
 *   **Social Graph**: Follow/unfollow system with follower counts
-*   **Activity Notifications**: Real-time updates on social interactions
+*   **Activity Notifications**: Real-time updates on social interactions within the Notifications Hub
 
 #### 8. Advanced Features
 *   **Watch Links**: External streaming service links
@@ -188,6 +188,7 @@ When you click a movie, we don't just show you a poster. We give you:
 - `getSocialNotificationsAction()`: Get user notifications
 - `markNotificationAsReadAction()`: Mark notification read
 - `createNotificationInternal()`: Internal notification creation
+- `getNotificationsHubAction()`: Get unified social & cinema alerts
 
 **Onboarding & Intelligence:**
 - `getOnboardingTastes()`: Get user's taste preferences
@@ -228,10 +229,11 @@ When you click a movie, we don't just show you a poster. We give you:
 - `ReactionButton`: Activity like/unlike buttons
 - `FollowButton`: Follow/unfollow user buttons
 - `CommunityComposer`: Post creation interface
-- `CommunityNotificationCenter`: Notification management
+- `CommunityNotificationCenter`: Notification management and drawer logic
+- `NotificationsPage`: Dedicated notifications route for full alert history
 - `CineJournal`: Screening journal interface
 - `CineLists`: Collection management
-- `ActivityHub`: Activity feed display
+- `ActivityHub`: Activity feed display (within pages)
 - `DispatchCard`: Community post display
 
 **Profile & Dashboard:**

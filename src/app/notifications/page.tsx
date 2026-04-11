@@ -11,7 +11,9 @@ import Image from 'next/image';
 import GlassPanel from '@/components/ui/GlassPanel';
 import { CLIENT_EVENTS } from '@/lib/client-events';
 import { capTo99Plus, getNotificationCountSummary } from '@/lib/notification-utils';
-import { cn } from '@/lib/utils';
+import { cn, formatDate, formatUsername } from '@/lib/utils';
+import { SocialNotificationItem, CinemaNotificationItem, SocialNotificationIcon } from '@/components/community/CommunityNotificationCenter';
+import { markNotificationAsReadAction, SocialNotificationRecord } from '@/lib/social-notification-actions';
 
 export default function ActivityPage() {
   const { user, loading } = useAuth();
@@ -33,7 +35,7 @@ export default function ActivityPage() {
           setNotifications(notifs.notifications);
           setTopInterests(notifs.topInterests);
           setHistory(hist);
-          setSocialNotifications(social as Array<{ is_read?: boolean }>);
+          setSocialNotifications(social as SocialNotificationRecord[]);
         });
       }
     };
@@ -43,7 +45,14 @@ export default function ActivityPage() {
     return () => window.removeEventListener(CLIENT_EVENTS.refreshNotifications, fetchData);
   }, [user]);
 
-  const countSummary = getNotificationCountSummary(notifications.length, socialNotifications);
+  const handleMarkAsRead = async (id: string) => {
+    setSocialNotifications(prev => 
+      prev.map(n => n.id === id ? { ...n, is_read: true } : n)
+    );
+    await markNotificationAsReadAction(id);
+  };
+
+  const countSummary = getNotificationCountSummary(notifications.length, socialNotifications as any);
 
   if (loading) {
     return (
@@ -61,7 +70,7 @@ export default function ActivityPage() {
         <p className="text-xs font-metadata text-white/20 tracking-widest max-w-xs">
           Sign in to access your activity history.
         </p>
-        <Link href="/login?returnTo=/activity" className="mt-8 px-8 py-3 bg-white text-black font-heading font-bold rounded-full hover:bg-white/90 transition-all tracking-widest text-[10px]">
+        <Link href="/login?returnTo=/notifications" className="mt-8 px-8 py-3 bg-white text-black font-heading font-bold rounded-full hover:bg-white/90 transition-all tracking-widest text-[10px]">
           Identify Yourself
         </Link>
       </div>
@@ -69,21 +78,21 @@ export default function ActivityPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto pt-20 pb-40 px-6">
-      <div className="flex items-center justify-between mb-12">
+    <div className="max-w-3xl mx-auto pt-20 pb-40 px-4 md:px-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
         <div className="space-y-1">
-          <h1 className="text-4xl font-heading italic tracking-tighter text-white">Activity</h1>
-          <p className="text-[10px] font-metadata text-white/40 tracking-[0.3em]">Recent Notifications & History</p>
+          <h1 className="text-4xl font-heading italic tracking-tighter text-white">Notifications</h1>
+          <p className="text-[10px] font-metadata text-white/40 tracking-[0.3em]">Recent Alerts & History</p>
         </div>
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-col items-start md:items-end gap-2">
           <div className="text-[10px] font-mono text-vibe-gold bg-vibe-gold/10 px-3 py-1 rounded-full border border-vibe-gold/20">
             {capTo99Plus(countSummary.total)} Total Alerts
           </div>
-          <div className="text-[9px] font-mono text-white/50">
+          <div className="text-[9px] font-mono text-white/50 pl-1 md:pl-0">
             {countSummary.cinema} cinema · {countSummary.socialUnread} social unread
           </div>
           {topInterests.length > 0 && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 pl-1 md:pl-0">
                <Sparkles size={8} className="text-vibe-violet" />
                <span className="text-[8px] font-mono text-white/30 tracking-widest">Interests: {topInterests.join(' • ')}</span>
             </div>
@@ -93,16 +102,16 @@ export default function ActivityPage() {
 
       <div className="mb-8 flex flex-wrap items-center gap-2">
         {[
-          { id: 'all', label: `All (${countSummary.total + history.length})` },
-          { id: 'social', label: `Social (${countSummary.socialUnread})` },
-          { id: 'cinema', label: `Cinema (${countSummary.cinema})` },
-          { id: 'history', label: `My History (${history.length})` },
+          { id: 'all', label: `All (${countSummary.total})` },
+          { id: 'social', label: `Social (${socialNotifications.length})` },
+          { id: 'cinema', label: `Cinema (${notifications.length})` },
+          { id: 'history', label: `History (${history.length})` },
         ].map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setLane(tab.id as 'all' | 'social' | 'cinema' | 'history')}
+            onClick={() => setLane(tab.id as any)}
             className={cn(
-              "px-3 py-1.5 rounded-full text-[10px] uppercase tracking-widest border transition-colors",
+              "px-3 py-1.5 rounded-full text-[10px] uppercase tracking-widest border transition-colors whitespace-nowrap",
               lane === tab.id ? "bg-white text-black border-white" : "bg-white/5 text-white/60 border-white/10 hover:text-white"
             )}
           >
@@ -173,12 +182,12 @@ export default function ActivityPage() {
          </motion.div>
       )}
 
-      {(lane === 'all' || lane === 'history') && (
+      {lane === 'history' && (
       <div className="space-y-4 mb-16">
         <div className="space-y-2 flex items-center justify-between">
            <div className="flex items-center gap-2">
              <History size={14} className="text-white/40" />
-             <h2 className="text-[10px] font-data tracking-[0.4em] text-white/40 font-bold italic">Your History</h2>
+             <h2 className="text-[10px] font-data tracking-[0.4em] text-white/40 font-bold italic uppercase">Your History</h2>
            </div>
            <div className="h-px bg-white/5 flex-1 ml-4" />
         </div>
@@ -186,7 +195,7 @@ export default function ActivityPage() {
         <div className="space-y-3">
           {history.length === 0 ? (
             <div className="py-12 text-center rounded-2xl bg-white/2 border border-dashed border-white/5">
-              <p className="text-[10px] font-metadata text-white/20 tracking-widest italic">No personal logs yet. Start archiving to build your history.</p>
+              <p className="text-[10px] font-metadata text-white/20 tracking-widest italic uppercase">No personal logs yet.</p>
             </div>
           ) : (
             history.map((item) => (
@@ -210,9 +219,6 @@ export default function ActivityPage() {
                     <span className="text-[8px] font-mono text-white/20">{new Date(item.created_at).toLocaleDateString()}</span>
                   </div>
                   <h4 className="text-sm font-heading text-white truncate">{item.title}</h4>
-                  {item.vibe && (
-                    <span className="text-[8px] font-mono text-vibe-gold/60">{item.vibe}</span>
-                  )}
                 </div>
                 <Link 
                   href={`/media/${item.media_type}/${item.media_id}`}
@@ -227,89 +233,61 @@ export default function ActivityPage() {
       </div>
       )}
 
-      {(lane === 'all' || lane === 'cinema') && (
-      <div className="space-y-2 mb-6 flex items-center justify-between">
-         <div className="flex items-center gap-2">
-           <ActivityIcon size={14} className="text-vibe-gold/40" />
-           <h2 className="text-[10px] font-data tracking-[0.4em] text-vibe-gold/40 font-bold italic">Recommended for You</h2>
-         </div>
-         <div className="h-px bg-white/5 flex-1 ml-4" />
-      </div>
-      )}
+      {(lane === 'all' || lane === 'social' || lane === 'cinema') && (
+        <div className="space-y-8">
+          <AnimatePresence mode="popLayout">
+            {(() => {
+              // Prepare and Sort Mixed Feed
+              const mixedFeed = [
+                ...(lane === 'all' || lane === 'social' 
+                  ? socialNotifications.map(n => ({ ...n, itemType: 'social', date: new Date(n.created_at) })) 
+                  : []),
+                ...(lane === 'all' || lane === 'cinema' 
+                  ? notifications.map(n => ({ ...n, itemType: 'cinema', date: new Date(n.timestamp || 0) })) 
+                  : [])
+              ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
-      {(lane === 'all' || lane === 'cinema') && (
-      <div className="space-y-4">
-        <AnimatePresence mode="popLayout">
-          {notifications.length === 0 ? (
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="py-40 text-center space-y-4"
-            >
-              <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto text-white/10">
-                <Bell size={32} />
-              </div>
-              <p className="font-metadata text-xs text-white/20 tracking-[0.2em]">No recommendations right now</p>
-            </motion.div>
-          ) : (
-            notifications.map((notif, idx) => (
-              <motion.div
-                key={notif.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05 }}
-              >
-                <Link 
-                  href={`/media/${notif.media.type}/${notif.media.sourceId}`}
-                  className="group flex items-center gap-6 p-4 rounded-2xl bg-white/3 border border-white/5 hover:bg-white/5 hover:border-white/10 transition-all"
+              if (mixedFeed.length === 0) {
+                return (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-32 text-center space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto text-white/10">
+                      <Bell size={24} />
+                    </div>
+                    <p className="text-[10px] uppercase tracking-widest text-white/30 italic">No alerts for this lane.</p>
+                  </motion.div>
+                );
+              }
+
+              return mixedFeed.map((item: any, idx) => (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.03 }}
                 >
-                  <div className="relative w-24 aspect-2/3 rounded-lg overflow-hidden border border-white/10 shrink-0">
-                    {notif.media.posterUrl ? (
-                      <Image 
-                        src={notif.media.posterUrl} 
-                        alt={notif.media.displayTitle}
-                        fill
-                        className="object-cover group-hover:scale-110 transition-transform duration-700"
+                  {item.itemType === 'social' ? (
+                    <div className="relative">
+                       <SocialNotificationItem 
+                         notif={item} 
+                         onClick={() => handleMarkAsRead(item.id)} 
+                       />
+                       {/* Enhanced styling for page version */}
+                       <div className="absolute right-4 top-1/2 -translate-y-1/2 md:block hidden">
+                          <ChevronRight size={14} className="text-white/10" />
+                       </div>
+                    </div>
+                  ) : (
+                    <div className="scale-105 md:scale-100 px-1 md:px-0">
+                      <CinemaNotificationItem 
+                        notif={item} 
+                        onClick={() => {}} 
                       />
-                    ) : (
-                      <div className="w-full h-full bg-white/5 flex items-center justify-center text-[10px] text-white/20">NO IMAGE</div>
-                    )}
-                    <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent" />
-                  </div>
-
-                  <div className="flex-1 min-w-0 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-mono text-vibe-gold/80 tracking-widest">{notif.media.type} Release</span>
-                      <span className="text-[10px] font-mono text-white/20 capitalize">{notif.timestamp}</span>
                     </div>
-                    <h3 className="text-xl font-heading text-white line-clamp-1 group-hover:text-vibe-gold transition-colors">
-                      {notif.media.displayTitle}
-                    </h3>
-                    <p className="text-sm text-white/40 font-metadata leading-relaxed line-clamp-2 italic">
-                      {notif.message}
-                    </p>
-                    <div className="pt-2 flex items-center gap-4">
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/5 text-[10px] text-white/60 font-mono">
-                        View Details
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              </motion.div>
-            ))
-          )}
-        </AnimatePresence>
-      </div>
-      )}
-
-      {lane === 'social' && (
-        <div className="py-14 text-center rounded-2xl bg-white/2 border border-white/10">
-          <p className="text-[11px] uppercase tracking-widest text-white/60">
-            Social alerts are available from the Activity bell center.
-          </p>
-          <p className="mt-2 text-[10px] text-white/35">
-            Social unread: {countSummary.socialUnread}
-          </p>
+                  )}
+                </motion.div>
+              ));
+            })()}
+          </AnimatePresence>
         </div>
       )}
     </div>
