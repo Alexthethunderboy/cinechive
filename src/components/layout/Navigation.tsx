@@ -530,8 +530,8 @@ export function BottomNav() {
     return filtered;
   }, [user, customOrder]);
 
-  const primaryItems = navItems.slice(0, 5);
-  const overflowItems = navItems.slice(5);
+  const primaryItems = navItems.slice(0, 4);
+  const overflowItems = navItems.slice(4);
 
   const triggerHaptic = () => {
     if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(8);
