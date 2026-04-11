@@ -136,11 +136,11 @@ export function CommunityNotificationCenter({
       {/* Footer */}
       <div className="p-4 border-t border-white/5 bg-black text-center">
         <Link 
-          href="/notifications" 
+          href="/activity" 
           onClick={onClose}
           className="text-[9px] font-metadata uppercase tracking-[0.3em] text-white/30 hover:text-accent transition-colors"
         >
-          View Full Notifications Hub →
+          View Full Activity Hub →
         </Link>
       </div>
     </motion.div>
@@ -149,7 +149,7 @@ export function CommunityNotificationCenter({
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-export function EmptyState({ icon, message }: { icon: React.ReactNode, message: string }) {
+function EmptyState({ icon, message }: { icon: React.ReactNode, message: string }) {
   return (
     <div className="py-20 text-center space-y-4">
       <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto text-white/20">
@@ -160,17 +160,13 @@ export function EmptyState({ icon, message }: { icon: React.ReactNode, message: 
   );
 }
 
-export function SocialNotificationIcon({ type, size = 14, className }: { type: NotificationType, size?: number, className?: string }) {
-  const icons = {
-    follow: <UserPlus size={size} className={cn("text-vibe-teal", className)} />,
-    reaction: <Heart size={size} className={cn("text-vibe-rose fill-vibe-rose", className)} />,
-    comment: <MessageSquare size={size} className={cn("text-vibe-cyan", className)} />,
-    mention: <Sparkles size={size} className={cn("text-vibe-purple", className)} />,
-  };
-  return icons[type] || null;
-}
-
 export function SocialNotificationItem({ notif, onClick }: { notif: SocialNotificationRecord, onClick: () => void }) {
+  const icons = {
+    follow: <UserPlus size={14} className="text-vibe-teal" />,
+    reaction: <Heart size={14} className="text-vibe-rose fill-vibe-rose" />,
+    comment: <MessageSquare size={14} className="text-vibe-cyan" />,
+    mention: <Sparkles size={14} className="text-vibe-purple" />,
+  };
 
   const messages = {
     follow: "started following you",
@@ -204,7 +200,7 @@ export function SocialNotificationItem({ notif, onClick }: { notif: SocialNotifi
             )}
           </div>
           <div className="absolute -bottom-1 -right-1 p-1 bg-surface rounded-full shadow-lg border border-white/10">
-            <SocialNotificationIcon type={notif.type} />
+            {icons[notif.type]}
           </div>
         </div>
         <div className="flex-1 min-w-0">

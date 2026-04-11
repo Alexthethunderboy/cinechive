@@ -7,6 +7,8 @@ import { ClassificationName, CLASSIFICATION_COLORS, MEDIA_TYPE_LABELS, SPRING_CO
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
+import MediaPreferenceButtons from '../media/MediaPreferenceButtons';
+import { toCanonicalMediaId } from '@/lib/media-identity';
 
 interface MediaCardProps {
   id: string;
@@ -73,7 +75,8 @@ export default function MediaCard({
         {/* Content Layer */}
         <div className="absolute inset-0 z-10 p-5 flex flex-col justify-end">
           <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
                 <span className="font-metadata px-2 py-0.5 rounded-inner bg-white/5">
                   {MEDIA_TYPE_LABELS[type as keyof typeof MEDIA_TYPE_LABELS] || type}
                 </span>
@@ -86,6 +89,17 @@ export default function MediaCard({
                     <span className="font-metadata">{director}</span>
                   </>
                 )}
+              </div>
+              
+              <div className="relative z-20">
+                <MediaPreferenceButtons
+                  mediaId={id}
+                  mediaType={type as any}
+                  title={title}
+                  posterUrl={posterUrl}
+                  compact
+                />
+              </div>
             </div>
             
               <h3 className="font-heading text-2xl md:text-3xl leading-[1.1] text-white group-hover:translate-x-1 transition-transform duration-700 italic">

@@ -12,15 +12,14 @@ import { signOut } from '@/app/auth/actions';
 import FollowButton from '@/components/social/FollowButton';
 import { calculateTasteMatchAction, CompatibilityScore } from '@/lib/social-intelligence';
 import CinematicAvatar from '@/components/layout/CinematicAvatar';
-import { usePathname, useRouter } from 'next/navigation';
-
-// Tab Components
 import ActivityHub from './ActivityHub';
 import VaultDisplay from './VaultDisplay';
 import CineJournal from '../social/CineJournal';
 import CineLists from '../social/CineLists';
 import ProfileSpotlight from './ProfileSpotlight';
 import ProfileEmptyState from './ProfileEmptyState';
+import LikesDisplay from './LikesDisplay';
+import { useRouter, usePathname } from 'next/navigation';
 
 interface ProfileDashboardProps {
   user: { id: string } | null;
@@ -61,6 +60,7 @@ interface ProfileDashboardProps {
   followCounts?: { followers: number; following: number };
   followers?: Array<{ id: string; username: string; display_name: string | null; avatar_url: string | null }>;
   following?: Array<{ id: string; username: string; display_name: string | null; avatar_url: string | null }>;
+  likedMedia?: any[];
 }
 
 export default function ProfileDashboard({ 
@@ -74,10 +74,11 @@ export default function ProfileDashboard({
   followCounts = { followers: 0, following: 0 },
   followers = [],
   following = [],
+  likedMedia = [],
 }: ProfileDashboardProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const validTabs = ['overview', 'activity', 'library', 'journal', 'lists'] as const;
+  const validTabs = ['overview', 'activity', 'library', 'likes', 'journal', 'lists'] as const;
   type ProfileTab = (typeof validTabs)[number];
   const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
   const [matchScore, setMatchScore] = useState<CompatibilityScore | null>(null);
@@ -136,6 +137,13 @@ export default function ProfileDashboard({
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
+  const onFollowChange = (isFollowing: boolean) => {
+    setLiveFollowCounts(prev => ({
+      ...prev,
+      followers: isFollowing ? prev.followers + 1 : prev.followers - 1
+    }));
+  };
+
   const completion = useMemo(() => {
     const checklist = [
       !!profile.avatar_url || !!profile.avatar_seed || profile.avatar_mode === 'character',
@@ -165,8 +173,9 @@ export default function ProfileDashboard({
     overview: { label: 'Overview', icon: Layers },
     activity: { label: 'Activity', icon: Activity },
     library: { label: 'Library', icon: BookOpen },
+    likes: { label: 'Likes', icon: Heart },
     journal: { label: 'Journal', icon: User },
-    lists: { label: 'Lists', icon: Heart }
+    lists: { label: 'Lists', icon: Layers }
   };
 
   return (
@@ -252,6 +261,7 @@ export default function ProfileDashboard({
                            <FollowButton 
                              targetUserId={profile.id} 
                              initialFollowing={initialFollowStatus}
+                             onFollowChange={onFollowChange}
                            />
                         )}
                      </div>
@@ -338,26 +348,31 @@ export default function ProfileDashboard({
              >
                 {activeTab === 'overview' && (
                   <div className="space-y-10">
-                    <section className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+                    <section className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6">
                       <GlassPanel className="p-5 md:p-6 bg-white/5 border-white/10 text-center">
                         <Layers size={18} className="text-white/40 mx-auto mb-2" />
                         <p className="font-display text-2xl md:text-3xl text-white">{stats.entriesCount}</p>
-                        <p className="font-data text-[9px] uppercase tracking-widest text-white/40">Library Total</p>
+                        <p className="font-data text-[9px] uppercase tracking-widest text-white/40">Archive</p>
                       </GlassPanel>
                       <GlassPanel className="p-5 md:p-6 bg-white/5 border-white/10 text-center">
                         <Heart size={18} className="text-rose-400/60 mx-auto mb-2" />
-                        <p className="font-display text-lg md:text-xl text-white">{stats.primaryStyle || 'Unclassified'}</p>
-                        <p className="font-data text-[9px] uppercase tracking-widest text-white/40">Primary Style</p>
+                        <p className="font-display text-2xl md:text-3xl text-white">{(likedMedia || []).length}</p>
+                        <p className="font-data text-[9px] uppercase tracking-widest text-white/40">Likes</p>
+                      </GlassPanel>
+                      <GlassPanel className="p-5 md:p-6 bg-white/5 border-white/10 text-center">
+                        <Heart size={18} className="text-accent/60 mx-auto mb-2" />
+                        <p className="font-display text-xs md:text-sm text-white truncate">{stats.primaryStyle || 'Noir'}</p>
+                        <p className="font-data text-[9px] uppercase tracking-widest text-white/40">Vibe</p>
                       </GlassPanel>
                       <GlassPanel className="p-5 md:p-6 bg-white/5 border-white/10 text-center">
                         <User size={18} className="text-white/40 mx-auto mb-2" />
-                        <p className="font-display text-sm md:text-base text-white truncate">{stats.topAuteur || 'Not enough data'}</p>
-                        <p className="font-data text-[9px] uppercase tracking-widest text-white/40">Creator Pick</p>
+                        <p className="font-display text-xs md:text-sm text-white truncate">{stats.topAuteur || 'Curator'}</p>
+                        <p className="font-data text-[9px] uppercase tracking-widest text-white/40">Pick</p>
                       </GlassPanel>
                       <GlassPanel className="p-5 md:p-6 bg-white/5 border-white/10 text-center">
                         <Activity size={18} className="text-accent/70 mx-auto mb-2" />
                         <p className="font-display text-2xl md:text-3xl text-white">{entries.length}</p>
-                        <p className="font-data text-[9px] uppercase tracking-widest text-white/40">Logged Entries</p>
+                        <p className="font-data text-[9px] uppercase tracking-widest text-white/40">Entries</p>
                       </GlassPanel>
                     </section>
 
@@ -417,6 +432,7 @@ export default function ProfileDashboard({
                 )}
                 {activeTab === 'activity' && <ActivityHub entries={entries} />}
                 {activeTab === 'library' && <VaultDisplay entries={entries} onboardingTastes={onboardingTastes} stats={stats} />}
+                {activeTab === 'likes' && <LikesDisplay likedMedia={likedMedia || []} />}
                 {activeTab === 'journal' && <CineJournal userId={profile.id} isOwnProfile={isOwnProfile} />}
                 {activeTab === 'lists' && <CineLists userId={profile.id} isOwnProfile={isOwnProfile} />}
              </motion.div>

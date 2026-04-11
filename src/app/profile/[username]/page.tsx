@@ -1,7 +1,6 @@
 import { getProfileByUsername } from '@/lib/onboarding-actions';
 import {
   getFollowStatusAction,
-  getFollowCountsAction,
   getFollowersAction,
   getFollowingAction,
 } from '@/lib/social-actions';
@@ -39,10 +38,9 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   const { data: { user } } = await supabase.auth.getUser();
   const isOwnProfile = user?.id === data.profile.id;
 
-  // Social stats
-  const [followStatus, followCounts, followers, following] = await Promise.all([
+  // Social stats (Counts are already in 'data')
+  const [followStatus, followers, following] = await Promise.all([
     isOwnProfile ? Promise.resolve(false) : getFollowStatusAction(data.profile.id),
-    getFollowCountsAction(data.profile.id),
     getFollowersAction(data.profile.id),
     getFollowingAction(data.profile.id),
   ]);
@@ -53,10 +51,11 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
       profile={data.profile} 
       stats={data.stats}
       entries={data.entries}
+      likedMedia={data.likedMedia}
       onboardingTastes={data.onboardingTastes}
       isOwnProfile={isOwnProfile}
       initialFollowStatus={!!followStatus}
-      followCounts={followCounts}
+      followCounts={(data as any).followCounts}
       followers={followers}
       following={following}
     />

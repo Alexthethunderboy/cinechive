@@ -1,8 +1,10 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, unstable_noStore as noStore } from 'next/cache';
 import { UserOnboardingTaste } from '@/lib/supabase/database.types';
+import { getUserLikesAction } from './media-social-actions';
+import { getFollowCountsAction } from './social-actions';
 
 export interface OnboardingSelection {
   category: 'movie' | 'style' | 'creator' | 'genre';
@@ -71,11 +73,12 @@ export async function saveOnboardingTastes(selections: OnboardingSelection[]) {
  * onboarding tastes + user's vault entries for style profile calculation.
  */
 export async function getProfilePageData() {
+  noStore();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const [tastesRes, entriesRes, profileRes] = await Promise.all([
+  const [tastesRes, entriesRes, profileRes, likedMedia, followCounts] = await Promise.all([
     (supabase
       .from('user_onboarding_tastes')
       .select('*')
@@ -90,6 +93,8 @@ export async function getProfilePageData() {
       .select('*')
       .eq('id', user.id)
       .single() as any),
+    getUserLikesAction(user.id),
+    getFollowCountsAction(user.id),
   ]);
 
   const onboardingTastes: UserOnboardingTaste[] = tastesRes.data || [];
@@ -117,8 +122,11 @@ export async function getProfilePageData() {
     profile,
     onboardingTastes,
     entries,
+    likedMedia: likedMedia || [],
+    followCounts: followCounts || { followers: 0, following: 0 },
     stats: {
       entriesCount: entries.length,
+      likesCount: (likedMedia || []).length,
       vibeDistribution,
       topAuteur,
       primaryStyle: Object.entries(vibeDistribution).sort((a, b) => b[1] - a[1])[0]?.[0] || null,
@@ -130,6 +138,7 @@ export async function getProfilePageData() {
  * Fetch everything a profile page needs by username.
  */
 export async function getProfileByUsername(username: string) {
+  noStore();
   const supabase = await createClient();
   
   // 1. Find profile by username (try exact match first)
@@ -155,8 +164,8 @@ export async function getProfileByUsername(username: string) {
 
   if (profileError || !profile) return null;
 
-  // 2. Fetch tastes and entries
-  const [tastesRes, entriesRes] = await Promise.all([
+  // 2. Fetch tastes, entries, likes, and follows
+  const [tastesRes, entriesRes, likedMedia, followCounts] = await Promise.all([
     (supabase
       .from('user_onboarding_tastes')
       .select('*')
@@ -166,6 +175,8 @@ export async function getProfileByUsername(username: string) {
       .select('*, mood_tags (label)')
       .eq('user_id', profile.id)
       .order('created_at', { ascending: false }) as any),
+    getUserLikesAction(profile.id),
+    getFollowCountsAction(profile.id),
   ]);
 
   const onboardingTastes: UserOnboardingTaste[] = tastesRes.data || [];
@@ -190,8 +201,11 @@ export async function getProfileByUsername(username: string) {
     profile,
     onboardingTastes,
     entries,
+    likedMedia: likedMedia || [],
+    followCounts: followCounts || { followers: 0, following: 0 },
     stats: {
       entriesCount: entries.length,
+      likesCount: (likedMedia || []).length,
       vibeDistribution,
       topAuteur,
       primaryStyle: Object.entries(vibeDistribution).sort((a, b) => b[1] - a[1])[0]?.[0] || null,

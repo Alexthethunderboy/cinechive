@@ -179,3 +179,30 @@ export async function getMediaCommunityRatingAction(mediaId: string, mediaType: 
 
   return { average, count: ratings.length };
 }
+
+/**
+ * Get all media items liked by a specific user.
+ */
+export async function getUserLikesAction(userId: string) {
+  const supabase = await createClient();
+
+  const { data, error } = await (supabase.from('media_reactions') as any)
+    .select('*')
+    .eq('user_id', userId)
+    .eq('reaction', 'like')
+    .order('updated_at', { ascending: false });
+
+  if (error || !data) {
+    console.error("Failed to fetch user likes:", error);
+    return [];
+  }
+
+  return (data as any[]).map(row => ({
+    id: row.media_id,
+    sourceId: row.media_id,
+    type: row.media_type,
+    displayTitle: row.title || 'Untitled',
+    posterUrl: row.poster_url,
+    // Map to UniversalMedia-like structure for DiscoveryCard
+  }));
+}

@@ -10,7 +10,8 @@ import { toggleReminder, getReminderStatus } from '@/app/actions/radar-actions';
 import Image from 'next/image';
 import { toast } from 'sonner';
 import Link from 'next/link';
-import { buildMediaHref } from '@/lib/media-identity';
+import { buildMediaHref, toCanonicalMediaId } from '@/lib/media-identity';
+import MediaPreferenceButtons from '../media/MediaPreferenceButtons';
 
 interface ReleaseRadarCardProps {
   item: UniversalMedia;
@@ -140,6 +141,16 @@ export default function ReleaseRadarCard({ item }: ReleaseRadarCardProps) {
 
         {/* Actions */}
         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3">
+          <div className="shrink-0">
+            <MediaPreferenceButtons
+              mediaId={toCanonicalMediaId(item)}
+              mediaType={item.type}
+              title={item.displayTitle}
+              posterUrl={item.posterUrl}
+              compact
+            />
+          </div>
+          
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={handleToggleNotify}

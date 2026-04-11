@@ -219,7 +219,7 @@ export default function ReleaseRadar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="px-3 sm:px-4 md:px-10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6"
+            className="px-3 sm:px-4 md:px-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6"
           >
             {Array.from({ length: 10 }).map((_, i) => (
               <div key={i} className="aspect-2/3 rounded-2xl bg-white/5 animate-pulse" />
@@ -268,7 +268,7 @@ export default function ReleaseRadar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="px-3 sm:px-4 md:px-10 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 md:gap-6"
+            className="px-3 sm:px-4 md:px-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6"
           >
             {filteredData.map((item, i) => (
               <motion.div

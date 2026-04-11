@@ -12,13 +12,13 @@ import GlassPanel from '@/components/ui/GlassPanel';
 import { CLIENT_EVENTS } from '@/lib/client-events';
 import { capTo99Plus, getNotificationCountSummary } from '@/lib/notification-utils';
 import { cn, formatDate, formatUsername } from '@/lib/utils';
-import { SocialNotificationItem, CinemaNotificationItem, SocialNotificationIcon } from '@/components/community/CommunityNotificationCenter';
+import { SocialNotificationItem, CinemaNotificationItem } from '@/components/community/CommunityNotificationCenter';
 import { markNotificationAsReadAction, SocialNotificationRecord } from '@/lib/social-notification-actions';
 
 export default function ActivityPage() {
   const { user, loading } = useAuth();
   const [notifications, setNotifications] = useState<CommunityNotification[]>([]);
-  const [socialNotifications, setSocialNotifications] = useState<Array<{ is_read?: boolean }>>([]);
+  const [socialNotifications, setSocialNotifications] = useState<SocialNotificationRecord[]>([]);
   const [history, setHistory] = useState<UserActivityItem[]>([]);
   const [topInterests, setTopInterests] = useState<string[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -52,7 +52,7 @@ export default function ActivityPage() {
     await markNotificationAsReadAction(id);
   };
 
-  const countSummary = getNotificationCountSummary(notifications.length, socialNotifications as any);
+  const countSummary = getNotificationCountSummary(notifications.length, socialNotifications);
 
   if (loading) {
     return (

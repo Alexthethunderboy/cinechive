@@ -106,7 +106,7 @@ export default function ClientHome({ user }: ClientHomeProps) {
         transition={{ duration: 0.3, ease: "easeInOut" }}
         className="flex justify-center mb-6 md:mb-12 px-3 sm:px-4 sticky top-20 sm:top-24 z-50 pointer-events-none"
       >
-        <div className="glass p-1 md:p-1.5 rounded-full flex items-center gap-1 shadow-2xl relative overflow-hidden group pointer-events-auto">
+        <div id="home-discovery-modes" className="glass p-1 md:p-1.5 rounded-full flex items-center gap-1 shadow-2xl relative overflow-hidden group pointer-events-auto">
           <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
           
           {discoveryModes.map((mode) => {

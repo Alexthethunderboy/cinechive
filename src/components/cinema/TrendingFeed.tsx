@@ -122,7 +122,7 @@ function TrendingFeedInner({ isVisible = true }: { isVisible?: boolean }) {
         className="sticky top-0 z-40 bg-black/80 backdrop-blur-xl border-b border-white/5 p-1.5 flex flex-col md:flex-row items-center justify-between gap-3 overflow-hidden max-w-full pointer-events-auto"
         style={{ pointerEvents: isVisible ? 'auto' : 'none' }}
       >
-        <div className="flex bg-white/5 p-1 rounded-full border border-white/5 relative overflow-x-auto max-w-full scrollbar-hide">
+        <div id="home-media-tabs" className="flex bg-white/5 p-1 rounded-full border border-white/5 relative overflow-x-auto max-w-full scrollbar-hide">
           <button
             onClick={() => setActiveTab('movie')}
             className={`relative z-10 flex items-center gap-2 px-4 py-1.5 rounded-full font-metadata text-xs transition-colors whitespace-nowrap ${
@@ -216,7 +216,7 @@ function TrendingFeedInner({ isVisible = true }: { isVisible?: boolean }) {
               }}
               initial="hidden"
               animate="show"
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8"
+              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-8"
             >
               {filteredItems.map((item, i) => (
                 <motion.div 

@@ -35,7 +35,9 @@ export default function MediaPreferenceButtons({
     };
   }, [mediaId, mediaType]);
 
-  const applyReaction = async (next: MediaPreference) => {
+  const applyReaction = async (next: MediaPreference, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     if (loading) return;
     const target = reaction === next ? null : next;
     setLoading(true);
@@ -65,23 +67,21 @@ export default function MediaPreferenceButtons({
     }
   };
 
-  const buttonBase = compact
-    ? 'p-1 md:p-1.5 rounded-md'
-    : 'p-2.5 md:p-3 rounded-xl';
+  const buttonBase = 'p-1.5 rounded-full';
 
   return (
     <div className="flex items-center gap-2">
       <motion.button
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.94 }}
-        onClick={() => applyReaction('like')}
+        onClick={(e) => applyReaction('like', e)}
         disabled={loading}
         className={cn(
-          'backdrop-blur-md transition-all flex items-center justify-center border',
+          'transition-all flex items-center justify-center backdrop-blur-md',
           buttonBase,
           reaction === 'like'
-            ? 'bg-rose-500/20 border-rose-400/40 text-rose-300'
-            : 'bg-black/40 border-white/10 text-white/50 hover:text-white',
+            ? 'bg-rose-500/20 text-rose-400 scale-110'
+            : 'bg-black/20 text-white/40 hover:text-white',
           loading && 'opacity-60 cursor-not-allowed'
         )}
         title="Like"
@@ -92,14 +92,14 @@ export default function MediaPreferenceButtons({
       <motion.button
         whileHover={{ scale: 1.08 }}
         whileTap={{ scale: 0.94 }}
-        onClick={() => applyReaction('dislike')}
+        onClick={(e) => applyReaction('dislike', e)}
         disabled={loading}
         className={cn(
-          'backdrop-blur-md transition-all flex items-center justify-center border',
+          'transition-all flex items-center justify-center backdrop-blur-md',
           buttonBase,
           reaction === 'dislike'
-            ? 'bg-white/20 border-white/30 text-white'
-            : 'bg-black/40 border-white/10 text-white/50 hover:text-white',
+            ? 'bg-white/10 text-white scale-110'
+            : 'bg-black/20 text-white/40 hover:text-white',
           loading && 'opacity-60 cursor-not-allowed'
         )}
         title="Dislike"

@@ -130,7 +130,6 @@ export class SearchService {
    * Prefetches a node in the Cinema Graph for instantaneous navigation.
    */
   static async prefetchCinemaGraph(id: string, type: 'person' | 'movie' | 'tv') {
-    console.log(`[Prefetch] Silently caching Cinema Graph node: ${id} (${type})`);
     // Performance: Trigger server-side cache warming or client-side SWR/React Query prefetch
   }
 }

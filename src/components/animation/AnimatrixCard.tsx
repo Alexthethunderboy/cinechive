@@ -13,6 +13,8 @@ import { isAfter, startOfToday } from 'date-fns';
 import { useEffect } from 'react';
 
 import { toast } from 'sonner';
+import MediaPreferenceButtons from '../media/MediaPreferenceButtons';
+import { toCanonicalMediaId } from '@/lib/media-identity';
 
 interface AnimatrixCardProps {
   media: UniversalMedia;
@@ -167,23 +169,32 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
                </div>
              )}
              {!isUpcoming && (
-                <button 
-                  onClick={handleSaveToVault}
-                  disabled={isSaving || isSaved}
-                  className={cn(
-                    "p-1 md:p-1.5 rounded-md backdrop-blur-md transition-all flex items-center justify-center border hover:scale-110",
-                    isSaved ? "bg-accent/20 border-accent/40 text-accent" : "bg-black/40 border-white/10 text-white/80 hover:text-white"
-                  )}
-                  title="Collect Film"
-                >
-                  {isSaving ? (
-                    <Loader2 className="w-2.5 md:w-3.5 h-2.5 md:h-3.5 animate-spin" />
-                  ) : isSaved ? (
-                    <Check className="w-2.5 md:w-3.5 h-2.5 md:h-3.5" />
-                  ) : (
-                    <Bookmark className="w-2.5 md:w-3.5 h-2.5 md:h-3.5" />
-                  )}
-                </button>
+                <div className="flex gap-2">
+                  <MediaPreferenceButtons
+                    mediaId={toCanonicalMediaId(media)}
+                    mediaType={media.type}
+                    title={media.displayTitle}
+                    posterUrl={media.posterUrl}
+                    compact
+                  />
+                  <button 
+                    onClick={handleSaveToVault}
+                    disabled={isSaving || isSaved}
+                    className={cn(
+                      "p-1 md:p-1.5 rounded-md backdrop-blur-md transition-all flex items-center justify-center border hover:scale-110",
+                      isSaved ? "bg-accent/20 border-accent/40 text-accent" : "bg-black/40 border-white/10 text-white/80 hover:text-white"
+                    )}
+                    title="Collect Film"
+                  >
+                    {isSaving ? (
+                      <Loader2 className="w-2.5 md:w-3.5 h-2.5 md:h-3.5 animate-spin" />
+                    ) : isSaved ? (
+                      <Check className="w-2.5 md:w-3.5 h-2.5 md:h-3.5" />
+                    ) : (
+                      <Bookmark className="w-2.5 md:w-3.5 h-2.5 md:h-3.5" />
+                    )}
+                  </button>
+                </div>
              )}
 
              {isUpcoming && (
@@ -216,7 +227,7 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
         )}>
           <h2 className={cn(
              "font-heading text-white leading-tight mb-1 transition-all duration-300",
-             media.displayTitle.length > 30 ? "text-base md:text-xl line-clamp-3" : "text-xl md:text-2xl line-clamp-2"
+             media.displayTitle.length > 30 ? "text-sm md:text-xl line-clamp-3" : "text-lg md:text-2xl line-clamp-2"
           )}>
             {media.displayTitle}
           </h2>

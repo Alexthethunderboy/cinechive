@@ -24,6 +24,7 @@ import SaveMediaDialog from '../vault/SaveMediaDialog';
 import CommunityRating from './CommunityRating';
 import FriendActivity from './FriendActivity';
 import LogJournalDialog from './LogJournalDialog';
+import MediaPreferenceButtons from './MediaPreferenceButtons';
 import { toCanonicalMediaId } from '@/lib/media-identity';
 import { emitRefreshNotifications } from '@/lib/client-events';
 
@@ -203,6 +204,16 @@ export default function ClientMediaDetail({ media, initialUserEntry, deepData, u
                           <span className="font-metadata text-[10px] uppercase tracking-widest bg-white/10 px-2 py-1 rounded backdrop-blur-md">Currently Viewing</span>
                         </div>
                       )}
+                      
+                      <div className="absolute top-2 right-2 z-20">
+                        <MediaPreferenceButtons
+                          mediaId={part.id}
+                          mediaType="movie"
+                          title={part.title}
+                          posterUrl={part.posterUrl}
+                          compact
+                        />
+                      </div>
                     </div>
                     <div className="px-1">
                       <h4 className="font-heading text-sm text-white group-hover:text-accent truncate">{part.title}</h4>
@@ -433,6 +444,16 @@ export default function ClientMediaDetail({ media, initialUserEntry, deepData, u
                   )}
                   <div className="absolute inset-0 bg-linear-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity p-3 flex flex-col justify-end">
                      <span className="font-data text-[8px] uppercase tracking-widest text-accent">{rec.type}</span>
+                  </div>
+                  
+                  <div className="absolute top-2 right-2 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <MediaPreferenceButtons
+                        mediaId={rec.id}
+                        mediaType={rec.type}
+                        title={rec.title}
+                        posterUrl={rec.posterUrl}
+                        compact
+                    />
                   </div>
                 </div>
                 <span className="font-heading text-[10px] block truncate text-white/60 group-hover:text-white transition-colors px-1">

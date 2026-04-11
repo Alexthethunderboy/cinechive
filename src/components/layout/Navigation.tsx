@@ -192,68 +192,74 @@ export function Sidebar() {
         <EverythingBar isSidebar />
       </div>
 
+      {/* Notification Bell */}
+      {user && (
+        <div className="px-6 mb-6">
+          <div className="relative">
+            <button
+              ref={notifButtonRef}
+              onClick={() => setShowNotifCenter(!showNotifCenter)}
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-inner transition-all group relative text-muted hover:text-white hover:bg-white/5"
+            >
+              <div className="relative">
+                <Bell size={20} className="transition-transform group-hover:scale-110" />
+                <NotificationIndicator count={notifCount} pulse={true} />
+              </div>
+              <span className="font-heading font-medium tracking-tight text-sm flex-1">
+                Notifications
+              </span>
+            </button>
+
+            {/* Notification Center */}
+            <AnimatePresence>
+              {showNotifCenter && (
+                <CommunityNotificationCenter 
+                  algorithmicNotifications={algoNotifs}
+                  socialNotifications={socialNotifs}
+                  onClose={() => setShowNotifCenter(false)}
+                  onMarkAsRead={handleMarkAsRead}
+                  position="sidebar"
+                />
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      )}
 
       <nav className="flex-1 px-4 space-y-1">
         {NAV_ITEMS.filter(item => {
-          if (['Community', 'Notifications', 'Library', 'People', 'Discover'].includes(item.label)) return !!user;
+          if (['Community', 'Activity', 'Library', 'People', 'Discover'].includes(item.label)) return !!user;
           return true;
         }).map((item) => {
           const isActive = pathname === item.href;
           const Icon = icons[item.icon as keyof typeof icons] || icons.home;
-          const isNotifications = item.label === 'Notifications';
-
-          const content = (
-            <div className={cn(
-              "flex items-center gap-3 px-4 py-3 rounded-inner transition-all group relative",
-              isActive 
-                ? "text-white bg-white/5" 
-                : "text-muted hover:text-white hover:bg-white/5"
-            )}>
-              <div className="relative">
-                <Icon size={20} className={cn(
-                  "transition-transform group-hover:scale-110",
-                   isActive && "text-white"
-                )} />
-                {isNotifications && <NotificationIndicator count={notifCount} pulse={true} />}
-              </div>
-              <span className="font-heading font-medium tracking-tight text-sm flex-1">
-                {item.label}
-              </span>
-
-              {isActive && (
-                <motion.div layoutId="sidebar-active" className="absolute left-0 w-1 h-6 bg-white rounded-full" />
-              )}
-            </div>
-          );
 
           return (
             <div key={item.href} className="relative">
-              {isNotifications ? (
-                <button 
-                  onClick={() => setShowNotifCenter(!showNotifCenter)}
-                  className="w-full text-left"
-                >
-                  {content}
-                </button>
-              ) : (
-                <Link href={item.href}>
-                  {content}
-                </Link>
-              )}
+              <Link href={item.href}>
+                <div className={cn(
+                  "flex items-center gap-3 px-4 py-3 rounded-inner transition-all group relative",
+                  isActive 
+                    ? "text-white bg-white/5" 
+                    : "text-muted hover:text-white hover:bg-white/5"
+                )}>
+                  <div className="relative">
+                    <Icon size={20} className={cn(
+                      "transition-transform group-hover:scale-110",
+                       isActive && "text-white"
+                    )} />
+                  </div>
+                  <span className="font-heading font-medium tracking-tight text-sm flex-1">
+                    {item.label}
+                  </span>
 
-              {isNotifications && (
-                <AnimatePresence>
-                  {showNotifCenter && (
-                    <CommunityNotificationCenter 
-                      algorithmicNotifications={algoNotifs}
-                      socialNotifications={socialNotifs}
-                      onClose={() => setShowNotifCenter(false)}
-                      onMarkAsRead={handleMarkAsRead}
-                      position="sidebar"
-                    />
+                  {isActive && (
+                    <motion.div layoutId="sidebar-active" className="absolute left-0 w-1 h-6 bg-white rounded-full" />
                   )}
-                </AnimatePresence>
-              )}
+                </div>
+              </Link>
+
+              {/* Notification Center — only for Activity item if needed, but we moved it to dedicated bell */}
             </div>
           );
         })}
@@ -497,7 +503,7 @@ export function BottomNav() {
     if (pathname.startsWith('/community')) {
       return [
         { id: 'compose', label: 'Compose', href: '#compose' },
-        { id: 'activity', label: 'Alerts', href: '/notifications' },
+        { id: 'activity', label: 'Alerts', href: '/activity' },
       ];
     }
     if (pathname.startsWith('/vault')) {
@@ -514,7 +520,7 @@ export function BottomNav() {
 
   const navItems = useMemo(() => {
     const filtered = NAV_ITEMS.filter(item => {
-      if (['Community', 'Notifications', 'Library', 'People', 'Discover'].includes(item.label)) return !!user;
+      if (['Community', 'Activity', 'Library', 'People', 'Discover'].includes(item.label)) return !!user;
       return true;
     });
     if (customOrder.length > 0) {
@@ -654,7 +660,6 @@ export function BottomNav() {
                 {primaryItems.map((item) => {
                   const isActive = pathname === item.href;
                   const Icon = icons[item.icon as keyof typeof icons] || icons.home;
-                  const isNotifications = item.label === 'Notifications';
 
                   return (
                     <div key={item.href} className={cn("relative group p-1 flex items-center justify-center", tapTarget)}>
@@ -663,10 +668,7 @@ export function BottomNav() {
                           "flex items-center justify-center relative rounded-full px-2 py-1 transition-colors",
                           isActive ? "bg-white/10" : ""
                         )}>
-                          <div className="relative">
-                            <Icon size={20} className={cn(isActive ? "text-white" : "text-white/35")} />
-                            {isNotifications && <NotificationIndicator count={notifCount} pulse={!quietHours} />}
-                          </div>
+                          <Icon size={20} className={cn(isActive ? "text-white" : "text-white/35")} />
                           {isActive && density !== 'icon' && (
                             <span className="absolute -bottom-4 text-[8px] uppercase tracking-widest text-white/80">
                               {item.label}
@@ -698,6 +700,37 @@ export function BottomNav() {
                   </motion.div>
                 </button>
                 
+                {/* Notification Bell */}
+                {user && (
+                  <div className={cn("relative p-1 flex items-center justify-center", tapTarget)}>
+                    <button
+                      ref={notifButtonRef}
+                      onClick={() => {
+                        setShowNotifCenter(!showNotifCenter);
+                        triggerHaptic();
+                      }}
+                      className="flex items-center justify-center rounded-full px-2 py-1"
+                    >
+                      <div className="relative">
+                        <Bell size={20} className="text-white/35" />
+                        <NotificationIndicator count={notifCount} pulse={!quietHours} />
+                      </div>
+                    </button>
+
+                    {/* Notification Center */}
+                    <AnimatePresence>
+                      {showNotifCenter && (
+                        <CommunityNotificationCenter 
+                          algorithmicNotifications={algoNotifs}
+                          socialNotifications={socialNotifs}
+                          onClose={() => setShowNotifCenter(false)}
+                          onMarkAsRead={handleMarkAsRead}
+                          position="bottom"
+                        />
+                      )}
+                    </AnimatePresence>
+                  </div>
+                )}
                 
                 <Link href={user ? "/profile" : "/login"} className={cn("p-1 flex items-center justify-center", tapTarget)}>
                   <motion.div whileTap={{ scale: 0.95 }} className="flex items-center justify-center">

@@ -1,7 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, unstable_noStore as noStore } from 'next/cache';
 import { createNotificationInternal } from './social-notification-actions';
 import type { SocialActionResult } from './social-types';
 
@@ -97,20 +97,26 @@ export async function getFollowStatusAction(targetUserId: string): Promise<boole
  * Get follower and following counts for any user.
  */
 export async function getFollowCountsAction(userId: string): Promise<FollowCounts> {
+  noStore();
   const supabase = await createClient();
 
-  const [followersRes, followingRes] = await Promise.all([
-    (supabase.from('follows') as any)
-      .select('id', { count: 'exact', head: true })
-      .eq('following_id', userId),
-    (supabase.from('follows') as any)
-      .select('id', { count: 'exact', head: true })
-      .eq('follower_id', userId),
-  ]);
+  const { data, error } = await (supabase as any).rpc('get_follow_counts', {
+    target_id: userId
+  });
+
+  if (error) {
+    console.error(`[Social] RPC Error for ${userId}:`, error);
+    return { followers: 0, following: 0 };
+  }
+
+  // Ensure 'data' is valid before returning
+  const counts = data as FollowCounts | null;
+  
+  console.log(`[Social] RPC Counts for ${userId}:`, counts);
 
   return {
-    followers: followersRes.count ?? 0,
-    following: followingRes.count ?? 0,
+    followers: counts?.followers ?? 0,
+    following: counts?.following ?? 0,
   };
 }
 
