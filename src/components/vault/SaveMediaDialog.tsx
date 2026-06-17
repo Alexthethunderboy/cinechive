@@ -103,11 +103,11 @@ export default function SaveMediaDialog({ isOpen, onClose, media }: SaveMediaDia
     try {
       const newCol = await createCollectionAction({ title: newTitle });
       toast.success("Collection created");
-      setCollections([newCol, ...collections]);
+      setCollections([{ id: newCol.collectionId, title: newTitle, collection_items: [] }, ...collections]);
       setNewTitle('');
       setIsCreating(false);
       // Auto-add the media to the new collection
-      await handleAddToCollection(newCol.id);
+      await handleAddToCollection(newCol.collectionId);
     } catch (error) {
       toast.error("Failed to create collection");
     } finally {

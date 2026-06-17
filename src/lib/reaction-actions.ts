@@ -20,7 +20,7 @@ async function getAuthorIdForActivity(activityId: string, activityType: string):
     .eq('id', activityId)
     .single();
 
-  return activity?.user_id || null;
+  return (activity as any)?.user_id || null;
 }
 
 // ─── Reactions ────────────────────────────────────────────────────────────────

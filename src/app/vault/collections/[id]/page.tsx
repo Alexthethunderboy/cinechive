@@ -49,7 +49,7 @@ export default async function CollectionDetailPage({ params }: PageProps) {
           </div>
           
           <div className="flex items-center gap-3">
-             <ShareButton shareToken={collection.share_token} title={collection.title} />
+             <ShareButton shareToken={collection.share_token || undefined} title={collection.title} />
              <button className="flex items-center justify-center bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 p-2 rounded-full text-rose-500 transition-all">
                <Trash2 size={16} />
              </button>
