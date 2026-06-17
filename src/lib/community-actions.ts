@@ -4,7 +4,8 @@ import { createClient } from '@/lib/supabase/server';
 import { UniversalMedia, UniversalTransformer } from './api/UniversalTransformer';
 import { MediaFetcher } from './api/MediaFetcher';
 import { isAfter, subDays, startOfToday } from 'date-fns';
-
+import { ClassificationName } from './design-tokens';
+import { revalidatePath } from 'next/cache';
 export interface CommunityNotification {
   id: string;
   type: 'release' | 'recommendation' | 'activity';
@@ -40,9 +41,7 @@ export async function getAlgorithmicNotifications(): Promise<{ notifications: Co
   if (!user) return { notifications: [], topInterests: [] };
 
   // 1. Get User Reminders and Existing Entries to avoid duplicates
-  const [remindersRes, entriesRes] = await Promise.all([
-    (supabase.from('user_reminders') as any).select('media_id, media_type').eq('user_id', user.id),
-    (supabase.from('media_entries') as any).select('external_id, media_type').eq('user_id', user.id)
+  const [remindersRes, entriesRes] = await Promise.all([ supabase.from('user_reminders').select('media_id, media_type').eq('user_id', user.id), supabase.from('media_entries').select('external_id, media_type').eq('user_id', user.id)
   ]);
 
   const reminders = remindersRes.data;
@@ -50,13 +49,13 @@ export async function getAlgorithmicNotifications(): Promise<{ notifications: Co
 
   // 2. Get User's Top Classifications from Vault (with labels)
   const { data: vaultEntries } = await (supabase
-    .from('media_entries') as any)
+    .from('media_entries'))
     .select('mood_tag_id, mood_tags(label)')
     .eq('user_id', user.id);
 
   // 3. Get Onboarding Tastes (Genres, Movies, Creators)
   const { data: onboardingTastes } = await (supabase
-    .from('user_onboarding_tastes') as any)
+    .from('user_onboarding_tastes'))
     .select('value, category, display_name')
     .eq('user_id', user.id);
 
@@ -172,4 +171,54 @@ export async function getUserActivityHistory(): Promise<UserActivityItem[]> {
   }
 
   return (data as UserActivityItem[]) || [];
+}
+export async function reArchiveMediaAction(data: {
+  originalEntryId: string;
+  type?: 'entry' | 'dispatch' | 'screening';
+  comment?: string;
+  classification?: ClassificationName;
+}) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Authentication required');
+
+  const { error } = await supabase.from('re_archives').insert({
+    user_id: user.id,
+    original_entry_id: data.originalEntryId,
+    comment: data.comment,
+    // Add mood_tag_id logic here if needed
+  });
+
+  if (error) throw error;
+  revalidatePath('/community');
+  return { success: true };
+}
+
+export async function echoTriviaAction(data: {
+  mediaId: string;
+  mediaType: string;
+  mediaTitle: string;
+  posterUrl: string | null;
+  triviaId: string;
+  triviaText: string;
+  category?: string;
+}) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Authentication required');
+
+  const { error } = await supabase.from('echoes').insert({
+    user_id: user.id,
+    media_id: data.mediaId,
+    media_type: data.mediaType,
+    media_title: data.mediaTitle,
+    poster_url: data.posterUrl,
+    trivia_id: data.triviaId,
+    trivia_text: data.triviaText,
+    category: data.category
+  });
+
+  if (error) throw error;
+  revalidatePath('/community');
+  return { success: true };
 }

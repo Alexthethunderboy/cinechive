@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Film, Tv2 } from 'lucide-react';
-import { getGenrePageAction } from '@/lib/actions';
+import { getGenrePageAction } from '@/lib/search-actions';
 import { GenreFeed } from '@/components/cinema/GenreFeed';
 
 interface Props {

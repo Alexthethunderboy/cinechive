@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { getCuratedCollectionsAction } from '@/lib/actions';
+import { getCuratedCollectionsAction } from '@/lib/search-actions';
 import { motion } from 'framer-motion';
 import { DiscoveryCard } from './DiscoveryCard';
 import { Sparkles, ChevronRight, Loader2, Info } from 'lucide-react';

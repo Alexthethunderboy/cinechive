@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
-import { getStylePageAction } from '@/lib/actions';
+import { getStylePageAction } from '@/lib/search-actions';
 import { UniversalMedia } from '@/lib/api/UniversalTransformer';
 import { DiscoveryCard } from './DiscoveryCard';
 import { Loader2, Film, Tv2 } from 'lucide-react';

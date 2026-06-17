@@ -28,7 +28,7 @@ export async function getSocialNotificationsAction() {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data, error } = await (supabase.from('notifications') as any)
+  const { data, error } = await supabase.from('notifications')
     .select(`
       *,
       actor:actor_id (username, avatar_url)
@@ -42,7 +42,7 @@ export async function getSocialNotificationsAction() {
     return [];
   }
 
-  const raw = (data as SocialNotificationRecord[]) || [];
+  const raw = data as any as SocialNotificationRecord[] || [];
 
   // Reduce notification noise by grouping recent reaction/comment events from same actor.
   const grouped: SocialNotificationRecord[] = [];
@@ -80,7 +80,7 @@ export async function markNotificationAsReadAction(id: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Auth required' };
 
-  const { error } = await (supabase.from('notifications') as any)
+  const { error } = await supabase.from('notifications')
     .update({ is_read: true })
     .eq('id', id)
     .eq('user_id', user.id);
@@ -106,7 +106,7 @@ export async function createNotificationInternal(
 
   const supabase = await createClient();
   
-  const { error } = await (supabase.from('notifications') as any).insert({
+  const { error } = await supabase.from('notifications').insert({
     user_id: recipientId,
     actor_id: actorId,
     type,

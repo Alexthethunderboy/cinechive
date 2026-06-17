@@ -16,7 +16,7 @@ export async function createDispatchAction(formData: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Authentication required.' };
 
-  const { error } = await (supabase.from('dispatches') as any).insert({
+  const { error } = await supabase.from('dispatches').insert({
     user_id: user.id,
     content: formData.content,
     classification: formData.classification || null,
@@ -45,7 +45,7 @@ export async function deleteDispatchAction(dispatchId: string) {
   if (!user) return { error: 'Authentication required.' };
 
   const { error } = await (supabase
-    .from('dispatches') as any)
+    .from('dispatches'))
     .delete()
     .eq('id', dispatchId)
     .eq('user_id', user.id);
@@ -70,7 +70,7 @@ export async function updateDispatchAction(dispatchId: string, formData: {
 
   // 1. Fetch the original dispatch to check timestamps
   const { data: original, error: fetchError } = await (supabase
-    .from('dispatches') as any)
+    .from('dispatches'))
     .select('created_at, user_id')
     .eq('id', dispatchId)
     .single();
@@ -89,7 +89,7 @@ export async function updateDispatchAction(dispatchId: string, formData: {
 
   // 3. Perform the update
   const { error: updateError } = await (supabase
-    .from('dispatches') as any)
+    .from('dispatches'))
     .update({
       content: formData.content,
       classification: formData.classification || null,

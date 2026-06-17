@@ -21,7 +21,7 @@ const CATEGORY_STYLES = {
   general: { label: 'Did You Know?', color: 'text-accent', icon: Lightbulb },
 };
 
-import { echoTriviaAction } from '@/lib/actions';
+import { echoTriviaAction } from '@/lib/community-actions';
 import { toast } from 'sonner';
 
 export default function TriviaModule({ trivia, mediaId, mediaType, mediaTitle, posterUrl }: TriviaModuleProps) {

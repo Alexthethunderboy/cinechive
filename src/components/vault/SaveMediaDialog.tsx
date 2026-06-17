@@ -12,13 +12,8 @@ import {
   ChevronRight,
   PlusCircle
 } from 'lucide-react';
-import { 
-  getUserCollectionsAction, 
-  addMediaToCollectionAction, 
-  toggleArchiveMediaAction,
-  getIsInVaultAction,
-  createCollectionAction
-} from '@/lib/actions';
+import { getUserCollectionsAction, addMediaToCollectionAction, createCollectionAction } from '@/lib/collection-actions';
+import { toggleArchiveMediaAction, getIsInVaultAction } from '@/lib/media-actions';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { emitRefreshNotifications } from '@/lib/client-events';
@@ -74,8 +69,8 @@ export default function SaveMediaDialog({ isOpen, onClose, media }: SaveMediaDia
       });
       if ('error' in result) throw new Error(result.error as string);
       
-      setIsVault(result.status === 'added');
-      toast.success(result.status === 'added' ? "Saved to Vault" : "Removed from Vault");
+      setIsVault(result.isVault);
+      toast.success(result.isVault ? "Saved to Vault" : "Removed from Vault");
       if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(10);
       emitRefreshNotifications();
     } catch (error) {

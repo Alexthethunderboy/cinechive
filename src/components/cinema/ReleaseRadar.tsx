@@ -6,7 +6,7 @@ import { Calendar, Filter, Clapperboard, Tv, Ghost, Sparkles, ChevronLeft, Chevr
 import { cn } from '@/lib/utils';
 import { UniversalMedia } from '@/lib/api/UniversalTransformer';
 import { getReleaseRadarAction, getFutureHorizonsAction } from '@/lib/feed-actions';
-import { getCurrentUser } from '@/lib/actions';
+import { getCurrentUser } from '@/lib/profile-data-actions';
 import ReleaseRadarCard from './ReleaseRadarCard';
 import { addWeeks, format, startOfToday, endOfWeek, startOfWeek, isWithinInterval } from 'date-fns';
 

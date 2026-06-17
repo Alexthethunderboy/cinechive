@@ -1,4 +1,4 @@
-import { getSharedCollectionAction } from '@/lib/actions';
+import { getSharedCollectionAction } from '@/lib/collection-actions';
 import { notFound } from 'next/navigation';
 import { DiscoveryCard } from '@/components/cinema/DiscoveryCard';
 import { User, Sparkles } from 'lucide-react';

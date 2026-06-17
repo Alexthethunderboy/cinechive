@@ -1,4 +1,4 @@
-import { getCommunityFeed } from '@/lib/actions';
+import { getCommunityFeed } from '@/lib/feed-actions';
 import ClientCommunity from '@/components/community/ClientCommunity';
 import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';

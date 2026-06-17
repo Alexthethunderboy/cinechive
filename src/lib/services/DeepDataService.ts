@@ -24,7 +24,7 @@ export class DeepDataService {
 
     // 1. Check Cache
     const { data: cached } = await (supabase
-      .from('media_metadata_cache') as any)
+      .from('media_metadata_cache'))
       .select('trivia')
       .eq('tmdb_id', tmdbId)
       .single();
@@ -39,7 +39,7 @@ export class DeepDataService {
 
     // 3. Update Cache
     if (trivia.length > 0) {
-      await (supabase.from('media_metadata_cache') as any).upsert({
+      await supabase.from('media_metadata_cache').upsert({
         tmdb_id: tmdbId,
         imdb_id: imdbId,
         media_type: 'movie', // Default to movie for now

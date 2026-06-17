@@ -31,7 +31,7 @@ export async function followUserAction(targetUserId: string): Promise<SocialActi
   if (!user) return { error: 'Authentication required.', code: 'AUTH_REQUIRED' };
   if (user.id === targetUserId) return { error: 'Cannot follow yourself.', code: 'VALIDATION_ERROR' };
 
-  const { error } = await (supabase.from('follows') as any).insert({
+  const { error } = await supabase.from('follows').insert({
     follower_id: user.id,
     following_id: targetUserId,
   });
@@ -60,7 +60,7 @@ export async function unfollowUserAction(targetUserId: string): Promise<SocialAc
   if (!user) return { error: 'Authentication required.', code: 'AUTH_REQUIRED' };
 
   const { error } = await (supabase
-    .from('follows') as any)
+    .from('follows'))
     .delete()
     .eq('follower_id', user.id)
     .eq('following_id', targetUserId);
@@ -79,12 +79,13 @@ export async function unfollowUserAction(targetUserId: string): Promise<SocialAc
  * Check if the current user is following a specific user.
  */
 export async function getFollowStatusAction(targetUserId: string): Promise<boolean> {
+  noStore();
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return false;
 
   const { data } = await (supabase
-    .from('follows') as any)
+    .from('follows'))
     .select('id')
     .eq('follower_id', user.id)
     .eq('following_id', targetUserId)
@@ -100,7 +101,7 @@ export async function getFollowCountsAction(userId: string): Promise<FollowCount
   noStore();
   const supabase = await createClient();
 
-  const { data, error } = await (supabase as any).rpc('get_follow_counts', {
+  const { data, error } = await supabase.rpc('get_follow_counts', {
     target_id: userId
   });
 
@@ -109,15 +110,13 @@ export async function getFollowCountsAction(userId: string): Promise<FollowCount
     return { followers: 0, following: 0 };
   }
 
-  // Ensure 'data' is valid before returning
-  const counts = data as FollowCounts | null;
-  
-  console.log(`[Social] RPC Counts for ${userId}:`, counts);
-
-  return {
-    followers: counts?.followers ?? 0,
-    following: counts?.following ?? 0,
+  const rawCounts = data as any;
+  const parsedCounts: FollowCounts = {
+    followers: Number(rawCounts?.followers) || 0,
+    following: Number(rawCounts?.following) || 0
   };
+
+  return parsedCounts;
 }
 
 /**
@@ -129,7 +128,7 @@ export async function getFollowingIdsAction(): Promise<string[]> {
   if (!user) return [];
 
   const { data } = await (supabase
-    .from('follows') as any)
+    .from('follows'))
     .select('following_id')
     .eq('follower_id', user.id);
 
@@ -145,7 +144,7 @@ export async function getFollowersAction(userId: string): Promise<FollowUser[]> 
   const supabase = await createClient();
 
   const { data, error } = await (supabase
-    .from('follows') as any)
+    .from('follows'))
     .select(`
       follower:follower_id (
         id, username, display_name, avatar_url, bio
@@ -165,7 +164,7 @@ export async function getFollowingAction(userId: string): Promise<FollowUser[]> 
   const supabase = await createClient();
 
   const { data, error } = await (supabase
-    .from('follows') as any)
+    .from('follows'))
     .select(`
       following:following_id (
         id, username, display_name, avatar_url, bio
@@ -189,7 +188,7 @@ export async function searchUsersAction(query: string): Promise<FollowUser[]> {
   const { data: { user } } = await supabase.auth.getUser();
 
   const { data, error } = await (supabase
-    .from('profiles') as any)
+    .from('profiles'))
     .select('id, username, display_name, avatar_url, bio')
     .or(`username.ilike.%${query}%,display_name.ilike.%${query}%`)
     .neq('id', user?.id ?? '')
@@ -213,7 +212,7 @@ export async function getSuggestedUsersAction(): Promise<FollowUser[]> {
   const excluded = [user.id, ...followingIds];
 
   const { data, error } = await (supabase
-    .from('profiles') as any)
+    .from('profiles'))
     .select('id, username, display_name, avatar_url, bio')
     .not('id', 'in', `(${excluded.map((id) => `"${id}"`).join(',')})`)
     .limit(10);

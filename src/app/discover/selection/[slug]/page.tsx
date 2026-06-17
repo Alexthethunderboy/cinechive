@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Sparkles } from 'lucide-react';
-import { getSelectionPageAction } from '@/lib/actions';
+import { getSelectionPageAction } from '@/lib/search-actions';
 import { MediaFetcher } from '@/lib/api/MediaFetcher';
 import { DiscoveryCard } from '@/components/cinema/DiscoveryCard';
 

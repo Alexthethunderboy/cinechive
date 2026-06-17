@@ -3,7 +3,7 @@
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
-import { globalSearchAction } from '@/lib/actions';
+import { globalSearchAction } from '@/lib/search-actions';
 import { motion } from 'framer-motion';
 import EverythingBar from '@/components/search/EverythingBar';
 import { DiscoveryCard } from '@/components/cinema/DiscoveryCard';

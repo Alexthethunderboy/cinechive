@@ -28,18 +28,24 @@ export default function FollowButton({
   const router = useRouter();
   const [isFollowing, setIsFollowing] = useState(initialFollowing);
   const [isHovered, setIsHovered] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
 
   useEffect(() => {
-    setIsFollowing(initialFollowing);
-  }, [initialFollowing]);
+    // Only safely resync server state if we aren't actively modifying it locally
+    if (!isPending) {
+      setIsFollowing(initialFollowing);
+    }
+  }, [initialFollowing, isPending, targetUserId]);
 
   async function handleClick() {
+    if (isPending) return;
+    
     // Optimistic update
     const prev = isFollowing;
     setIsFollowing(!prev);
+    setIsPending(true);
 
-    startTransition(async () => {
+    try {
       const result = prev
         ? await unfollowUserAction(targetUserId)
         : await followUserAction(targetUserId);
@@ -51,11 +57,13 @@ export default function FollowButton({
       } else {
         onFollowChange?.(!prev);
         toast.success(prev ? 'Unfollowed' : 'Following');
-        if (refreshOnSuccess) {
-          router.refresh();
-        }
       }
-    });
+    } catch (err: any) {
+      setIsFollowing(prev);
+      toast.error('Failed to change follow status');
+    } finally {
+      setIsPending(false);
+    }
   }
 
   const isSmall = size === 'sm';
@@ -98,7 +106,7 @@ export default function FollowButton({
             className="flex items-center gap-1.5"
           >
             <UserCheck size={isSmall ? 10 : 13} />
-            {isHovered ? (isSmall ? '–' : 'Unfollow') : isSmall ? '✓' : 'Following'}
+            {isHovered ? 'Unfollow' : 'Following'}
           </motion.span>
         ) : (
           <motion.span
@@ -109,7 +117,7 @@ export default function FollowButton({
             className="flex items-center gap-1.5"
           >
             <UserPlus size={isSmall ? 10 : 13} />
-            Follow
+            {isPending ? 'Follow...' : 'Follow'}
           </motion.span>
         )}
       </AnimatePresence>

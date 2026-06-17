@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Lightbulb, RefreshCcw, ArrowRight } from 'lucide-react';
 import GlassPanel from '@/components/ui/GlassPanel';
-import { getRandomTriviaAction } from '@/lib/actions';
+import { getRandomTriviaAction } from '@/lib/dashboard-actions';
 import Link from 'next/link';
 import { TriviaItem } from '@/lib/services/DeepDataService';
 import { cn } from '@/lib/utils';

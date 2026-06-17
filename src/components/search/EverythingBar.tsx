@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import GlassPanel from '@/components/ui/GlassPanel';
 import { cn } from '@/lib/utils';
 import { useQuery } from '@tanstack/react-query';
-import { globalSearchAction } from '@/lib/actions';
+import { globalSearchAction } from '@/lib/search-actions';
 import OracleResults from './OracleResults';
 import { useRouter } from 'next/navigation';
 

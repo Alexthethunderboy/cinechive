@@ -1,4 +1,5 @@
-import { getVaultEntries, getUserCollectionsAction } from '@/lib/actions';
+import { getVaultEntries } from '@/lib/media-actions';
+import { getUserCollectionsAction } from '@/lib/collection-actions';
 import VaultClient from '@/components/vault/VaultClient';
 
 export const metadata = {

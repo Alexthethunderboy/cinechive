@@ -21,8 +21,8 @@ export async function calculateTasteMatchAction(userId1: string, userId2: string
 
   // 1. Fetch Vault Entries for both users
   const [entries1, entries2] = await Promise.all([
-    (supabase.from('media_entries') as any).select('external_id, title, poster_url, mood_tag_id, mood_tags(label)').eq('user_id', userId1),
-    (supabase.from('media_entries') as any).select('external_id, title, poster_url, mood_tag_id, mood_tags(label)').eq('user_id', userId2)
+    supabase.from('media_entries').select('external_id, title, poster_url, mood_tag_id, mood_tags(label)').eq('user_id', userId1),
+    supabase.from('media_entries').select('external_id, title, poster_url, mood_tag_id, mood_tags(label)').eq('user_id', userId2)
   ]);
 
   const vault1 = (entries1.data || []) as any[];
@@ -30,8 +30,8 @@ export async function calculateTasteMatchAction(userId1: string, userId2: string
 
   // 2. Fetch Onboarding Tastes for both users
   const [tastes1, tastes2] = await Promise.all([
-    (supabase.from('user_onboarding_tastes') as any).select('value, category').eq('user_id', userId1),
-    (supabase.from('user_onboarding_tastes') as any).select('value, category').eq('user_id', userId2)
+    supabase.from('user_onboarding_tastes').select('value, category').eq('user_id', userId1),
+    supabase.from('user_onboarding_tastes').select('value, category').eq('user_id', userId2)
   ]);
 
   const onboarding1 = (tastes1.data || []) as any[];

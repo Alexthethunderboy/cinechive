@@ -3,11 +3,11 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { DetailedMedia } from '@/lib/api/mapping';
-import { archiveMediaAction, removeMediaEntryAction } from '@/lib/actions';
+import { archiveMediaAction, removeMediaEntryAction } from '@/lib/media-actions';
 import ReviewSection from './ReviewSection';
 import MusicSection from './MusicSection';
 import DeepDiveSection from './DeepDiveSection';
-import { getSeasonEpisodesAction } from '@/lib/actions';
+import { getSeasonEpisodesAction } from '@/lib/search-actions';
 import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useRouter, useSearchParams } from 'next/navigation';

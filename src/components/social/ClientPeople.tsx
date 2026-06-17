@@ -131,6 +131,7 @@ export default function ClientPeople({ initialSuggestions, initialFollowers, ini
               <UserCard
                 key={user.id}
                 user={user}
+                isFollowing={following.some((u) => u.id === user.id)}
                 variant={activeTab === 'search' ? 'search' : 'suggestion'}
                 onFollowChange={handleFollowStateChange}
               />
@@ -151,10 +152,12 @@ export default function ClientPeople({ initialSuggestions, initialFollowers, ini
 function UserCard({
   user,
   variant,
+  isFollowing,
   onFollowChange,
 }: {
   user: FollowUser;
   variant: 'search' | 'suggestion';
+  isFollowing: boolean;
   onFollowChange: (user: FollowUser, isFollowing: boolean) => void;
 }) {
   return (
@@ -195,10 +198,11 @@ function UserCard({
       <div className="flex items-center justify-end shrink-0 pt-2 md:pt-0">
         <FollowButton 
           targetUserId={user.id} 
+          initialFollowing={isFollowing}
           size="md"
           className="w-full md:w-auto"
           refreshOnSuccess={false}
-          onFollowChange={(isFollowing) => onFollowChange(user, isFollowing)}
+          onFollowChange={(newStatus) => onFollowChange(user, newStatus)}
         />
       </div>
     </div>

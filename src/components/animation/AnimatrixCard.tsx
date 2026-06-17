@@ -7,7 +7,7 @@ import { UniversalMedia } from '@/lib/api/UniversalTransformer';
 import { cn, formatDate, getReleaseStatus } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
-import { archiveMediaAction } from '@/lib/actions';
+import { archiveMediaAction } from '@/lib/media-actions';
 import { toggleReminder, getReminderStatus } from '@/app/actions/radar-actions';
 import { isAfter, startOfToday } from 'date-fns';
 import { useEffect } from 'react';

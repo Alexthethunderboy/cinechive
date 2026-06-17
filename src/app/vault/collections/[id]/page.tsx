@@ -1,4 +1,4 @@
-import { getCollectionDetailsAction } from '@/lib/actions';
+import { getCollectionDetailsAction } from '@/lib/collection-actions';
 import { notFound } from 'next/navigation';
 import { DiscoveryCard } from '@/components/cinema/DiscoveryCard';
 import { Trash2, ChevronLeft, FolderHeart } from 'lucide-react';
@@ -59,7 +59,7 @@ export default async function CollectionDetailPage({ params }: PageProps) {
 
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {collection.collection_items && collection.collection_items.length > 0 ? (
-          collection.collection_items.map((item: CollectionItem, idx: number) => (
+          (collection.collection_items as any[]).map((item: CollectionItem, idx: number) => (
             <DiscoveryCard 
               key={item.id} 
               media={{

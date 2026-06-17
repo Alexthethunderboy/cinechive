@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { getVaultEntries } from '@/lib/actions';
+import { getVaultEntries } from '@/lib/media-actions';
 import ClientCollections from '@/components/collections/ClientCollections';
 
 export const metadata: Metadata = {

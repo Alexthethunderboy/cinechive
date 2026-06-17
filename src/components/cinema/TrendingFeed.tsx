@@ -1,7 +1,7 @@
  'use client';
 
 import React, { useState, useEffect } from 'react';
-import { QueryClient, QueryClientProvider, useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
 import { getTrendingFeedAction, getAnimeFeedAction, getAnimationFeedAction, getDocumentaryFeedAction } from '@/lib/feed-actions';
 import { UniversalMedia } from '@/lib/api/UniversalTransformer';
@@ -11,7 +11,7 @@ import { AdvancedFilters, FilterState } from '@/components/animation/FilterLab';
 import { Loader2, Film, Tv, Sparkles, Wand2, Filter, Library } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-function TrendingFeedInner({ isVisible = true }: { isVisible?: boolean }) {
+export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
   const [activeTab, setActiveTab] = useState<'movie' | 'tv' | 'anime' | 'animation' | 'documentary'>('movie');
   
   // FilterLab State
@@ -265,24 +265,4 @@ function TrendingFeedInner({ isVisible = true }: { isVisible?: boolean }) {
   );
 }
 
-export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
-  const [queryClient] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: {
-          queries: {
-            staleTime: 60 * 1000,
-            gcTime: 10 * 60 * 1000,
-            retry: 1,
-            refetchOnWindowFocus: false,
-          },
-        },
-      })
-  );
 
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TrendingFeedInner isVisible={isVisible} />
-    </QueryClientProvider>
-  );
-}

@@ -85,6 +85,7 @@ export function SiteTour() {
       setTimeout(() => {
         setCurrentStep(0);
         document.documentElement.classList.add('site-tour-active');
+        window.dispatchEvent(new Event('site-tour-active'));
       }, 1000);
     }
   }, []);
@@ -94,6 +95,7 @@ export function SiteTour() {
     setHasSeenTour(true);
     setCurrentStep(-1);
     document.documentElement.classList.remove('site-tour-active');
+    window.dispatchEvent(new Event('site-tour-inactive'));
   }, []);
 
   const updateSpotlight = useCallback(() => {

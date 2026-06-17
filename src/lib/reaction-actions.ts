@@ -15,7 +15,7 @@ async function getAuthorIdForActivity(activityId: string, activityType: string):
   if (activityType === 'dispatch') table = 'dispatches';
   if (activityType === 'screening') table = 'cine_journal';
 
-  const { data: activity } = await (supabase.from(table) as any)
+  const { data: activity } = await supabase.from(table as any)
     .select('user_id')
     .eq('id', activityId)
     .single();
@@ -31,20 +31,20 @@ export async function toggleReactionAction(activityId: string, activityType: 'en
   if (!user) return { error: 'Authentication required.', code: 'AUTH_REQUIRED' };
 
   // Check if exists
-  const { data: existing } = await (supabase
+  const { data: existing, error: fetchError } = await (supabase
     .from('reactions') as any)
-    .select('id')
-    .eq('user_id', user.id)
+    .select('id, user_id')
     .eq('activity_id', activityId)
-    .maybeSingle();
+    .eq('user_id', user.id)
+    .single();
 
   if (existing) {
     // Unlike
-    const { error } = await (supabase.from('reactions') as any).delete().eq('id', existing.id);
+    const { error } = await supabase.from('reactions').delete().eq('id', existing.id);
     if (error) return { error: error.message, code: 'UNKNOWN_ERROR' };
   } else {
     // Like
-    const { error } = await (supabase.from('reactions') as any).insert({
+    const { error } = await supabase.from('reactions').insert({
       user_id: user.id,
       activity_id: activityId,
       activity_type: activityType
@@ -67,7 +67,7 @@ export async function toggleReactionAction(activityId: string, activityType: 'en
 
 export async function getActivityReactionCount(activityId: string) {
   const supabase = await createClient();
-  const { count } = await (supabase.from('reactions') as any)
+  const { count } = await supabase.from('reactions')
     .select('*', { count: 'exact', head: true })
     .eq('activity_id', activityId);
   return count ?? 0;
@@ -88,7 +88,7 @@ export async function getCommentsAction(activityId: string): Promise<CommentWith
   const supabase = await createClient();
   
   const { data, error } = await (supabase
-    .from('comments') as any)
+    .from('comments'))
     .select(`
       id, body, created_at, user_id,
       profiles:user_id (username, avatar_url)
@@ -115,7 +115,7 @@ export async function postCommentAction(activityId: string, activityType: string
 
   if (!body.trim()) return { error: 'Comment cannot be empty.', code: 'VALIDATION_ERROR' };
 
-  const { error } = await (supabase.from('comments') as any).insert({
+  const { error } = await supabase.from('comments').insert({
     user_id: user.id,
     activity_id: activityId,
     activity_type: activityType,
@@ -134,7 +134,7 @@ export async function postCommentAction(activityId: string, activityType: string
   const mentionMatches = Array.from(new Set((body.match(/@([a-zA-Z0-9._-]+)/g) || []).map((m) => m.slice(1).toLowerCase())));
   if (mentionMatches.length > 0) {
     const { data: mentionedProfiles } = await (supabase
-      .from('profiles') as any)
+      .from('profiles'))
       .select('id, username')
       .in('username', mentionMatches);
     for (const mentioned of mentionedProfiles || []) {
@@ -155,7 +155,7 @@ export async function deleteCommentAction(commentId: string) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Authentication required.' };
 
-  const { error } = await (supabase.from('comments') as any)
+  const { error } = await supabase.from('comments')
     .delete()
     .eq('id', commentId)
     .eq('user_id', user.id);

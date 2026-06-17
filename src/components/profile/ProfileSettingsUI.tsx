@@ -23,6 +23,7 @@ import GlassPanel from '@/components/ui/GlassPanel';
 import CinematicAvatar from './CinematicAvatar';
 import { createClient } from '@/lib/supabase/client';
 import { updateProfile, deleteAccount, clearHistory } from '@/app/actions/profile-actions';
+import LetterboxdImporter from './LetterboxdImporter';
 import { cn, formatUsername } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -383,6 +384,10 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
                             <button className="text-xs font-data uppercase tracking-widest text-white/40 hover:text-white transition-colors font-bold">Change</button>
                          </div>
                       </div>
+                    </div>
+
+                    <div className="pt-10 border-t border-white/10 space-y-6">
+                      <LetterboxdImporter />
                     </div>
 
                     <div className="pt-10 border-t border-white/10 space-y-6">

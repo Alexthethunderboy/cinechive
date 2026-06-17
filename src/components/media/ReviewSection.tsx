@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Globe, MessageSquare, Loader2 } from 'lucide-react';
 import ReviewCard from './ReviewCard';
-import { getPublicReviews, getFriendReviews } from '@/lib/actions';
+import { getPublicReviews, getFriendReviews } from '@/lib/social-reviews-actions';
 import { cn } from '@/lib/utils';
 
 interface ReviewSectionProps {

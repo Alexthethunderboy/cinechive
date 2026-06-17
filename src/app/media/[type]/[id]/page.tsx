@@ -3,7 +3,7 @@ import { Metadata } from 'next';
 import { getPersonDetails, getPersonMovieCredits } from '@/lib/api/tmdb';
 import { mapTMDBPersonCreditToUnified, mapAniListDetailToUnified, DetailedMedia, UnifiedMedia } from '@/lib/api/mapping';
 import ClientMediaDetail from '@/components/media/ClientMediaDetail';
-import { getMediaEntryForUser, getCurrentUser } from '@/lib/actions';
+import { getMediaEntryForUser, getCurrentUser } from '@/lib/profile-data-actions';
 import CatalogExplorer from '@/components/cinema/CatalogExplorer';
 import { SearchService } from '@/lib/services/SearchService';
 import { AniListFetcher } from '@/lib/api/anilist';

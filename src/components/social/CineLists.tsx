@@ -31,7 +31,7 @@ export default function CineLists({ userId, isOwnProfile }: CineListsProps) {
   useEffect(() => {
     async function fetchLists() {
       const supabase = createClient();
-      const { data, error } = await (supabase.from('cine_lists') as any)
+      const { data, error } = await (supabase.from('cine_lists' as any) as any)
         .select(`
            *,
            cine_list_items(count)

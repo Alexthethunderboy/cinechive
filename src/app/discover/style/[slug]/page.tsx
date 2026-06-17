@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { getStylePageAction } from '@/lib/actions';
+import { getStylePageAction } from '@/lib/search-actions';
 import { MediaFetcher } from '@/lib/api/MediaFetcher';
 import { StyleFeed } from '@/components/cinema/StyleFeed';
 import { CLASSIFICATION_COLORS } from '@/lib/design-tokens';
