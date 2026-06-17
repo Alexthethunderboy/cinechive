@@ -3,7 +3,7 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
 
-const ReactPlayer = dynamic(() => import('react-player/lazy' as any), { ssr: false });
+const ReactPlayer = dynamic(() => import('react-player'), { ssr: false });
 
 const YOUTUBE_REGEX = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
 const URL_REGEX = /(https?:\/\/[^\s]+)/g;
