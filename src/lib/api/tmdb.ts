@@ -3,6 +3,13 @@ import { UnifiedMedia } from './mapping';
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_IMG = 'https://image.tmdb.org/t/p';
 
+function fetchTMDB(url: string, revalidate = 3600) {
+  return fetch(url, {
+    next: { revalidate },
+    signal: AbortSignal.timeout(8_000),
+  });
+}
+
 function getUrl(path: string, params: Record<string, any> = {}) {
   const url = new URL(`${TMDB_BASE}${path}`);
   url.searchParams.append('api_key', process.env.TMDB_API_KEY || '');
@@ -47,7 +54,7 @@ export function backdropUrl(path: string | null, size: 'w780' | 'w1280' | 'origi
 
 export async function searchMedia(query: string, page = 1): Promise<TMDBSearchResult> {
   const url = getUrl('/search/multi', { query, page, include_adult: false });
-  const res = await fetch(url, { next: { revalidate: 3600 } });
+  const res = await fetchTMDB(url);
   
   if (!res.ok) {
     const errorText = await res.text();
@@ -63,7 +70,7 @@ export async function discoverMedia(params: Record<string, any> = {}): Promise<T
     include_adult: false,
     sort_by: 'popularity.desc'
   });
-  const res = await fetch(url, { next: { revalidate: 3600 } });
+  const res = await fetchTMDB(url);
   
   if (!res.ok) {
     const errorText = await res.text();
@@ -78,9 +85,7 @@ export async function getTrending(
 ): Promise<TMDBSearchResult> {
   const url = getUrl(`/trending/all/${timeWindow}`);
   try {
-    const res = await fetch(url, {
-      next: { revalidate: 3600 },
-    });
+    const res = await fetchTMDB(url);
     if (!res.ok) {
       const errorText = await res.text();
       console.error(`TMDB trending failed [${res.status}]: ${errorText}`);
@@ -97,9 +102,7 @@ export async function getMovieDetails(id: number) {
   const url = getUrl(`/movie/${id}`, { 
     append_to_response: 'credits,videos,images,recommendations,release_dates,keywords,external_ids,watch/providers' 
   });
-  const res = await fetch(url, {
-    next: { revalidate: 86400 },
-  });
+  const res = await fetchTMDB(url, 86400);
   if (!res.ok) throw new Error(`TMDB movie detail failed: ${res.status}`);
   return res.json();
 }
@@ -107,9 +110,7 @@ export async function getPersonDetails(id: number) {
   const url = getUrl(`/person/${id}`, { 
     append_to_response: 'combined_credits,external_ids' 
   });
-  const res = await fetch(url, {
-    next: { revalidate: 86400 },
-  });
+  const res = await fetchTMDB(url, 86400);
   if (!res.ok) throw new Error(`TMDB person detail failed: ${res.status}`);
   return res.json();
 }
@@ -118,27 +119,21 @@ export async function getTvDetails(id: number) {
   const url = getUrl(`/tv/${id}`, { 
     append_to_response: 'credits,videos,images,recommendations,keywords,external_ids,watch/providers' 
   });
-  const res = await fetch(url, {
-    next: { revalidate: 86400 },
-  });
+  const res = await fetchTMDB(url, 86400);
   if (!res.ok) throw new Error(`TMDB TV detail failed: ${res.status}`);
   return res.json();
 }
 
 export async function getPersonMovieCredits(id: number) {
   const url = getUrl(`/person/${id}/movie_credits`);
-  const res = await fetch(url, {
-    next: { revalidate: 86400 },
-  });
+  const res = await fetchTMDB(url, 86400);
   if (!res.ok) throw new Error(`TMDB person movie credits failed: ${res.status}`);
   return res.json();
 }
 
 export async function getCollectionDetails(id: number) {
   const url = getUrl(`/collection/${id}`);
-  const res = await fetch(url, {
-    next: { revalidate: 86400 },
-  });
+  const res = await fetchTMDB(url, 86400);
   if (!res.ok) throw new Error(`TMDB collection detail failed: ${res.status}`);
   return res.json();
 }
@@ -147,9 +142,7 @@ export async function getSeasonDetails(tvId: number, seasonNumber: number) {
   const url = getUrl(`/tv/${tvId}/season/${seasonNumber}`, {
     append_to_response: 'credits,videos,images,external_ids'
   });
-  const res = await fetch(url, {
-    next: { revalidate: 86400 },
-  });
+  const res = await fetchTMDB(url, 86400);
   if (!res.ok) throw new Error(`TMDB season detail failed: ${res.status}`);
   return res.json();
 }
@@ -175,7 +168,7 @@ export async function enrichWithDirector(mediaArray: UnifiedMedia[]): Promise<Un
 
 export async function getUpcomingMovies(page = 1): Promise<TMDBSearchResult> {
   const url = getUrl('/movie/upcoming', { page, region: 'US' });
-  const res = await fetch(url, { next: { revalidate: 3600 } });
+  const res = await fetchTMDB(url);
   if (!res.ok) throw new Error('Failed to fetch upcoming movies');
   return res.json();
 }
@@ -187,7 +180,7 @@ export async function getUpcomingTv(page = 1): Promise<TMDBSearchResult> {
     'sort_by': 'popularity.desc',
     'page': page
   });
-  const res = await fetch(url, { next: { revalidate: 3600 } });
+  const res = await fetchTMDB(url);
   if (!res.ok) throw new Error('Failed to fetch upcoming TV');
   return res.json();
 }
@@ -201,7 +194,7 @@ export async function getUpcomingAnimations(page = 1): Promise<TMDBSearchResult>
     'sort_by': 'popularity.desc',
     'page': page
   });
-  const res = await fetch(url, { next: { revalidate: 3600 } });
+  const res = await fetchTMDB(url);
   if (!res.ok) throw new Error('Failed to fetch upcoming animations');
   return res.json();
 }
@@ -216,7 +209,7 @@ export async function getFutureHorizonsMovie(year?: number, page = 1): Promise<T
     'page': page
   });
   
-  const res = await fetch(url, { next: { revalidate: 3600 } });
+  const res = await fetchTMDB(url);
   
   if (!res.ok) {
     const errorText = await res.text();

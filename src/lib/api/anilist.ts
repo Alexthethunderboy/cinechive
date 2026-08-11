@@ -69,7 +69,8 @@ export class AniListFetcher {
         variables
       }),
       // Cache heavily for discovery feeds, revalidate every hour
-      next: { revalidate: 3600 } 
+      next: { revalidate: 3600 },
+      signal: AbortSignal.timeout(8_000),
     });
 
     const json = await response.json();
@@ -280,4 +281,3 @@ export class AniListFetcher {
     };
   }
 }
-

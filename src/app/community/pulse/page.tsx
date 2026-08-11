@@ -3,6 +3,8 @@ import { createClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import PulseFeed from '@/components/community/PulseFeed';
 
+export const dynamic = 'force-dynamic';
+
 export default async function PulsePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

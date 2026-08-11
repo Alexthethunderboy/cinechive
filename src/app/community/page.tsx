@@ -5,6 +5,8 @@ import { redirect } from 'next/navigation';
 import { Metadata } from 'next';
 import { getSuggestedUsersAction } from '@/lib/social-actions';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Community | CineChive',
   description: 'See what your community is watching and collecting.',

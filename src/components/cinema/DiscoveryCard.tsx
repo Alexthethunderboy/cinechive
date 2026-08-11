@@ -1,46 +1,67 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Star, Bell, BellOff } from 'lucide-react';
 import { UniversalMedia } from '@/lib/api/UniversalTransformer';
-import { cn, formatDate, getReleaseStatus } from '@/lib/utils';
+import { cn, getReleaseStatus } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
-import { toggleReminder, getReminderStatus } from '@/app/actions/radar-actions';
+import { toggleReminder } from '@/app/actions/radar-actions';
 import { isAfter, startOfToday } from 'date-fns';
 import { toast } from 'sonner';
 import { buildMediaHref, toCanonicalMediaId } from '@/lib/media-identity';
 import MediaPreferenceButtons from '@/components/media/MediaPreferenceButtons';
+import { useAuth } from '@/components/providers/AuthProvider';
+import type { MediaPreference } from '@/lib/media-social-actions';
+import { getLocalReminder, toggleLocalReminder, useLocalArchive } from '@/lib/local-archive';
 
 interface DiscoveryCardProps {
   media: UniversalMedia;
   index: number;
+  initialPreference?: MediaPreference | null;
+  initialReminderStatus?: boolean;
 }
 
-export function DiscoveryCard({ media: initialMedia }: DiscoveryCardProps) {
+export function DiscoveryCard({
+  media: initialMedia,
+  index,
+  initialPreference = null,
+  initialReminderStatus = false,
+}: DiscoveryCardProps) {
+  const { user, serviceStatus, isLocalMode } = useAuth();
+  const localArchive = useLocalArchive();
   const [media] = useState<UniversalMedia>(initialMedia);
-  const [isReminded, setIsReminded] = useState(false);
+  const [remoteReminderOverride, setRemoteReminderOverride] = useState<boolean | null>(null);
 
   const isUpcoming = media.releaseDate ? isAfter(new Date(media.releaseDate), startOfToday()) : false;
   const releaseStatus = getReleaseStatus(media.releaseDate, media.type);
 
-  useEffect(() => {
-    if (isUpcoming) {
-      getReminderStatus(String(media.sourceId), media.type).then(setIsReminded);
-    }
-  }, [media.sourceId, media.type, isUpcoming]);
+  const isReminded = isLocalMode
+    ? !!getLocalReminder(toCanonicalMediaId(media), media.type, localArchive)
+    : remoteReminderOverride ?? initialReminderStatus;
 
   const handleToggleReminder = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     try {
+      if (isLocalMode) {
+        const added = toggleLocalReminder({
+          mediaId: toCanonicalMediaId(media),
+          mediaType: media.type,
+          title: media.displayTitle,
+          posterUrl: media.posterUrl,
+          releaseDate: media.releaseDate,
+        });
+        toast.success(added ? 'Reminder set locally' : 'Reminder removed');
+        return;
+      }
       const result = await toggleReminder(String(media.sourceId), media.type);
       if (result && 'error' in result) {
         toast.error(result.error as string);
         return;
       }
-      setIsReminded(result.status === 'added');
+      setRemoteReminderOverride(result.status === 'added');
       if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(10);
       toast.success(result.status === 'added' ? "Reminder set" : "Reminder removed");
     } catch (err) {
@@ -50,11 +71,14 @@ export function DiscoveryCard({ media: initialMedia }: DiscoveryCardProps) {
   };
 
   return (
-    <>
+    <article
+      className="relative flex flex-col w-full rounded-2xl overflow-hidden bg-black border border-white/5 group transition-shadow duration-300 hover:shadow-[0_0_30px_rgba(255,255,255,0.05)]"
+    >
       <Link
         href={buildMediaHref(media)}
-        className="relative flex flex-col w-full rounded-2xl overflow-hidden bg-black border border-white/5 group transition-all duration-500 hover:shadow-[0_0_40px_rgba(255,255,255,0.05)]"
-      >
+        aria-label={`Open details for ${media.displayTitle}`}
+        className="absolute inset-0 z-20"
+      />
       {/* Base Card Image Container (2:3 aspect ratio) */}
       <div className="relative w-full aspect-2/3 overflow-hidden">
         {media.posterUrl ? (
@@ -62,6 +86,7 @@ export function DiscoveryCard({ media: initialMedia }: DiscoveryCardProps) {
             src={media.posterUrl}
             alt={media.displayTitle}
             fill
+            priority={index === 0}
             className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-110 brightness-90 group-hover:brightness-100"
             sizes="(max-width: 639px) 92vw, (max-width: 768px) 50vw, 25vw"
           />
@@ -72,7 +97,7 @@ export function DiscoveryCard({ media: initialMedia }: DiscoveryCardProps) {
         )}
 
         {/* Top Badges */}
-        <div className="absolute top-2 left-2 right-2 flex justify-between items-start z-10">
+        <div className="absolute top-2 left-2 right-2 flex justify-between items-start z-30 pointer-events-none">
           <div className="flex flex-col gap-1.5">
             {media.rating?.showBadge && (
               <div className="flex items-center gap-1 px-1 py-[2px] md:px-1.5 md:py-0.5 rounded bg-black/60 backdrop-blur-md border border-white/10 shadow-lg">
@@ -82,7 +107,7 @@ export function DiscoveryCard({ media: initialMedia }: DiscoveryCardProps) {
             )}
           </div>
           
-          <div className="flex gap-1.5 relative z-20">
+          <div className="flex gap-1.5 relative pointer-events-auto">
              {releaseStatus && (
                <span className={cn(
                  "inline-flex items-center text-[7px] md:text-[9px] font-mono tracking-widest font-bold px-1 py-[2px] md:px-1.5 md:py-0.5 rounded backdrop-blur-md uppercase shadow-lg",
@@ -102,14 +127,16 @@ export function DiscoveryCard({ media: initialMedia }: DiscoveryCardProps) {
                  title={media.displayTitle}
                  posterUrl={media.posterUrl}
                  compact
+                 initialPreference={initialPreference}
                />
              )}
 
-             {isUpcoming && (
+             {isUpcoming && user && (isLocalMode || serviceStatus === 'available') && (
                 <motion.button 
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={handleToggleReminder}
+                  aria-label={`${isReminded ? 'Dismiss reminder for' : 'Set reminder for'} ${media.displayTitle}`}
                   className={cn(
                     "p-1 md:p-1.5 rounded-md backdrop-blur-md transition-all flex items-center justify-center border",
                     isReminded ? "bg-white text-black border-white" : "bg-black/40 border-white/10 text-white/50 hover:text-white"
@@ -147,7 +174,6 @@ export function DiscoveryCard({ media: initialMedia }: DiscoveryCardProps) {
           </div>
         </div>
       </div>
-      </Link>
-    </>
+    </article>
   );
 }

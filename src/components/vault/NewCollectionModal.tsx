@@ -7,6 +7,8 @@ import { createCollectionAction } from '@/lib/collection-actions';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { createLocalCollection } from '@/lib/local-archive';
 
 interface NewCollectionModalProps {
   isOpen: boolean;
@@ -14,6 +16,7 @@ interface NewCollectionModalProps {
 }
 
 export default function NewCollectionModal({ isOpen, onClose }: NewCollectionModalProps) {
+  const { isLocalMode } = useAuth();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [isPublic, setIsPublic] = useState(false);
@@ -26,7 +29,8 @@ export default function NewCollectionModal({ isOpen, onClose }: NewCollectionMod
 
     setIsLoading(true);
     try {
-      await createCollectionAction({ title, description, isPublic });
+      if (isLocalMode) createLocalCollection({ title, description });
+      else await createCollectionAction({ title, description, isPublic });
       toast.success("Collection created successfully");
       setTitle('');
       setDescription('');
@@ -100,9 +104,10 @@ export default function NewCollectionModal({ isOpen, onClose }: NewCollectionMod
                     />
                   </div>
 
-                  <div className="flex items-center gap-3 py-2">
+                  <div className={cn("flex items-center gap-3 py-2", isLocalMode && "opacity-60")}>
                     <button
                       type="button"
+                      disabled={isLocalMode}
                       onClick={() => setIsPublic(!isPublic)}
                       className={cn(
                         "w-10 h-10 rounded-xl border transition-all flex items-center justify-center",
@@ -113,7 +118,9 @@ export default function NewCollectionModal({ isOpen, onClose }: NewCollectionMod
                     </button>
                     <div>
                       <p className="font-metadata text-[10px] text-white uppercase tracking-widest">Public Collection</p>
-                      <p className="font-metadata text-[8px] text-white/20 uppercase tracking-widest">Allow others to see this curation</p>
+                      <p className="font-metadata text-[8px] text-white/20 uppercase tracking-widest">
+                        {isLocalMode ? 'Public links require a server; this collection stays private' : 'Allow others to see this curation'}
+                      </p>
                     </div>
                   </div>
 

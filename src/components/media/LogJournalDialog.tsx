@@ -8,6 +8,9 @@ import { cn } from '@/lib/utils';
 import { logScreeningAction } from '@/lib/journal-actions';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { logLocalScreening } from '@/lib/local-archive';
 
 interface LogJournalDialogProps {
   isOpen: boolean;
@@ -21,6 +24,7 @@ interface LogJournalDialogProps {
 }
 
 export default function LogJournalDialog({ isOpen, onClose, media }: LogJournalDialogProps) {
+  const { isLocalMode } = useAuth();
   const router = useRouter();
   const [watchedAt, setWatchedAt] = useState(new Date().toISOString().split('T')[0]);
   const [isRewatch, setIsRewatch] = useState(false);
@@ -30,20 +34,22 @@ export default function LogJournalDialog({ isOpen, onClose, media }: LogJournalD
   async function handleSubmit() {
     setIsSubmitting(true);
     try {
-      await logScreeningAction({
+      const input = {
         mediaId: media.id,
         mediaType: media.type,
         title: media.title,
         posterUrl: media.posterUrl,
         watchedAt: new Date(watchedAt).toISOString(),
         isRewatch,
-        rating: rating || undefined
-      });
+        rating: rating || undefined,
+      };
+      if (isLocalMode) logLocalScreening(input);
+      else await logScreeningAction(input);
       toast.success(`Logged ${media.title} to your journal.`);
       onClose();
       router.refresh();
-    } catch (error: any) {
-      toast.error(error.message || "Failed to log screening.");
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to log screening.");
     } finally {
       setIsSubmitting(false);
     }
@@ -82,7 +88,7 @@ export default function LogJournalDialog({ isOpen, onClose, media }: LogJournalD
                {/* Media Info Mini */}
                <div className="flex gap-4 p-3 bg-white/5 border border-white/5 rounded-2xl mb-8">
                   <div className="relative w-12 aspect-2/3 rounded-lg overflow-hidden border border-white/10 shrink-0">
-                     {media.posterUrl && <img src={media.posterUrl} alt={media.title} className="w-full h-full object-cover" />}
+                     {media.posterUrl && <Image src={media.posterUrl} alt={media.title} fill sizes="48px" className="object-cover" />}
                   </div>
                   <div className="flex-1 min-w-0 flex flex-col justify-center">
                      <h3 className="font-heading text-sm text-white font-bold truncate">{media.title}</h3>

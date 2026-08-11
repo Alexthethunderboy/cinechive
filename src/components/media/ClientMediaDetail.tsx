@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { DetailedMedia } from '@/lib/api/mapping';
 import { archiveMediaAction, removeMediaEntryAction } from '@/lib/media-actions';
@@ -8,7 +8,6 @@ import ReviewSection from './ReviewSection';
 import MusicSection from './MusicSection';
 import DeepDiveSection from './DeepDiveSection';
 import { getSeasonEpisodesAction } from '@/lib/search-actions';
-import { useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
@@ -27,19 +26,51 @@ import LogJournalDialog from './LogJournalDialog';
 import MediaPreferenceButtons from './MediaPreferenceButtons';
 import { toCanonicalMediaId } from '@/lib/media-identity';
 import { emitRefreshNotifications } from '@/lib/client-events';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { getMediaEntryForUser } from '@/lib/profile-data-actions';
+import Link from 'next/link';
+import { getMediaEnrichmentAction } from '@/lib/media-enrichment-actions';
+import type { TriviaItem, TechnicalSpecs } from '@/lib/services/DeepDataService';
+import type { ScriptInfo } from '@/lib/services/ScriptService';
+import type { ClassificationName } from '@/lib/design-tokens';
+import {
+  archiveLocalMedia,
+  getLocalMediaEntry,
+  removeLocalMediaEntry,
+  useLocalArchive,
+} from '@/lib/local-archive';
+
+type UserMediaEntry = Awaited<ReturnType<typeof getMediaEntryForUser>>;
+
+interface DisplayUserEntry {
+  rating?: number | null;
+  notes?: string | null;
+  classification?: ClassificationName;
+}
+
+interface MediaEpisode {
+  id: number;
+  name: string;
+  overview?: string;
+  still_path?: string | null;
+  episode_number?: number;
+  air_date?: string | null;
+  runtime?: number | null;
+}
 
 interface ClientMediaDetailProps {
   media: DetailedMedia;
-  initialUserEntry?: any;
+  initialUserEntry?: UserMediaEntry;
   deepData?: {
-    trivia: any[];
-    specs: any;
-    scripts: any[];
+    trivia: TriviaItem[];
+    specs: TechnicalSpecs;
+    scripts: ScriptInfo[];
   };
-  user?: any;
 }
 
-export default function ClientMediaDetail({ media, initialUserEntry, deepData, user }: ClientMediaDetailProps) {
+export default function ClientMediaDetail({ media: initialMedia, initialUserEntry, deepData: initialDeepData }: ClientMediaDetailProps) {
+  const { user, serviceStatus, isLocalMode } = useAuth();
+  const localArchive = useLocalArchive();
   const router = useRouter();
   const searchParams = useSearchParams();
   const reviewFormRef = useRef<ReviewFormHandle>(null);
@@ -48,12 +79,60 @@ export default function ClientMediaDetail({ media, initialUserEntry, deepData, u
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [isJournalOpen, setIsJournalOpen] = useState(false);
+  const [userEntry, setUserEntry] = useState<DisplayUserEntry | null>((initialUserEntry as DisplayUserEntry | null | undefined) ?? null);
+  const [media, setMedia] = useState(initialMedia);
+  const [deepData, setDeepData] = useState(initialDeepData);
+  const canUseAccountFeatures = !!user && (isLocalMode || serviceStatus === 'available');
   
   // Episode Selection State
   const [selectedSeason, setSelectedSeason] = useState<number>(media.seasons?.[0]?.seasonNumber || 1);
-  const [episodes, setEpisodes] = useState<any[]>([]);
+  const [episodes, setEpisodes] = useState<MediaEpisode[]>([]);
   const [isLoadingEpisodes, setIsLoadingEpisodes] = useState(false);
   const canShowEpisodeExplorer = media.type === 'tv' || (media.source === 'anilist' && !!media.streamingEpisodes?.length);
+
+  useEffect(() => {
+    if (initialMedia.source !== 'tmdb') return;
+
+    let cancelled = false;
+    void getMediaEnrichmentAction(initialMedia).then((enrichment) => {
+      if (cancelled) return;
+      setMedia(enrichment.media);
+      setDeepData((current) => ({
+        trivia: enrichment.trivia,
+        scripts: enrichment.scripts,
+        specs: current?.specs || {},
+      }));
+    }).catch(() => {
+      // Core details are already visible; enrichment is intentionally optional.
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initialMedia]);
+
+  const refreshUserEntry = useCallback(async () => {
+    if (!canUseAccountFeatures) {
+      setUserEntry(null);
+      return;
+    }
+
+    try {
+      if (isLocalMode) {
+        const entry = getLocalMediaEntry(toCanonicalMediaId(media), media.type, localArchive);
+        setUserEntry(entry ? { ...entry, notes: entry.comment } : null);
+        return;
+      }
+      const entry = await getMediaEntryForUser(toCanonicalMediaId(media), media.type);
+      setUserEntry(entry as DisplayUserEntry | null);
+    } catch {
+      setUserEntry(null);
+    }
+  }, [canUseAccountFeatures, isLocalMode, localArchive, media]);
+
+  useEffect(() => {
+    void refreshUserEntry();
+  }, [refreshUserEntry]);
 
   useEffect(() => {
     if (media.type === 'tv' && selectedSeason && media.source === 'tmdb') {
@@ -77,11 +156,29 @@ export default function ClientMediaDetail({ media, initialUserEntry, deepData, u
     }
   }, [searchParams]);
 
-  async function handleSave(data: { rating: number, comment: string, classification: any }) {
+  async function handleSave(data: { rating: number, comment: string, classification: ClassificationName }) {
     setIsSaving(true);
     setSaveStatus('idle');
     
     try {
+      if (isLocalMode) {
+        const entry = archiveLocalMedia({
+          mediaId: toCanonicalMediaId(media),
+          mediaType: media.type,
+          title: media.displayTitle,
+          posterUrl: media.posterUrl,
+          releaseYear: media.releaseYear,
+          classification: data.classification,
+          comment: data.comment || undefined,
+          rating: data.rating || undefined,
+          isVault: true,
+        });
+        setUserEntry({ ...entry, notes: entry.comment });
+        setSaveStatus('success');
+        toast.success('Saved privately in this browser.');
+        setTimeout(() => setSaveStatus('idle'), 3000);
+        return;
+      }
       const result = await archiveMediaAction({
         mediaId: toCanonicalMediaId(media),
         mediaType: media.type,
@@ -101,8 +198,8 @@ export default function ClientMediaDetail({ media, initialUserEntry, deepData, u
       setSaveStatus('success');
       toast.success("Film registered in your library.");
       emitRefreshNotifications();
+      await refreshUserEntry();
       setTimeout(() => setSaveStatus('idle'), 3000);
-      router.refresh(); // Refresh to update initialUserEntry if needed
     } catch (error) {
       console.error(error);
       setSaveStatus('error');
@@ -117,6 +214,12 @@ export default function ClientMediaDetail({ media, initialUserEntry, deepData, u
     
     setIsSaving(true);
     try {
+      if (isLocalMode) {
+        removeLocalMediaEntry(toCanonicalMediaId(media), media.type);
+        toast.success('Removed from local library.');
+        setUserEntry(null);
+        return;
+      }
       const result = await removeMediaEntryAction(toCanonicalMediaId(media), media.type);
       if (result && 'error' in result) {
         toast.error(result.error);
@@ -124,7 +227,7 @@ export default function ClientMediaDetail({ media, initialUserEntry, deepData, u
       }
       toast.success("Removed from library.");
       emitRefreshNotifications();
-      router.refresh();
+      setUserEntry(null);
     } catch (error) {
       console.error(error);
       toast.error("Cleanup failed.");
@@ -144,12 +247,23 @@ export default function ClientMediaDetail({ media, initialUserEntry, deepData, u
         mediaId={toCanonicalMediaId(media)}
         isSaving={isSaving} 
         saveStatus={saveStatus} 
-        isAlreadySaved={!!initialUserEntry}
+        isAlreadySaved={!!userEntry}
         onSave={() => reviewFormRef.current?.focus()} 
         onOpenSaveDialog={() => setIsSaveDialogOpen(true)}
         onOpenJournal={() => setIsJournalOpen(true)}
         user={user}
+        accountFeaturesAvailable={canUseAccountFeatures}
       />
+
+      {isLocalMode ? (
+        <div role="status" className="mx-3 mt-4 rounded-xl border border-emerald-300/20 bg-emerald-300/8 px-4 py-3 text-xs text-emerald-100/80 sm:mx-4 md:mx-16">
+          Local archive active. Saves, ratings, reviews, journal logs, likes, collections and reminders stay private in this browser. Community data and device sync are paused.
+        </div>
+      ) : serviceStatus === 'unavailable' && (
+        <div role="status" className="mx-3 mt-4 rounded-xl border border-amber-300/20 bg-amber-300/8 px-4 py-3 text-xs text-amber-100/80 sm:mx-4 md:mx-16">
+          Account and community services are unavailable. Core film details, cast, trailers and recommendations remain available.
+        </div>
+      )}
 
       {/* Details Grid */}
       <section className="px-3 sm:px-4 md:px-16 mt-8 md:mt-12 grid grid-cols-1 lg:grid-cols-12 gap-8 md:gap-12">
@@ -157,8 +271,12 @@ export default function ClientMediaDetail({ media, initialUserEntry, deepData, u
         <div className="lg:col-span-8 space-y-12">
           <div className="space-y-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-8 border-b border-white/5">
-              <CommunityRating mediaId={toCanonicalMediaId(media)} mediaType={media.type} />
-              <FriendActivity mediaId={toCanonicalMediaId(media)} mediaType={media.type} />
+              {!isLocalMode && serviceStatus === 'available' && (
+                <CommunityRating mediaId={toCanonicalMediaId(media)} mediaType={media.type} />
+              )}
+              {!isLocalMode && canUseAccountFeatures && (
+                <FriendActivity mediaId={toCanonicalMediaId(media)} mediaType={media.type} />
+              )}
             </div>
             <MediaInfo media={media} />
           </div>
@@ -166,7 +284,7 @@ export default function ClientMediaDetail({ media, initialUserEntry, deepData, u
           <CastCrewSection media={media} />
 
           {/* Franchise / Collection Section */}
-          {media.collection && (
+          {media.collection && media.collection.parts.length > 0 && (
             <div className="pt-12 border-t border-white/5 space-y-8">
               <div className="flex flex-col gap-1">
                 <h2 className="font-heading text-2xl tracking-tighter uppercase italic text-white/50">
@@ -343,14 +461,16 @@ export default function ClientMediaDetail({ media, initialUserEntry, deepData, u
             </div>
           )}
 
-          <div className="pt-12 border-t border-white/5">
-            <ReviewSection mediaId={toCanonicalMediaId(media)} mediaType={media.type} />
-          </div>
+          {!isLocalMode && serviceStatus === 'available' && (
+            <div className="pt-12 border-t border-white/5">
+              <ReviewSection mediaId={toCanonicalMediaId(media)} mediaType={media.type} />
+            </div>
+          )}
 
           <div id="media-actions" className="space-y-6 pt-12 border-t border-white/5">
               <div className="flex items-center justify-between">
                  <h2 className="font-heading text-xl md:text-2xl tracking-tight">Your Review</h2>
-                 {initialUserEntry && (
+                 {userEntry && (
                    <button 
                     onClick={handleEditEntry}
                     className="font-data text-[9px] md:text-[10px] text-white/40 uppercase tracking-widest cursor-pointer hover:underline hover:text-accent transition-colors"
@@ -362,17 +482,17 @@ export default function ClientMediaDetail({ media, initialUserEntry, deepData, u
               <div className="p-5 md:p-8 border border-dashed border-white/10 bg-white/5 rounded-card">
                  <div className="prose prose-invert max-w-none font-sans opacity-70">
                     <h4 className="font-heading text-white">Your Impression</h4>
-                    {initialUserEntry?.notes ? (
+                    {userEntry?.notes ? (
                       <div className="space-y-4">
-                        {initialUserEntry.rating && (
+                        {userEntry.rating && (
                           <div className="flex items-center gap-2 px-3 py-1 bg-accent/20 rounded-full border border-accent/40 w-fit">
-                            <span className="font-display text-sm text-accent">{initialUserEntry.rating}/10</span>
+                            <span className="font-display text-sm text-accent">{userEntry.rating}/10</span>
                           </div>
                         )}
-                        <p className="whitespace-pre-wrap">{initialUserEntry.notes}</p>
+                        <p className="whitespace-pre-wrap">{userEntry.notes}</p>
                       </div>
                     ) : (
-                      <p>You haven't shared your thoughts on this yet. Add a rating and review on the right.</p>
+                      <p>{canUseAccountFeatures ? "You haven't shared your thoughts on this yet. Add a rating and review on the right." : 'Sign in to save, rate and review this title.'}</p>
                     )}
                  </div>
               </div>
@@ -396,21 +516,28 @@ export default function ClientMediaDetail({ media, initialUserEntry, deepData, u
         </div>
 
         <div className="lg:col-span-4 space-y-8">
-           <ReviewForm 
+          {canUseAccountFeatures ? (
+           <ReviewForm
              ref={reviewFormRef}
-             initialRating={initialUserEntry?.rating}
-             initialNotes={initialUserEntry?.notes}
-             initialClassification={initialUserEntry?.classification}
-             mediaId={toCanonicalMediaId(media)}
-             mediaType={media.type}
-             mediaTitle={media.displayTitle}
-             posterUrl={media.posterUrl}
+             initialRating={userEntry?.rating ?? undefined}
+             initialNotes={userEntry?.notes ?? undefined}
+             initialClassification={userEntry?.classification}
              onSave={handleSave}
              onRemove={handleRemove}
              isSaving={isSaving}
              saveStatus={saveStatus}
-             isAlreadySaved={!!initialUserEntry}
+             isAlreadySaved={!!userEntry}
+             localMode={isLocalMode}
            />
+          ) : (
+            <div className="sticky top-24 rounded-2xl border border-white/10 bg-white/4 p-6 text-sm text-white/60">
+              <h3 className="mb-2 font-heading text-lg text-white">Your library</h3>
+              <p className="mb-4">{serviceStatus === 'unavailable' ? 'Account services are temporarily offline.' : 'Sign in to save this title and write a review.'}</p>
+              {serviceStatus !== 'unavailable' && (
+                <Link href="/login" className="inline-flex rounded-xl bg-white px-4 py-2 font-bold text-black">Sign in</Link>
+              )}
+            </div>
+          )}
         </div>
       </section>
       
@@ -434,10 +561,12 @@ export default function ClientMediaDetail({ media, initialUserEntry, deepData, u
               >
                 <div className="aspect-3/4 rounded-card overflow-hidden relative border border-white/5 group-hover:border-accent/40 transition-all bg-white/5">
                   {rec.posterUrl ? (
-                    <img
+                    <Image
                       src={rec.posterUrl}
                       alt={rec.title}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                      fill
+                      sizes="(max-width: 767px) 92vw, 40vw"
+                      className="object-cover transition-transform duration-500 group-hover:scale-105"
                     />
                   ) : (
                     <div className="w-full h-full bg-white/5" />
@@ -465,13 +594,13 @@ export default function ClientMediaDetail({ media, initialUserEntry, deepData, u
         </section>
       )}
 
-      <SaveMediaDialog 
+      {canUseAccountFeatures && <SaveMediaDialog
         isOpen={isSaveDialogOpen} 
         onClose={() => setIsSaveDialogOpen(false)} 
         media={media} 
-      />
+      />}
 
-      <LogJournalDialog 
+      {canUseAccountFeatures && <LogJournalDialog
         isOpen={isJournalOpen}
         onClose={() => setIsJournalOpen(false)}
         media={{
@@ -480,7 +609,7 @@ export default function ClientMediaDetail({ media, initialUserEntry, deepData, u
           title: media.displayTitle,
           posterUrl: media.posterUrl
         }}
-      />
+      />}
     </div>
   );
 }

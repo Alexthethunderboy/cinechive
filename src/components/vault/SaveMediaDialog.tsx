@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
@@ -9,7 +9,6 @@ import {
   Check, 
   FolderHeart, 
   Bookmark,
-  ChevronRight,
   PlusCircle
 } from 'lucide-react';
 import { getUserCollectionsAction, addMediaToCollectionAction, createCollectionAction } from '@/lib/collection-actions';
@@ -17,15 +16,41 @@ import { toggleArchiveMediaAction, getIsInVaultAction } from '@/lib/media-action
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { emitRefreshNotifications } from '@/lib/client-events';
+import { useAuth } from '@/components/providers/AuthProvider';
+import {
+  addLocalMediaToCollection,
+  createLocalCollection,
+  getLocalMediaEntry,
+  toggleLocalVault,
+  useLocalArchive,
+} from '@/lib/local-archive';
+import { toCanonicalMediaId } from '@/lib/media-identity';
+import Image from 'next/image';
 
 interface SaveMediaDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  media: any;
+  media: {
+    id: string;
+    sourceId?: string | number;
+    type: string;
+    displayTitle: string;
+    title?: string;
+    posterUrl: string | null;
+    releaseYear?: number | null;
+  };
+}
+
+interface CollectionOption {
+  id: string;
+  title: string;
+  collection_items?: unknown[];
 }
 
 export default function SaveMediaDialog({ isOpen, onClose, media }: SaveMediaDialogProps) {
-  const [collections, setCollections] = useState<any[]>([]);
+  const { isLocalMode } = useAuth();
+  const localArchive = useLocalArchive();
+  const [collections, setCollections] = useState<CollectionOption[]>([]);
   const [isVault, setIsVault] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isTogglingVault, setIsTogglingVault] = useState(false);
@@ -36,35 +61,50 @@ export default function SaveMediaDialog({ isOpen, onClose, media }: SaveMediaDia
   const [newTitle, setNewTitle] = useState('');
   const [isCreatingLoading, setIsCreatingLoading] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      loadData();
-    }
-  }, [isOpen, media.id]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
+      if (isLocalMode) {
+        setCollections(localArchive.collections);
+        setIsVault(!!getLocalMediaEntry(toCanonicalMediaId(media), media.type, localArchive)?.is_vault);
+        return;
+      }
       const [cols, vaultStatus] = await Promise.all([
         getUserCollectionsAction(),
         getIsInVaultAction(media.id)
       ]);
-      setCollections(cols);
+      setCollections(cols as CollectionOption[]);
       setIsVault(vaultStatus);
     } catch (error) {
       console.error("Failed to load save data:", error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [isLocalMode, localArchive, media]);
+
+  useEffect(() => {
+    if (isOpen) void loadData();
+  }, [isOpen, loadData]);
 
   const handleToggleVault = async () => {
     setIsTogglingVault(true);
     try {
+      if (isLocalMode) {
+        const next = toggleLocalVault({
+          mediaId: toCanonicalMediaId(media),
+          mediaType: media.type,
+          title: media.displayTitle || media.title || 'Untitled',
+          posterUrl: media.posterUrl,
+          releaseYear: media.releaseYear,
+        });
+        setIsVault(next);
+        toast.success(next ? 'Saved to Library' : 'Removed from Library');
+        return;
+      }
       const result = await toggleArchiveMediaAction({
         mediaId: media.id,
         mediaType: media.type,
-        title: media.displayTitle || media.title,
+        title: media.displayTitle || media.title || 'Untitled',
         posterUrl: media.posterUrl,
       });
       if ('error' in result) throw new Error(result.error as string);
@@ -73,7 +113,7 @@ export default function SaveMediaDialog({ isOpen, onClose, media }: SaveMediaDia
       toast.success(result.isVault ? "Saved to Vault" : "Removed from Vault");
       if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(10);
       emitRefreshNotifications();
-    } catch (error) {
+    } catch {
       toast.error("Failed to update vault");
     } finally {
       setIsTogglingVault(false);
@@ -83,12 +123,20 @@ export default function SaveMediaDialog({ isOpen, onClose, media }: SaveMediaDia
   const handleAddToCollection = async (collectionId: string) => {
     setAddingId(collectionId);
     try {
-      await addMediaToCollectionAction(collectionId, media);
-      toast.success(`Added to collection`);
+      const added = isLocalMode
+        ? addLocalMediaToCollection(collectionId, {
+            mediaId: toCanonicalMediaId(media),
+            mediaType: media.type,
+            title: media.displayTitle || media.title || 'Untitled',
+            posterUrl: media.posterUrl,
+            releaseYear: media.releaseYear,
+          })
+        : (await addMediaToCollectionAction(collectionId, media), true);
+      toast.success(added ? 'Added to collection' : 'Already in this collection');
       if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(10);
       emitRefreshNotifications();
       // We don't close immediately to allow multiple additions
-    } catch (error) {
+    } catch {
       toast.error("Failed to add to collection");
     } finally {
       setAddingId(null);
@@ -101,14 +149,16 @@ export default function SaveMediaDialog({ isOpen, onClose, media }: SaveMediaDia
 
     setIsCreatingLoading(true);
     try {
-      const newCol = await createCollectionAction({ title: newTitle });
+      const localCollection = isLocalMode ? createLocalCollection({ title: newTitle }) : null;
+      const newCol = localCollection || await createCollectionAction({ title: newTitle });
+      const collectionId = localCollection?.id || (newCol as { collectionId: string }).collectionId;
       toast.success("Collection created");
-      setCollections([{ id: newCol.collectionId, title: newTitle, collection_items: [] }, ...collections]);
+      setCollections([{ id: collectionId, title: newTitle, collection_items: [] }, ...collections]);
       setNewTitle('');
       setIsCreating(false);
       // Auto-add the media to the new collection
-      await handleAddToCollection(newCol.collectionId);
-    } catch (error) {
+      await handleAddToCollection(collectionId);
+    } catch {
       toast.error("Failed to create collection");
     } finally {
       setIsCreatingLoading(false);
@@ -136,7 +186,7 @@ export default function SaveMediaDialog({ isOpen, onClose, media }: SaveMediaDia
               {/* Media Preview Header */}
               <div className="p-6 pb-0 flex items-center gap-4">
                  <div className="relative w-16 h-24 rounded-xl overflow-hidden bg-white/5 border border-white/10 shrink-0">
-                    {media.posterUrl && <img src={media.posterUrl} className="w-full h-full object-cover" alt="" />}
+                    {media.posterUrl && <Image src={media.posterUrl} fill sizes="64px" className="object-cover" alt={media.displayTitle || media.title || 'Poster'} />}
                  </div>
                  <div className="flex-1 min-w-0">
                     <h3 className="font-heading text-xl text-white uppercase italic tracking-tight truncate leading-tight">

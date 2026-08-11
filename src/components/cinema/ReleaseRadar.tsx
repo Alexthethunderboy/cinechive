@@ -2,21 +2,26 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Calendar, Filter, Clapperboard, Tv, Ghost, Sparkles, ChevronLeft, ChevronRight, Telescope } from 'lucide-react';
+import { Calendar, Clapperboard, Tv, Ghost, Sparkles, ChevronLeft, ChevronRight, Telescope } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UniversalMedia } from '@/lib/api/UniversalTransformer';
 import { getReleaseRadarAction, getFutureHorizonsAction } from '@/lib/feed-actions';
-import { getCurrentUser } from '@/lib/profile-data-actions';
 import ReleaseRadarCard from './ReleaseRadarCard';
 import { addWeeks, format, startOfToday, endOfWeek, startOfWeek, isWithinInterval } from 'date-fns';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { getMediaPreferencesAction } from '@/lib/media-social-actions';
+import { getReminderStatuses } from '@/app/actions/radar-actions';
+import { toCanonicalMediaId } from '@/lib/media-identity';
 
 type RadarFilter = 'all' | 'movies' | 'series' | 'animations' | 'anime' | 'horizons';
 
 export default function ReleaseRadar() {
+  const { user, serviceStatus } = useAuth();
   const [activeFilter, setActiveFilter] = useState<RadarFilter>('all');
   const [data, setData] = useState<UniversalMedia[]>([]);
   const [futureData, setFutureData] = useState<UniversalMedia[]>([]);
-  const [userProfile, setUserProfile] = useState<any>(null);
+  const [preferenceMap, setPreferenceMap] = useState<Record<string, 'like' | 'dislike'>>({});
+  const [reminderMap, setReminderMap] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [activeWeek, setActiveWeek] = useState(1); // 0 = All Time, 1 = This week, etc.
 
@@ -24,14 +29,12 @@ export default function ReleaseRadar() {
     async function fetchAll() {
       setIsLoading(true);
       try {
-        const [sorted, futures, user] = await Promise.all([
+        const [sorted, futures] = await Promise.all([
           getReleaseRadarAction(),
           getFutureHorizonsAction(new Date().getFullYear() + 1),
-          getCurrentUser()
         ]);
         setData(sorted);
         setFutureData(futures);
-        setUserProfile(user);
       } catch (err) {
         console.error('Failed to fetch Release Radar data:', err);
       } finally {
@@ -41,6 +44,41 @@ export default function ReleaseRadar() {
 
     fetchAll();
   }, []);
+
+  useEffect(() => {
+    if (!user || serviceStatus !== 'available') {
+      setPreferenceMap({});
+      setReminderMap({});
+      return;
+    }
+
+    const items = [...data, ...futureData];
+    if (items.length === 0) return;
+
+    let cancelled = false;
+    const preferenceTargets = items.map((item) => ({
+      mediaId: toCanonicalMediaId(item),
+      mediaType: item.type,
+    }));
+    const reminderTargets = items.map((item) => ({
+      mediaId: String(item.sourceId),
+      mediaType: item.type,
+    }));
+
+    void Promise.all([
+      getMediaPreferencesAction(preferenceTargets),
+      getReminderStatuses(reminderTargets),
+    ]).then(([preferences, reminders]) => {
+      if (!cancelled) {
+        setPreferenceMap(preferences);
+        setReminderMap(reminders);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [data, futureData, serviceStatus, user]);
 
   const weeks = useMemo(() => {
     const today = startOfToday();
@@ -84,11 +122,15 @@ export default function ReleaseRadar() {
     }
 
     // Personalized Layer: Push upcoming releases matching user's highly-rated classifications
-    const favoriteMood = userProfile?.profile?.mood_distribution 
-      ? Object.entries(userProfile.profile.mood_distribution).sort((a: any, b: any) => b[1] - a[1])[0]?.[0]
-      : 'Noir'; // Default example for the persona
+    const rawMoodDistribution: unknown = user?.profile?.mood_distribution;
+    const moodEntries = rawMoodDistribution && typeof rawMoodDistribution === 'object'
+      ? Object.entries(rawMoodDistribution).filter(
+          (entry): entry is [string, number] => typeof entry[1] === 'number',
+        )
+      : [];
+    const favoriteMood = moodEntries.sort(([, first], [, second]) => second - first)[0]?.[0] ?? 'Noir';
 
-    const personalized = filtered.sort((a, b) => {
+    const personalized = [...filtered].sort((a, b) => {
        if (a.classification === favoriteMood && b.classification !== favoriteMood) return -1;
        if (a.classification !== favoriteMood && b.classification === favoriteMood) return 1;
        return 0;
@@ -100,7 +142,7 @@ export default function ReleaseRadar() {
       ...item,
       hypeLevel: Math.min(Math.round(((item.popularity || 0) / maxPop) * 100), 100)
     }));
-  }, [data, activeFilter, activeWeek, weeks, userProfile]);
+  }, [data, activeFilter, activeWeek, weeks, user]);
 
   const normalizedFutureData = useMemo(() => {
     const maxPop = Math.max(...futureData.map(i => i.popularity || 0), 1);
@@ -251,7 +293,12 @@ export default function ReleaseRadar() {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: i * 0.05 }}
                 >
-                  <ReleaseRadarCard item={item} />
+                  <ReleaseRadarCard
+                    item={item}
+                    index={i}
+                    initialPreference={preferenceMap[`${item.type}:${toCanonicalMediaId(item)}`]}
+                    initialReminderStatus={!!reminderMap[`${item.type}:${String(item.sourceId)}`]}
+                  />
                 </motion.div>
               ))}
             </div>
@@ -277,7 +324,12 @@ export default function ReleaseRadar() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.05 }}
               >
-                <ReleaseRadarCard item={item} />
+                <ReleaseRadarCard
+                  item={item}
+                  index={i}
+                  initialPreference={preferenceMap[`${item.type}:${toCanonicalMediaId(item)}`]}
+                  initialReminderStatus={!!reminderMap[`${item.type}:${String(item.sourceId)}`]}
+                />
               </motion.div>
             ))}
           </motion.div>

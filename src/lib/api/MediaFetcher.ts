@@ -1,6 +1,9 @@
 import { UniversalMedia, UniversalTransformer } from './UniversalTransformer';
+import type { TMDBMedia } from './tmdb';
 
 export type FeedEntity = UniversalMedia;
+type TMDBQueryValue = string | number | boolean;
+type TMDBQueryParams = Record<string, TMDBQueryValue>;
 
 export class MediaFetcherError extends Error {
   status?: number;
@@ -60,7 +63,7 @@ export class MediaFetcher {
   private static TMDB_BASE = 'https://api.themoviedb.org/3';
   private static tmdbAuthWarningShown = false;
   
-  private static getUrl(path: string, params: Record<string, any> = {}) {
+  private static getUrl(path: string, params: TMDBQueryParams = {}) {
     const url = new URL(`${this.TMDB_BASE}${path}`);
     url.searchParams.append('api_key', process.env.TMDB_API_KEY || '');
     Object.entries(params).forEach(([key, val]) => {
@@ -71,7 +74,10 @@ export class MediaFetcher {
 
   private static async fetchWithRateLimit(url: string) {
     await tmdbRateLimiter.acquireToken();
-    const res = await fetch(url, { next: { revalidate: 3600 } });
+    const res = await fetch(url, {
+      next: { revalidate: 3600 },
+      signal: AbortSignal.timeout(8_000),
+    });
     if (!res.ok) {
       const errorText = await res.text();
       if (res.status === 401) {
@@ -91,21 +97,16 @@ export class MediaFetcher {
     const url = this.getUrl(`/trending/${type}/day`, { page });
     const trendingData = await this.fetchWithRateLimit(url);
     
-    // Fetch deep details for each item concurrently
-    const deepFetchPromises = trendingData.results.map((item: any) => this.getDeepDetails(item.id, type));
-    const detailedResults = await Promise.all(deepFetchPromises);
-
-    // Filter out any failed deep fetches
-    const validResults = detailedResults.filter(Boolean) as UniversalMedia[];
-
     return {
-      results: validResults,
+      // Trending already contains everything the grid needs. Deep credits, videos,
+      // providers and recommendations belong on the detail page, not the feed path.
+      results: trendingData.results.map((item: TMDBMedia) => UniversalTransformer.fromTMDB(item, type)),
       totalPages: trendingData.total_pages,
     };
   }
 
   // Canonical selection slugs and their TMDB discover params
-  static readonly SELECTIONS: { slug: string; title: string; description: string; params: Record<string, any> }[] = [
+  static readonly SELECTIONS: { slug: string; title: string; description: string; params: TMDBQueryParams }[] = [
     {
       slug: 'noir-shadows',
       title: 'Noir Shadows',
@@ -329,4 +330,3 @@ export class MediaFetcher {
       .map((item: any) => UniversalTransformer.fromTMDB(item, 'movie'));
   }
 }
-

@@ -1,17 +1,68 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { getSupabaseConfig, isSupabaseConfigured } from '@/lib/supabase/config';
+import { supabaseFetch } from '@/lib/supabase/fetch';
+
+function withDeviceHeader(response: NextResponse, request: NextRequest) {
+  const userAgent = request.headers.get('user-agent') || '';
+  const isMobile = /mobile|iphone|ipad|android/i.test(userAgent);
+  response.headers.set('x-is-mobile-agent', isMobile ? 'true' : 'false');
+  return response;
+}
 
 export async function proxy(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+
+  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup');
+  const isLocalArchivePage =
+    pathname === '/profile' ||
+    pathname.startsWith('/profile/settings') ||
+    pathname.startsWith('/vault') ||
+    pathname.startsWith('/collections') ||
+    pathname.startsWith('/notifications');
+  const isLocalModeInfoPage = pathname.startsWith('/local-mode');
+  const isPublicPage =
+    isAuthPage ||
+    isLocalArchivePage ||
+    isLocalModeInfoPage ||
+    pathname === '/' ||
+    pathname.startsWith('/discover') ||
+    pathname.startsWith('/search') ||
+    pathname.startsWith('/media') ||
+    pathname.startsWith('/classifications') ||
+    pathname.startsWith('/auth');
+
+  // Public discovery must never wait for an optional account backend.
+  // Server actions and protected pages still enforce authorization themselves.
+  if (isPublicPage) {
+    return withDeviceHeader(NextResponse.next({
+      request: { headers: request.headers },
+    }), request);
+  }
+
+  if (!isSupabaseConfigured()) {
+    if (pathname.startsWith('/community') || pathname.startsWith('/people') || pathname.startsWith('/share/collection')) {
+      return NextResponse.redirect(new URL('/local-mode', request.url));
+    }
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('reason', 'service-unavailable');
+    loginUrl.searchParams.set('returnTo', `${pathname}${request.nextUrl.search}`);
+    return NextResponse.redirect(loginUrl);
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
     },
   });
 
+  const { url, anonKey } = getSupabaseConfig();
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    anonKey,
     {
+      global: { fetch: supabaseFetch },
       cookies: {
         getAll() {
           return request.cookies.getAll();
@@ -19,7 +70,7 @@ export async function proxy(request: NextRequest) {
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           response = NextResponse.next({
-            request,
+            request: { headers: request.headers },
           });
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
@@ -29,42 +80,26 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const pathname = request.nextUrl.pathname;
-
-  // Pages that are accessible without an account
-  const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/signup');
-  const isPublicPage =
-    isAuthPage ||
-    pathname === '/' ||
-    pathname.startsWith('/discover') ||
-    pathname.startsWith('/search') ||
-    pathname.startsWith('/media') ||
-    pathname.startsWith('/classifications') ||
-    pathname.startsWith('/auth'); // OAuth callback
-
-  // Redirect logged-in users away from auth pages
-  if (user && isAuthPage) {
-    return NextResponse.redirect(new URL('/', request.url));
+  let user = null;
+  try {
+    const result = await supabase.auth.getUser();
+    user = result.data.user;
+  } catch {
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('reason', 'service-unavailable');
+    loginUrl.searchParams.set('returnTo', `${pathname}${request.nextUrl.search}`);
+    return NextResponse.redirect(loginUrl);
   }
 
   // Redirect unauthenticated users away from all non-public pages
-  if (!user && !isPublicPage) {
+  if (!user) {
     const loginUrl = new URL('/login', request.url);
     const returnTo = `${pathname}${request.nextUrl.search}`;
     loginUrl.searchParams.set('returnTo', returnTo);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Mobile Agent Detection
-  const userAgent = request.headers.get('user-agent') || '';
-  const isMobile = /mobile|iphone|ipad|android/i.test(userAgent);
-  response.headers.set('x-is-mobile-agent', isMobile ? 'true' : 'false');
-
-  return response;
+  return withDeviceHeader(response, request);
 }
 
 export const config = {

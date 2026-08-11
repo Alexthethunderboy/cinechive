@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { isSupabaseConfigured } from '@/lib/supabase/config';
 
 export interface TriviaItem {
   id: string;
@@ -20,17 +21,25 @@ export class DeepDataService {
   static async fetchTrivia(tmdbId: string, imdbId?: string): Promise<TriviaItem[]> {
     if (!imdbId) return [];
 
-    const supabase = await createClient();
+    const supabase = isSupabaseConfigured() ? await createClient() : null;
 
-    // 1. Check Cache
-    const { data: cached } = await (supabase
-      .from('media_metadata_cache'))
-      .select('trivia')
-      .eq('tmdb_id', tmdbId)
-      .single();
+    // The database is only an optional cache. A cache outage must not block
+    // public movie details, so reads are tightly bounded and failures fall through.
+    if (supabase) {
+      try {
+        const { data: cached } = await supabase
+          .from('media_metadata_cache')
+          .select('trivia')
+          .eq('tmdb_id', tmdbId)
+          .abortSignal(AbortSignal.timeout(900))
+          .single();
 
-    if (cached?.trivia && (cached.trivia as any[]).length > 0) {
-      return cached.trivia as TriviaItem[];
+        if (cached?.trivia && Array.isArray(cached.trivia) && cached.trivia.length > 0) {
+          return cached.trivia as TriviaItem[];
+        }
+      } catch {
+        // Continue to the external source when the optional cache is unavailable.
+      }
     }
 
     // 2. Fetch from OMDb (if available) or Scrape IMDb
@@ -38,14 +47,18 @@ export class DeepDataService {
     const trivia = await this.scrapeIMDbTrivia(imdbId);
 
     // 3. Update Cache
-    if (trivia.length > 0) {
-      await supabase.from('media_metadata_cache').upsert({
-        tmdb_id: tmdbId,
-        imdb_id: imdbId,
-        media_type: 'movie', // Default to movie for now
-        trivia,
-        last_updated: new Date().toISOString()
-      }, { onConflict: 'tmdb_id' });
+    if (supabase && trivia.length > 0) {
+      try {
+        await supabase.from('media_metadata_cache').upsert({
+          tmdb_id: tmdbId,
+          imdb_id: imdbId,
+          media_type: 'movie',
+          trivia,
+          last_updated: new Date().toISOString()
+        }, { onConflict: 'tmdb_id' }).abortSignal(AbortSignal.timeout(900));
+      } catch {
+        // Cache writes are best-effort.
+      }
     }
 
     return trivia;
@@ -129,6 +142,7 @@ export class DeepDataService {
     try {
       const url = `https://www.imdb.com/title/${imdbId}/trivia`;
       const response = await fetch(url, {
+        signal: AbortSignal.timeout(5_000),
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         }

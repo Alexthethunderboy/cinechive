@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, Loader2, Search, Zap, Sparkles, ChevronRight, History, Activity as ActivityIcon, MessageSquare, Repeat2 } from 'lucide-react';
+import { Bell, Loader2, Zap, Sparkles, ChevronRight, History } from 'lucide-react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { getAlgorithmicNotifications, getUserActivityHistory, CommunityNotification, UserActivityItem } from '@/lib/community-actions';
 import { getSocialNotificationsAction } from '@/lib/social-notification-actions';
@@ -11,22 +11,23 @@ import Image from 'next/image';
 import GlassPanel from '@/components/ui/GlassPanel';
 import { CLIENT_EVENTS } from '@/lib/client-events';
 import { capTo99Plus, getNotificationCountSummary } from '@/lib/notification-utils';
-import { cn, formatDate, formatUsername } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { SocialNotificationItem, CinemaNotificationItem } from '@/components/community/CommunityNotificationCenter';
 import { markNotificationAsReadAction, SocialNotificationRecord } from '@/lib/social-notification-actions';
+import { getLocalNotifications, type LocalArchiveState, useLocalArchive } from '@/lib/local-archive';
 
 export default function ActivityPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, isLocalMode, serviceStatus } = useAuth();
+  const localArchive = useLocalArchive();
   const [notifications, setNotifications] = useState<CommunityNotification[]>([]);
   const [socialNotifications, setSocialNotifications] = useState<SocialNotificationRecord[]>([]);
   const [history, setHistory] = useState<UserActivityItem[]>([]);
   const [topInterests, setTopInterests] = useState<string[]>([]);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   const [lane, setLane] = useState<'all' | 'social' | 'cinema' | 'history'>('all');
 
   useEffect(() => {
     const fetchData = () => {
-      if (user) {
+      if (user && !isLocalMode && serviceStatus === 'available') {
         Promise.all([
           getAlgorithmicNotifications(),
           getUserActivityHistory(),
@@ -43,7 +44,7 @@ export default function ActivityPage() {
     fetchData();
     window.addEventListener(CLIENT_EVENTS.refreshNotifications, fetchData);
     return () => window.removeEventListener(CLIENT_EVENTS.refreshNotifications, fetchData);
-  }, [user]);
+  }, [isLocalMode, serviceStatus, user]);
 
   const handleMarkAsRead = async (id: string) => {
     setSocialNotifications(prev => 
@@ -77,6 +78,8 @@ export default function ActivityPage() {
     );
   }
 
+  if (isLocalMode) return <LocalActivityPage archive={localArchive} />;
+
   return (
     <div className="max-w-3xl mx-auto pt-20 pb-40 px-4 md:px-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
@@ -109,7 +112,7 @@ export default function ActivityPage() {
         ].map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setLane(tab.id as any)}
+            onClick={() => setLane(tab.id as typeof lane)}
             className={cn(
               "px-3 py-1.5 rounded-full text-[10px] uppercase tracking-widest border transition-colors whitespace-nowrap",
               lane === tab.id ? "bg-white text-black border-white" : "bg-white/5 text-white/60 border-white/10 hover:text-white"
@@ -238,12 +241,15 @@ export default function ActivityPage() {
           <AnimatePresence mode="popLayout">
             {(() => {
               // Prepare and Sort Mixed Feed
-              const mixedFeed = [
+              const mixedFeed: Array<
+                | (SocialNotificationRecord & { itemType: 'social'; date: Date })
+                | (CommunityNotification & { itemType: 'cinema'; date: Date })
+              > = [
                 ...(lane === 'all' || lane === 'social' 
-                  ? socialNotifications.map(n => ({ ...n, itemType: 'social', date: new Date(n.created_at) })) 
+                  ? socialNotifications.map(n => ({ ...n, itemType: 'social' as const, date: new Date(n.created_at) }))
                   : []),
                 ...(lane === 'all' || lane === 'cinema' 
-                  ? notifications.map(n => ({ ...n, itemType: 'cinema', date: new Date(n.timestamp || 0) })) 
+                  ? notifications.map(n => ({ ...n, itemType: 'cinema' as const, date: new Date(n.timestamp || 0) }))
                   : [])
               ].sort((a, b) => b.date.getTime() - a.date.getTime());
 
@@ -258,7 +264,7 @@ export default function ActivityPage() {
                 );
               }
 
-              return mixedFeed.map((item: any, idx) => (
+              return mixedFeed.map((item, idx) => (
                 <motion.div
                   key={item.id}
                   initial={{ opacity: 0, y: 15 }}
@@ -290,6 +296,59 @@ export default function ActivityPage() {
           </AnimatePresence>
         </div>
       )}
+    </div>
+  );
+}
+
+function LocalActivityPage({ archive }: { archive: LocalArchiveState }) {
+  const reminders = getLocalNotifications(archive);
+  return (
+    <div className="max-w-3xl mx-auto pt-20 pb-40 px-4 md:px-6">
+      <div className="mb-8 rounded-2xl border border-emerald-300/20 bg-emerald-300/8 px-4 py-3 text-xs text-emerald-100/80">
+        Local activity · Reminder alerts and journal history are calculated on this device. Email, push delivery, follows and community alerts require a backend.
+      </div>
+      <header className="mb-12 flex items-end justify-between gap-5">
+        <div>
+          <h1 className="text-4xl font-heading italic tracking-tighter text-white">Notifications</h1>
+          <p className="mt-2 text-[10px] font-metadata text-white/40 tracking-[0.3em] uppercase">Local reminders & history</p>
+        </div>
+        <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 font-mono text-[10px] text-white/50">{reminders.length} reminders</span>
+      </header>
+
+      <section className="mb-14">
+        <div className="mb-4 flex items-center gap-2"><Bell size={14} className="text-vibe-gold" /><h2 className="font-data text-[10px] uppercase tracking-[0.3em] text-white/50">Release reminders</h2></div>
+        <div className="space-y-3">
+          {reminders.length ? reminders.map((item) => (
+            <Link key={item.id} href={`/media/${item.mediaType}/${item.mediaId}`} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/3 p-3 transition-colors hover:bg-white/6">
+              <div className="relative h-20 w-14 shrink-0 overflow-hidden rounded-lg bg-white/5">
+                {item.posterUrl && <Image src={item.posterUrl} alt={item.title} fill className="object-cover" />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate font-heading text-base text-white">{item.title}</h3>
+                <p className="mt-1 text-xs text-white/45">{item.message}</p>
+              </div>
+              <ChevronRight size={15} className="text-white/20" />
+            </Link>
+          )) : (
+            <div className="rounded-2xl border border-dashed border-white/10 py-14 text-center font-metadata text-[10px] uppercase tracking-widest text-white/25">No reminders yet. Set one on an upcoming title.</div>
+          )}
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-4 flex items-center gap-2"><History size={14} className="text-white/35" /><h2 className="font-data text-[10px] uppercase tracking-[0.3em] text-white/50">Journal history</h2></div>
+        <div className="space-y-3">
+          {archive.journalEntries.length ? archive.journalEntries.slice(0, 20).map((entry) => (
+            <Link key={entry.id} href={`/media/${entry.media_type}/${entry.media_id}`} className="flex items-center gap-4 rounded-xl border border-white/5 bg-white/3 p-3 hover:bg-white/5">
+              <div className="relative h-14 w-10 shrink-0 overflow-hidden rounded bg-white/5">{entry.poster_url && <Image src={entry.poster_url} alt={entry.title} fill className="object-cover" />}</div>
+              <div className="min-w-0 flex-1">
+                <h3 className="truncate font-heading text-sm text-white">{entry.title}</h3>
+                <p className="mt-1 font-mono text-[9px] uppercase tracking-widest text-white/25">{new Date(entry.watched_at).toLocaleDateString()} {entry.is_rewatch ? '· Rewatch' : ''}</p>
+              </div>
+            </Link>
+          )) : <div className="rounded-2xl border border-dashed border-white/10 py-12 text-center font-metadata text-[10px] uppercase tracking-widest text-white/25">No screenings logged yet.</div>}
+        </div>
+      </section>
     </div>
   );
 }

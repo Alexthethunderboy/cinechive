@@ -1,5 +1,5 @@
-import { MediaFetcher, FeedEntity } from './MediaFetcher';
-import { UniversalMedia } from './UniversalTransformer';
+import { UniversalMedia, UniversalTransformer } from './UniversalTransformer';
+import type { TMDBSearchResult } from './tmdb';
 
 export class AnimationFetcher {
   /**
@@ -18,20 +18,17 @@ export class AnimationFetcher {
     url.searchParams.append('page', String(page));
 
     // Wait for the shared TMDB rate limiter
-    const res = await fetch(url.toString(), { next: { revalidate: 3600 } });
+    const res = await fetch(url.toString(), {
+      next: { revalidate: 3600 },
+      signal: AbortSignal.timeout(8_000),
+    });
     if (!res.ok) {
       throw new Error(`TMDB Animation fetch failed: ${res.status}`);
     }
-    const data = await res.json();
-
-    // Use MediaFetcher to get deep details for each item, just like TrendingFeed
-    const deepFetchPromises = data.results.map((item: any) => MediaFetcher.getDeepDetails(item.id, 'movie'));
-    const detailedResults = await Promise.all(deepFetchPromises);
-
-    const validResults = detailedResults.filter(Boolean) as UniversalMedia[];
+    const data: TMDBSearchResult = await res.json();
 
     return {
-      results: validResults,
+      results: data.results.map((item) => UniversalTransformer.fromTMDB(item, 'movie')),
       totalPages: data.total_pages,
     };
   }

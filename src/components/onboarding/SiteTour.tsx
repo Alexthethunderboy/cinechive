@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { X, ChevronRight, ChevronLeft, Check } from 'lucide-react';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 interface Step {
   id: string;
@@ -65,6 +66,7 @@ const STEPS: Step[] = [
 ];
 
 export function SiteTour() {
+  const { user, loading } = useAuth();
   const [currentStep, setCurrentStep] = useState(-1); // -1 = not started
   const [hasSeenTour, setHasSeenTour] = useState(true); // default to true to avoid flashing
   const [spotlightRect, setSpotlightRect] = useState<DOMRect | null>(null);
@@ -78,16 +80,30 @@ export function SiteTour() {
   }, []);
 
   useEffect(() => {
+    if (loading || !user) return;
+
     const seen = localStorage.getItem('cinechive_tour_complete');
     if (!seen) {
-      setHasSeenTour(false);
-      // Start tour with a slight delay
-      setTimeout(() => {
+      const timer = window.setTimeout(() => {
+        setHasSeenTour(false);
         setCurrentStep(0);
         document.documentElement.classList.add('site-tour-active');
         window.dispatchEvent(new Event('site-tour-active'));
-      }, 1000);
+      }, 1200);
+      return () => window.clearTimeout(timer);
     }
+  }, [loading, user]);
+
+  useEffect(() => {
+    if (user) return;
+    document.documentElement.classList.remove('site-tour-active');
+    window.dispatchEvent(new Event('site-tour-inactive'));
+    const frame = window.requestAnimationFrame(() => setCurrentStep(-1));
+    return () => window.cancelAnimationFrame(frame);
+  }, [user]);
+
+  useEffect(() => () => {
+    document.documentElement.classList.remove('site-tour-active');
   }, []);
 
   const completeTour = useCallback(() => {
@@ -123,15 +139,18 @@ export function SiteTour() {
     } else {
       setSpotlightRect(null);
     }
-  }, [currentStep]);
+  }, [currentStep, isMobile]);
 
   useEffect(() => {
-    updateSpotlight();
+    const frame = window.requestAnimationFrame(updateSpotlight);
     window.addEventListener('resize', updateSpotlight);
-    return () => window.removeEventListener('resize', updateSpotlight);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', updateSpotlight);
+    };
   }, [updateSpotlight]);
 
-  if (hasSeenTour || currentStep === -1) return null;
+  if (!user || hasSeenTour || currentStep === -1) return null;
 
   const step = STEPS[currentStep];
 
@@ -167,11 +186,14 @@ export function SiteTour() {
       {/* Card */}
       <div className="absolute inset-0 flex items-center justify-center p-6">
         <motion.div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="site-tour-title"
           key={currentStep}
           initial={{ opacity: 0, scale: 0.9, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: -20 }}
-          onPan={(e, info) => {
+          onPan={(_event, info) => {
             if (info.offset.y > 100) {
               completeTour();
             }
@@ -180,6 +202,7 @@ export function SiteTour() {
         >
           <button 
             onClick={completeTour}
+            aria-label="Close product tour"
             className="absolute top-4 right-4 p-2 text-white/30 hover:text-white transition-colors"
           >
             <X size={20} />
@@ -203,7 +226,7 @@ export function SiteTour() {
               </div>
             </div>
             
-            <h3 className="text-2xl font-heading font-bold text-white tracking-tight">
+            <h3 id="site-tour-title" className="text-2xl font-heading font-bold text-white tracking-tight">
               {step.title}
             </h3>
             

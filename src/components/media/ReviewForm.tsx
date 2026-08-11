@@ -12,15 +12,12 @@ interface ReviewFormProps {
   initialRating?: number;
   initialNotes?: string;
   initialClassification?: ClassificationName;
-  mediaId: string;
-  mediaType: string;
-  mediaTitle: string;
-  posterUrl: string | null;
   onSave: (data: { rating: number, comment: string, classification: ClassificationName }) => Promise<void>;
   isSaving: boolean;
   saveStatus: 'idle' | 'success' | 'error';
   isAlreadySaved?: boolean;
   onRemove?: () => Promise<void>;
+  localMode?: boolean;
 }
 
 export interface ReviewFormHandle {
@@ -31,15 +28,12 @@ const ReviewForm = forwardRef<ReviewFormHandle, ReviewFormProps>(({
   initialRating = 0,
   initialNotes = '',
   initialClassification,
-  mediaId,
-  mediaType,
-  mediaTitle,
-  posterUrl,
   onSave,
   isSaving,
   saveStatus,
   isAlreadySaved,
-  onRemove
+  onRemove,
+  localMode = false,
 }, ref) => {
   const [rating, setRating] = useState<number>(initialRating);
   const [comment, setComment] = useState(initialNotes);
@@ -63,7 +57,7 @@ const ReviewForm = forwardRef<ReviewFormHandle, ReviewFormProps>(({
     <GlassPanel ref={formRef} className="p-8 border-white/10 bg-black/80 backdrop-blur-3xl sticky top-24 shadow-2xl transition-all duration-500">
       <div className="mb-8">
         <h3 className="font-heading text-xl mb-1">{isAlreadySaved ? 'Edit Your Review' : 'Rate & Review'}</h3>
-        <p className="font-data text-xs text-muted">Share your thoughts with the community.</p>
+        <p className="font-data text-xs text-muted">{localMode ? 'Private notes stored in this browser.' : 'Share your thoughts with the community.'}</p>
       </div>
 
       <div className="space-y-6">

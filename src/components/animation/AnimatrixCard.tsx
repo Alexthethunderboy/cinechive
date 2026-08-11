@@ -2,47 +2,79 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Play, Star, ChevronDown, Check, Bookmark, Loader2, Info, Users, DollarSign, Bell, BellOff } from 'lucide-react';
+import { Play, Star, ChevronDown, Check, Bookmark, Loader2, Users, Bell, BellOff } from 'lucide-react';
 import { UniversalMedia } from '@/lib/api/UniversalTransformer';
-import { cn, formatDate, getReleaseStatus } from '@/lib/utils';
+import { cn, getReleaseStatus } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
 import { archiveMediaAction } from '@/lib/media-actions';
-import { toggleReminder, getReminderStatus } from '@/app/actions/radar-actions';
+import { toggleReminder } from '@/app/actions/radar-actions';
 import { isAfter, startOfToday } from 'date-fns';
-import { useEffect } from 'react';
 
 import { toast } from 'sonner';
 import MediaPreferenceButtons from '../media/MediaPreferenceButtons';
 import { toCanonicalMediaId } from '@/lib/media-identity';
+import { useAuth } from '@/components/providers/AuthProvider';
+import type { MediaPreference } from '@/lib/media-social-actions';
+import {
+  archiveLocalMedia,
+  getLocalMediaEntry,
+  getLocalReminder,
+  toggleLocalReminder,
+  useLocalArchive,
+} from '@/lib/local-archive';
 
 interface AnimatrixCardProps {
   media: UniversalMedia;
   index: number;
+  initialPreference?: MediaPreference | null;
+  initialReminderStatus?: boolean;
 }
 
-export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
+export function AnimatrixCard({
+  media,
+  index,
+  initialPreference = null,
+  initialReminderStatus = false,
+}: AnimatrixCardProps) {
+  const { user, serviceStatus, isLocalMode } = useAuth();
+  const localArchive = useLocalArchive();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
-  const [isReminded, setIsReminded] = useState(false);
+  const [remoteReminderOverride, setRemoteReminderOverride] = useState<boolean | null>(null);
 
   const isUpcoming = media.releaseDate ? isAfter(new Date(media.releaseDate), startOfToday()) : false;
   const releaseStatus = getReleaseStatus(media.releaseDate, media.type);
 
-  useEffect(() => {
-    if (isUpcoming) {
-      getReminderStatus(String(media.sourceId), media.type).then(setIsReminded);
-    }
-  }, [media.sourceId, media.type, isUpcoming]);
+  const effectiveIsSaved = isLocalMode
+    ? !!getLocalMediaEntry(toCanonicalMediaId(media), media.type, localArchive)?.is_vault
+    : isSaved;
+  const isReminded = isLocalMode
+    ? !!getLocalReminder(toCanonicalMediaId(media), media.type, localArchive)
+    : remoteReminderOverride ?? initialReminderStatus;
 
   const handleSaveToVault = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isSaving || isSaved) return;
+    if (isSaving || effectiveIsSaved) return;
     
     setIsSaving(true);
     try {
+      if (isLocalMode) {
+        archiveLocalMedia({
+          mediaId: toCanonicalMediaId(media),
+          mediaType: media.type,
+          title: media.displayTitle,
+          posterUrl: media.posterUrl,
+          releaseYear: media.releaseYear,
+          classification: 'Atmospheric',
+          isVault: true,
+        });
+        setIsSaved(true);
+        toast.success('Added to local library');
+        return;
+      }
       const result = await archiveMediaAction({
         mediaId: media.id,
         mediaType: media.type,
@@ -69,12 +101,23 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
   const handleToggleReminder = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
+      if (isLocalMode) {
+        const added = toggleLocalReminder({
+          mediaId: toCanonicalMediaId(media),
+          mediaType: media.type,
+          title: media.displayTitle,
+          posterUrl: media.posterUrl,
+          releaseDate: media.releaseDate,
+        });
+        toast.success(added ? 'Reminder set locally' : 'Reminder removed');
+        return;
+      }
       const result = await toggleReminder(String(media.sourceId), media.type);
       if (result && 'error' in result) {
         toast.error(result.error as string);
         return;
       }
-      setIsReminded(result.status === 'added');
+      setRemoteReminderOverride(result.status === 'added');
       toast.success(result.status === 'added' ? "Reminder set" : "Reminder removed");
     } catch (err) {
       console.error('Failed to toggle reminder:', err);
@@ -91,15 +134,17 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
     >
       <div className="relative w-full aspect-2/3 overflow-hidden bg-black">
         {media.posterUrl ? (
-          <img
+          <Image
             src={media.posterUrl}
             alt={media.displayTitle}
+            fill
+            priority={index === 0}
+            sizes="(max-width: 639px) 92vw, (max-width: 1023px) 50vw, 25vw"
             className={cn(
               "absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-105",
               (isExpanded || (isHovered && media.trailerUrl && media.source === 'anilist')) ? "opacity-0" : "opacity-100",
               isExpanded ? "blur-sm brightness-50" : "brightness-90 group-hover:brightness-100"
             )}
-            loading="lazy"
           />
         ) : (
           <div className="w-full h-full bg-white/5 flex flex-col items-center justify-center absolute inset-0">
@@ -168,7 +213,7 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
                  {releaseStatus.label}
                </div>
              )}
-             {!isUpcoming && (
+             {!isUpcoming && user && (isLocalMode || serviceStatus === 'available') && (
                 <div className="flex gap-2">
                   <MediaPreferenceButtons
                     mediaId={toCanonicalMediaId(media)}
@@ -176,19 +221,20 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
                     title={media.displayTitle}
                     posterUrl={media.posterUrl}
                     compact
+                    initialPreference={initialPreference}
                   />
                   <button 
                     onClick={handleSaveToVault}
-                    disabled={isSaving || isSaved}
+                    disabled={isSaving || effectiveIsSaved}
                     className={cn(
                       "p-1 md:p-1.5 rounded-md backdrop-blur-md transition-all flex items-center justify-center border hover:scale-110",
-                      isSaved ? "bg-accent/20 border-accent/40 text-accent" : "bg-black/40 border-white/10 text-white/80 hover:text-white"
+                      effectiveIsSaved ? "bg-accent/20 border-accent/40 text-accent" : "bg-black/40 border-white/10 text-white/80 hover:text-white"
                     )}
                     title="Collect Film"
                   >
                     {isSaving ? (
                       <Loader2 className="w-2.5 md:w-3.5 h-2.5 md:h-3.5 animate-spin" />
-                    ) : isSaved ? (
+                    ) : effectiveIsSaved ? (
                       <Check className="w-2.5 md:w-3.5 h-2.5 md:h-3.5" />
                     ) : (
                       <Bookmark className="w-2.5 md:w-3.5 h-2.5 md:h-3.5" />
@@ -197,9 +243,10 @@ export function AnimatrixCard({ media, index }: AnimatrixCardProps) {
                 </div>
              )}
 
-             {isUpcoming && (
+             {isUpcoming && user && (isLocalMode || serviceStatus === 'available') && (
                 <button 
                   onClick={handleToggleReminder}
+                  aria-label={`${isReminded ? 'Dismiss reminder for' : 'Set reminder for'} ${media.displayTitle}`}
                   className={cn(
                     "p-1 md:p-1.5 rounded-md backdrop-blur-md transition-all flex items-center justify-center border hover:scale-110",
                     isReminded ? "bg-accent/20 border-accent/40 text-accent" : "bg-black/40 border-white/10 text-white/80 hover:text-white"

@@ -70,6 +70,46 @@ export async function getMediaPreferenceAction(mediaId: string, mediaType: strin
   return (data?.reaction as MediaPreference | undefined) || null;
 }
 
+export async function getMediaPreferencesAction(
+  items: Array<{ mediaId: string; mediaType: string }>,
+): Promise<Record<string, MediaPreference>> {
+  const normalized = Array.from(
+    new Map(
+      items
+        .filter((item) => item.mediaId && item.mediaType)
+        .slice(0, 100)
+        .map((item) => [`${item.mediaType}:${item.mediaId}`, item]),
+    ).values(),
+  );
+
+  if (normalized.length === 0) return {};
+
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return {};
+
+    const mediaIds = Array.from(new Set(normalized.map((item) => item.mediaId)));
+    const allowedKeys = new Set(normalized.map((item) => `${item.mediaType}:${item.mediaId}`));
+    const { data, error } = await supabase.from('media_reactions')
+      .select('media_id, media_type, reaction')
+      .eq('user_id', user.id)
+      .in('media_id', mediaIds);
+
+    if (error || !data) return {};
+
+    return data.reduce((preferences: Record<string, MediaPreference>, row) => {
+      const key = `${row.media_type}:${row.media_id}`;
+      if (allowedKeys.has(key) && (row.reaction === 'like' || row.reaction === 'dislike')) {
+        preferences[key] = row.reaction;
+      }
+      return preferences;
+    }, {});
+  } catch {
+    return {};
+  }
+}
+
 /**
  * Get social preference statistics for a media item.
  */

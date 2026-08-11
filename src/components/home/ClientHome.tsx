@@ -1,23 +1,20 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Flame, Calendar, Layers, Search, Sparkles, Users, ChevronRight, Zap } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Flame, Calendar, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import GlassPanel from '@/components/ui/GlassPanel';
 import Link from 'next/link';
 import Image from 'next/image';
 import { TrendingFeed } from '../cinema/TrendingFeed';
 import ReleaseRadar from '../cinema/ReleaseRadar';
 import OnboardingModal from '@/components/onboarding/OnboardingModal';
+import { useAuth } from '@/components/providers/AuthProvider';
 
 type DiscoveryMode = 'broadcast' | 'radar';
 
-export interface ClientHomeProps {
-  user?: any;
-}
-
-export default function ClientHome({ user }: ClientHomeProps) {
+export default function ClientHome() {
+  const { user, serviceStatus, isLocalMode } = useAuth();
   const [activeView, setActiveView] = useState<DiscoveryMode>('broadcast');
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
@@ -27,12 +24,13 @@ export default function ClientHome({ user }: ClientHomeProps) {
   const [hasCheckedOnboardingDeferral, setHasCheckedOnboardingDeferral] = useState(false);
 
   useEffect(() => {
-    const deferredUntil = Number(localStorage.getItem('onboardingDeferredUntil') || '0');
-    const isDeferred = Date.now() < deferredUntil;
-    if (user && (!user.profile || user.profile.onboarding_completed === false) && !isDeferred) {
-      setShowOnboarding(true);
-    }
-    setHasCheckedOnboardingDeferral(true);
+    const frame = window.requestAnimationFrame(() => {
+      const deferredUntil = Number(localStorage.getItem('onboardingDeferredUntil') || '0');
+      const isDeferred = Date.now() < deferredUntil;
+      setShowOnboarding(!!user && (!user.profile || user.profile.onboarding_completed === false) && !isDeferred);
+      setHasCheckedOnboardingDeferral(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [user]);
 
   useEffect(() => {
@@ -56,7 +54,7 @@ export default function ClientHome({ user }: ClientHomeProps) {
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
   }, []);
 
-  const discoveryModes: { id: DiscoveryMode, label: string, icon: any, color: string }[] = [
+  const discoveryModes: { id: DiscoveryMode, label: string, icon: LucideIcon, color: string }[] = [
     { id: 'broadcast', label: 'New and Trending', icon: Flame, color: 'text-white' },
     { id: 'radar', label: 'Release Radar', icon: Calendar, color: 'text-vibe-violet' },
   ];
@@ -80,9 +78,11 @@ export default function ClientHome({ user }: ClientHomeProps) {
           transition={{ duration: 0.8 }}
           className="flex items-center gap-4 md:gap-6"
         >
-          <img 
+          <Image
             src="/app-logo.png" 
             alt="CineChive Logo" 
+            width={40}
+            height={40}
             className="w-10 h-10 md:hidden object-contain brightness-110 drop-shadow-xl" 
           />
           <div className="space-y-0.5">
@@ -95,6 +95,22 @@ export default function ClientHome({ user }: ClientHomeProps) {
           </div>
         </motion.div>
       </motion.header>
+
+      {isLocalMode ? (
+        <div
+          role="status"
+          className="mx-4 mb-4 rounded-xl border border-emerald-300/20 bg-emerald-300/8 px-4 py-3 text-xs text-emerald-100/80 md:mx-10"
+        >
+          Local archive active — personal saves, reviews, journals, collections, likes and reminders stay in this browser. <Link href="/local-mode" className="font-bold underline underline-offset-2">See the limits</Link>.
+        </div>
+      ) : serviceStatus === 'unavailable' && (
+        <div
+          role="status"
+          className="mx-4 mb-4 rounded-xl border border-amber-300/20 bg-amber-300/8 px-4 py-3 text-xs text-amber-100/80 md:mx-10"
+        >
+          Account features are temporarily unavailable. Film discovery and search are still working.
+        </div>
+      )}
 
       {/* Discovery Perspective Toggle */}
       <motion.div 

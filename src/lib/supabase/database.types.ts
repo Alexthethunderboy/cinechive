@@ -423,8 +423,23 @@ export interface Database {
           id: string;
           user_id: string;
           activity_id: string;
+          activity_type: 'entry' | 'dispatch' | 'screening';
           created_at: string;
           profiles: any;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          activity_id: string;
+          activity_type: 'entry' | 'dispatch' | 'screening';
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          activity_id?: string;
+          activity_type?: 'entry' | 'dispatch' | 'screening';
+          created_at?: string;
         };
         Relationships: { foreignKeyName: string; columns: string[]; isOneToOne: boolean | undefined; referencedRelation: string; referencedColumns: string[]; }[];
       };

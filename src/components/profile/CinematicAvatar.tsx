@@ -15,6 +15,7 @@ import {
   sanitizeAvatarCharacter,
   sanitizeAvatarMode,
 } from '@/lib/avatar-character';
+import { resolveSupabasePublicUrl } from '@/lib/supabase/config';
 
 interface CinematicAvatarProps {
   src?: string | null;
@@ -55,13 +56,7 @@ export default function CinematicAvatar({
   
   const vibe = getCinematicVibe(seed, username);
   
-  const src = initialSrc?.startsWith('http') 
-    ? initialSrc 
-    : initialSrc?.startsWith('/storage/v1/object/public/')
-      ? `https://crnjvztlpdxsugypctqu.supabase.co${initialSrc}`
-      : initialSrc 
-        ? `https://crnjvztlpdxsugypctqu.supabase.co/storage/v1/object/public/avatars/${initialSrc}`
-        : null;
+  const src = resolveSupabasePublicUrl(initialSrc);
   
   const styleColor = src ? (CLASSIFICATION_STYLE_COLORS[style] || '#ffffff') : vibe.primaryColor;
   const mode = sanitizeAvatarMode(avatarMode);

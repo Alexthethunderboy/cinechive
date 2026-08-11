@@ -9,15 +9,13 @@ import { ClassificationName, CLASSIFICATION_COLORS, MEDIA_TYPE_LABELS } from '@/
 import { cn, formatDate, formatUsername } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
-import { reArchiveMediaAction } from '@/lib/community-actions';
+import { reArchiveMediaAction } from '@/lib/actions';
 import { deleteDispatchAction, updateDispatchAction } from '@/lib/social-dispatch-actions';
 import { toast } from 'sonner';
 import ReactionButton from '@/components/social/ReactionButton';
 import CommentDrawer from '@/components/social/CommentDrawer';
 import CommunityComposer from './CommunityComposer';
 import CinematicAvatar from '@/components/layout/CinematicAvatar';
-import RichDispatchContent from './RichDispatchContent';
-import CommunityPresence from './CommunityPresence';
 
 type FeedLane = 'for_you' | 'following' | 'latest';
 
@@ -90,7 +88,7 @@ export default function ClientCommunity({
         toast.error('Unable to repost right now');
         return null;
       }
-      toast.success('Repost state updated');
+      toast.success(result.reposted ? 'Reposted' : 'Repost removed');
       return result;
     } catch {
       toast.error('Authentication required');
@@ -227,13 +225,6 @@ export default function ClientCommunity({
               ))}
             </div>
             <Link
-              href="/community/pulse"
-              className="hidden md:flex items-center gap-2 px-5 py-2 rounded-full bg-vibe-visceral text-white hover:bg-vibe-visceral/90 transition-all font-heading text-xs tracking-widest font-bold shadow-lg"
-            >
-              <Activity size={14} />
-              <span>Pulse Mode</span>
-            </Link>
-            <Link
               href="/people"
               className="hidden md:flex items-center gap-2 px-5 py-2 rounded-full bg-white text-black hover:bg-white/90 transition-all font-heading text-xs tracking-widest font-bold shadow-lg"
             >
@@ -307,7 +298,6 @@ export default function ClientCommunity({
         </div>
         {/* Composer: Always visible */}
         <div className="mb-6 sm:mb-10">
-          <CommunityPresence currentUserId={userId} currentUserProfile={profile} />
           <CommunityComposer user={user} profile={profile} onPublished={handleComposerPublish} />
         </div>
 
@@ -704,7 +694,7 @@ function FeedPost({
 
             {/* Post Content */}
             {post.activity_type === 'dispatch' ? (
-              <RichDispatchContent content={post.content} />
+              <p className="text-white/90 text-[15px] md:text-base font-heading leading-relaxed whitespace-pre-wrap">{post.content}</p>
             ) : post.comment && (
               <p className="text-white/80 font-heading leading-relaxed text-[15px]">{post.comment}</p>
             )}

@@ -182,16 +182,57 @@ export async function reArchiveMediaAction(data: {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Authentication required');
 
-  const { error } = await supabase.from('re_archives').insert({
-    user_id: user.id,
-    original_entry_id: data.originalEntryId,
-    comment: data.comment,
-    // Add mood_tag_id logic here if needed
-  });
+  const { data: existing, error: existingError } = await supabase
+    .from('activity_reposts')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('activity_id', data.originalEntryId)
+    .maybeSingle();
+
+  if (existingError) throw existingError;
+
+  const reposted = !existing;
+  const mutation = existing
+    ? supabase.from('activity_reposts').delete().eq('id', existing.id)
+    : supabase.from('activity_reposts').insert({
+        user_id: user.id,
+        activity_id: data.originalEntryId,
+        activity_type: data.type ?? 'entry',
+      });
+
+  const { error } = await mutation;
 
   if (error) throw error;
+
+  const [{ count: repostCount }, { data: follows }] = await Promise.all([
+    supabase
+      .from('activity_reposts')
+      .select('*', { count: 'exact', head: true })
+      .eq('activity_id', data.originalEntryId),
+    supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', user.id),
+  ]);
+
+  const followingIds = (follows || []).map((follow) => follow.following_id);
+  let repostedByFollowingCount = 0;
+  if (followingIds.length > 0) {
+    const { count } = await supabase
+      .from('activity_reposts')
+      .select('*', { count: 'exact', head: true })
+      .eq('activity_id', data.originalEntryId)
+      .in('user_id', followingIds);
+    repostedByFollowingCount = count || 0;
+  }
+
   revalidatePath('/community');
-  return { success: true };
+  return {
+    success: true,
+    reposted,
+    repostCount: repostCount || 0,
+    repostedByFollowingCount,
+  };
 }
 
 export async function echoTriviaAction(data: {

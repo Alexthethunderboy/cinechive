@@ -3,17 +3,16 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { NAV_ITEMS, SPRING_CONFIG } from '@/lib/design-tokens';
-import { Calendar, Star, Play, History, Repeat } from 'lucide-react';
+import { NAV_ITEMS } from '@/lib/design-tokens';
+import { Repeat } from 'lucide-react';
 import { useEffect, useState, useRef, useMemo, useContext, createContext, ReactNode } from 'react';
 import { cn, formatUsername } from '@/lib/utils';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { AnimatePresence } from 'framer-motion';
-import { Home, Search, Globe, PlusSquare, Activity, Archive, Settings, LogOut, Film, Music, User, Menu, ChevronDown, Layers, Zap, Bell, MoreVertical, ChevronLeft, ChevronRight, Users, X } from 'lucide-react';
+import { Home, Search, Globe, PlusSquare, Activity, Archive, Settings, LogOut, Film, User, ChevronDown, Layers, Zap, Bell, MoreVertical, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { signOut } from '@/app/auth/actions';
 import { getAlgorithmicNotifications, CommunityNotification } from '@/lib/community-actions';
-import { getSocialNotificationsAction, markNotificationAsReadAction } from '@/lib/social-notification-actions';
+import { getSocialNotificationsAction, markNotificationAsReadAction, type SocialNotificationRecord } from '@/lib/social-notification-actions';
 import { CommunityNotificationCenter } from '@/components/community/CommunityNotificationCenter';
 import EverythingBar from '@/components/search/EverythingBar';
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -21,7 +20,8 @@ import Image from 'next/image';
 import CinematicAvatar from '../profile/CinematicAvatar';
 import { ClassificationName } from '@/lib/design-tokens';
 import { CLIENT_EVENTS } from '@/lib/client-events';
-import { capTo99Plus, getNotificationCountSummary } from '@/lib/notification-utils';
+import { getNotificationCountSummary } from '@/lib/notification-utils';
+import { getLocalNotifications, useLocalArchive } from '@/lib/local-archive';
 
 const icons = {
   home: Home,
@@ -56,7 +56,7 @@ interface NotificationCenterContextValue {
   showNotifCenter: boolean;
   setShowNotifCenter: React.Dispatch<React.SetStateAction<boolean>>;
   algoNotifs: CommunityNotification[];
-  socialNotifs: any[];
+  socialNotifs: SocialNotificationRecord[];
   notifCount: number;
   handleMarkAsRead: (id: string) => Promise<void>;
 }
@@ -64,14 +64,16 @@ interface NotificationCenterContextValue {
 const NotificationCenterContext = createContext<NotificationCenterContextValue | undefined>(undefined);
 
 function useNotificationCenterValue() {
-  const { user } = useAuth();
+  const { user, serviceStatus, isLocalMode } = useAuth();
+  const localArchive = useLocalArchive();
   const [showNotifCenter, setShowNotifCenter] = useState(false);
   const [algoNotifs, setAlgoNotifs] = useState<CommunityNotification[]>([]);
-  const [socialNotifs, setSocialNotifs] = useState<any[]>([]);
-  const [notifCount, setNotifCount] = useState(0);
+  const [socialNotifs, setSocialNotifs] = useState<SocialNotificationRecord[]>([]);
 
   useEffect(() => {
-    if (!user) return;
+    if (isLocalMode || !user || serviceStatus !== 'available') {
+      return;
+    }
 
     const fetchData = async () => {
       const [algo, social] = await Promise.all([
@@ -107,12 +109,13 @@ function useNotificationCenterValue() {
       supabase.removeChannel(channel);
       window.removeEventListener(CLIENT_EVENTS.refreshNotifications, fetchData);
     };
-  }, [user]);
+  }, [isLocalMode, serviceStatus, user]);
 
-  useEffect(() => {
-    const summary = getNotificationCountSummary(algoNotifs.length, socialNotifs);
-    setNotifCount(summary.total);
-  }, [algoNotifs, socialNotifs]);
+  const notifCount = isLocalMode
+    ? getLocalNotifications(localArchive).length
+    : user
+      ? getNotificationCountSummary(algoNotifs.length, socialNotifs).total
+      : 0;
 
   const handleMarkAsRead = async (id: string) => {
     await markNotificationAsReadAction(id);
@@ -148,7 +151,7 @@ function useNotificationCenter() {
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, isLocalMode } = useAuth();
   const { showNotifCenter, setShowNotifCenter, algoNotifs, socialNotifs, notifCount, handleMarkAsRead } = useNotificationCenter();
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const accountMenuRef = useRef<HTMLDivElement>(null);
@@ -156,17 +159,17 @@ export function Sidebar() {
 
   // Close account menu and notification center on outside click
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
+    function handleClickOutside(e: Event) {
       if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
         setShowAccountMenu(false);
       }
       // Notification center handles its own outside clicks
     }
     document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside as any);
+    document.addEventListener('touchstart', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside as any);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [setShowNotifCenter]);
 
@@ -179,9 +182,11 @@ export function Sidebar() {
         <Link href="/" className="group relative">
           <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} className="relative">
             <div className="absolute inset-0 bg-white/20 blur-2xl rounded-full scale-150 opacity-0 group-hover:opacity-100 transition-opacity duration-1000" />
-            <img 
+            <Image
               src="/app-logo.png" 
               alt="CineChive Logo" 
+              width={56}
+              height={56}
               className="w-14 h-14 object-contain brightness-110 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] md:grayscale md:brightness-90 group-hover:grayscale-0 group-hover:brightness-110 transition-all duration-700" 
             />
           </motion.div>
@@ -196,7 +201,13 @@ export function Sidebar() {
       {user && (
         <div className="px-6 mb-6">
           <div className="relative">
-            <button
+            {isLocalMode ? <Link
+              href="/notifications"
+              className="w-full flex items-center gap-3 px-4 py-3 rounded-inner transition-all group relative text-muted hover:text-white hover:bg-white/5"
+            >
+              <div className="relative"><Bell size={20} /><NotificationIndicator count={notifCount} pulse /></div>
+              <span className="font-heading font-medium tracking-tight text-sm flex-1">Activity</span>
+            </Link> : <button
               ref={notifButtonRef}
               onClick={() => setShowNotifCenter(!showNotifCenter)}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-inner transition-all group relative text-muted hover:text-white hover:bg-white/5"
@@ -208,11 +219,11 @@ export function Sidebar() {
               <span className="font-heading font-medium tracking-tight text-sm flex-1">
                 Activity
               </span>
-            </button>
+            </button>}
 
             {/* Notification Center */}
             <AnimatePresence>
-              {showNotifCenter && (
+              {!isLocalMode && showNotifCenter && (
                 <CommunityNotificationCenter 
                   algorithmicNotifications={algoNotifs}
                   socialNotifications={socialNotifs}
@@ -228,7 +239,8 @@ export function Sidebar() {
 
       <nav className="flex-1 px-4 space-y-1">
         {NAV_ITEMS.filter(item => {
-          if (['Community', 'Activity', 'Library', 'People', 'Discover'].includes(item.label)) return !!user;
+          if (isLocalMode && ['Community', 'People'].includes(item.label)) return false;
+          if (['Community', 'Activity', 'Library', 'People'].includes(item.label)) return !!user;
           return true;
         }).map((item) => {
           const isActive = pathname === item.href;
@@ -297,7 +309,14 @@ export function Sidebar() {
                         Preferences
                       </Link>
                       <div className="h-px bg-white/5 mx-2 my-1" />
-                      <button 
+                      {isLocalMode ? <Link
+                        href="/profile/settings"
+                        onClick={() => setShowAccountMenu(false)}
+                        className="flex items-center gap-3 px-3 py-2.5 text-xs text-emerald-300/70 hover:text-emerald-200 hover:bg-emerald-500/10 rounded-xl transition-all font-metadata tracking-widest"
+                      >
+                        <Archive size={14} />
+                        Local archive
+                      </Link> : <button
                         onClick={() => {
                           setShowAccountMenu(false);
                           signOut();
@@ -306,7 +325,7 @@ export function Sidebar() {
                       >
                         <LogOut size={14} />
                         Sign Out
-                      </button>
+                      </button>}
                     </div>
                   </motion.div>
                 )}
@@ -373,7 +392,7 @@ export function Sidebar() {
 
 export function BottomNav() {
   const pathname = usePathname();
-  const { user } = useAuth();
+  const { user, isLocalMode } = useAuth();
   const [isMinimized, setIsMinimized] = useState(false);
   const [showPeekMenu, setShowPeekMenu] = useState(false);
   const [showCustomize, setShowCustomize] = useState(false);
@@ -393,7 +412,7 @@ export function BottomNav() {
 
   // Close popovers on outside click
   useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
+    function handleClickOutside(e: Event) {
       if (notifRef.current && !notifRef.current.contains(e.target as Node)) {
         setShowNotifCenter(false);
       }
@@ -409,33 +428,36 @@ export function BottomNav() {
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('touchstart', handleClickOutside as any);
+    document.addEventListener('touchstart', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside as any);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [showPeekMenu, showCustomize, setShowNotifCenter]);
 
   // Load preferences on mount
   useEffect(() => {
-    const saved = localStorage.getItem('cinechive-nav-minimized');
-    if (saved === 'true') setIsMinimized(true);
-    const savedOrder = localStorage.getItem('cinechive-nav-order');
-    const savedPinned = localStorage.getItem('cinechive-nav-pinned') as 'search' | 'community' | 'vault' | null;
-    const savedReduceMotion = localStorage.getItem('cinechive-reduce-motion');
-    const savedLargeTargets = localStorage.getItem('cinechive-large-targets');
+    const frame = window.requestAnimationFrame(() => {
+      const saved = localStorage.getItem('cinechive-nav-minimized');
+      if (saved === 'true') setIsMinimized(true);
+      const savedOrder = localStorage.getItem('cinechive-nav-order');
+      const savedPinned = localStorage.getItem('cinechive-nav-pinned') as 'search' | 'community' | 'vault' | null;
+      const savedReduceMotion = localStorage.getItem('cinechive-reduce-motion');
+      const savedLargeTargets = localStorage.getItem('cinechive-large-targets');
 
-    if (savedOrder) {
-      try {
-        const parsed = JSON.parse(savedOrder);
-        if (Array.isArray(parsed)) setCustomOrder(parsed);
-      } catch {
-        // ignore malformed local storage
+      if (savedOrder) {
+        try {
+          const parsed = JSON.parse(savedOrder);
+          if (Array.isArray(parsed)) setCustomOrder(parsed);
+        } catch {
+          // Ignore malformed local storage.
+        }
       }
-    }
-    if (savedPinned) setPinnedAction(savedPinned);
-    if (savedReduceMotion === 'true') setReduceMotion(true);
-    if (savedLargeTargets === 'true') setLargeTargets(true);
+      if (savedPinned) setPinnedAction(savedPinned);
+      if (savedReduceMotion === 'true') setReduceMotion(true);
+      if (savedLargeTargets === 'true') setLargeTargets(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, []);
 
   // Persist state on change
@@ -459,8 +481,8 @@ export function BottomNav() {
   useEffect(() => {
     const lockVisibleRoutes = ['/community', '/profile/settings', '/login', '/signup'];
     if (lockVisibleRoutes.some((r) => pathname.startsWith(r))) {
-      setIsHiddenByScroll(false);
-      return;
+      const frame = window.requestAnimationFrame(() => setIsHiddenByScroll(false));
+      return () => window.cancelAnimationFrame(frame);
     }
     const main = document.querySelector('main');
     if (!main) return;
@@ -520,6 +542,7 @@ export function BottomNav() {
 
   const navItems = useMemo(() => {
     const filtered = NAV_ITEMS.filter(item => {
+      if (isLocalMode && ['Community', 'People'].includes(item.label)) return false;
       if (['Community', 'Activity', 'Library', 'People', 'Discover'].includes(item.label)) return !!user;
       return true;
     });
@@ -528,7 +551,7 @@ export function BottomNav() {
       filtered.sort((a, b) => (indexByHref.get(a.href) ?? 999) - (indexByHref.get(b.href) ?? 999));
     }
     return filtered;
-  }, [user, customOrder]);
+  }, [customOrder, isLocalMode, user]);
 
   const primaryItems = navItems.slice(0, 4);
   const overflowItems = navItems.slice(4);
@@ -703,7 +726,12 @@ export function BottomNav() {
                 {/* Notification Bell */}
                 {user && (
                   <div className={cn("relative p-1 flex items-center justify-center", tapTarget)}>
-                    <button
+                    {isLocalMode ? <Link
+                      href="/notifications"
+                      className="flex items-center justify-center rounded-full px-2 py-1"
+                    >
+                      <div className="relative"><Bell size={20} className="text-white/35" /><NotificationIndicator count={notifCount} pulse={!quietHours} /></div>
+                    </Link> : <button
                       ref={notifButtonRef}
                       onClick={() => {
                         setShowNotifCenter(!showNotifCenter);
@@ -715,11 +743,11 @@ export function BottomNav() {
                         <Bell size={20} className="text-white/35" />
                         <NotificationIndicator count={notifCount} pulse={!quietHours} />
                       </div>
-                    </button>
+                    </button>}
 
                     {/* Notification Center */}
                     <AnimatePresence>
-                      {showNotifCenter && (
+                      {!isLocalMode && showNotifCenter && (
                         <CommunityNotificationCenter 
                           algorithmicNotifications={algoNotifs}
                           socialNotifications={socialNotifs}
@@ -779,7 +807,7 @@ export function BottomNav() {
                 <div className="grid grid-cols-3 gap-2">
                   {[
                     { label: 'Search', href: '/search' },
-                    { label: 'Community', href: '/community' },
+                    ...(!isLocalMode ? [{ label: 'Community', href: '/community' }] : []),
                     { label: 'Library', href: '/vault' },
                   ].map((a) => (
                     <Link key={a.label} href={a.href} onClick={() => { setShowPeekMenu(false); setIsMinimized(false); }} className="h-11 rounded-xl border border-white/10 bg-white/5 text-[10px] uppercase tracking-widest text-white/75 flex items-center justify-center">

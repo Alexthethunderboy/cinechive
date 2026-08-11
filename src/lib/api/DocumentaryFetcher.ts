@@ -1,5 +1,5 @@
-import { MediaFetcher } from './MediaFetcher';
-import { UniversalMedia } from './UniversalTransformer';
+import { UniversalMedia, UniversalTransformer } from './UniversalTransformer';
+import type { TMDBSearchResult } from './tmdb';
 
 export class DocumentaryFetcher {
   /**
@@ -13,19 +13,17 @@ export class DocumentaryFetcher {
     url.searchParams.append('sort_by', 'popularity.desc');
     url.searchParams.append('page', String(page));
 
-    const res = await fetch(url.toString(), { next: { revalidate: 3600 } });
+    const res = await fetch(url.toString(), {
+      next: { revalidate: 3600 },
+      signal: AbortSignal.timeout(8_000),
+    });
     if (!res.ok) {
       throw new Error(`TMDB Documentary fetch failed: ${res.status}`);
     }
-    const data = await res.json();
-
-    const deepFetchPromises = data.results.map((item: any) => MediaFetcher.getDeepDetails(item.id, 'movie'));
-    const detailedResults = await Promise.all(deepFetchPromises);
-
-    const validResults = detailedResults.filter(Boolean) as UniversalMedia[];
+    const data: TMDBSearchResult = await res.json();
 
     return {
-      results: validResults,
+      results: data.results.map((item) => UniversalTransformer.fromTMDB(item, 'movie')),
       totalPages: data.total_pages,
     };
   }

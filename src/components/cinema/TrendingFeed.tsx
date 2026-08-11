@@ -1,7 +1,7 @@
  'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { useInView } from 'react-intersection-observer';
 import { getTrendingFeedAction, getAnimeFeedAction, getAnimationFeedAction, getDocumentaryFeedAction } from '@/lib/feed-actions';
 import { UniversalMedia } from '@/lib/api/UniversalTransformer';
@@ -10,8 +10,18 @@ import { AnimatrixCard } from '@/components/animation/AnimatrixCard';
 import { AdvancedFilters, FilterState } from '@/components/animation/FilterLab';
 import { Loader2, Film, Tv, Sparkles, Wand2, Filter, Library } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { getMediaPreferencesAction } from '@/lib/media-social-actions';
+import { getReminderStatuses } from '@/app/actions/radar-actions';
+import { toCanonicalMediaId } from '@/lib/media-identity';
+
+interface FeedPage {
+  results: UniversalMedia[];
+  nextCursor?: number;
+}
 
 export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
+  const { user, serviceStatus } = useAuth();
   const [activeTab, setActiveTab] = useState<'movie' | 'tv' | 'anime' | 'animation' | 'documentary'>('movie');
   
   // FilterLab State
@@ -22,7 +32,7 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
 
   const { ref, inView } = useInView({
     // Fetch 20 items ahead of time (around a screen or two)
-    rootMargin: '1000px',
+    rootMargin: '600px',
   });
 
   const fetchPage = async (pageParam: number) => {
@@ -31,25 +41,25 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
         const data = await getTrendingFeedAction(activeTab, pageParam);
         return {
           results: data.results,
-          nextCursor: pageParam < data.totalPages ? pageParam + 1 : undefined
+          nextCursor: pageParam < Math.min(data.totalPages, 5) ? pageParam + 1 : undefined
         };
       } else if (activeTab === 'anime') {
         const data = await getAnimeFeedAction(pageParam);
         return {
           results: data.results,
-          nextCursor: data.hasNextPage ? pageParam + 1 : undefined
+          nextCursor: data.hasNextPage && pageParam < 5 ? pageParam + 1 : undefined
         };
       } else if (activeTab === 'animation') {
         const data = await getAnimationFeedAction(pageParam);
         return {
           results: data.results,
-          nextCursor: pageParam < data.totalPages ? pageParam + 1 : undefined
+          nextCursor: pageParam < Math.min(data.totalPages, 5) ? pageParam + 1 : undefined
         };
       } else {
         const data = await getDocumentaryFeedAction(pageParam);
         return {
           results: data.results,
-          nextCursor: pageParam < data.totalPages ? pageParam + 1 : undefined
+          nextCursor: pageParam < Math.min(data.totalPages, 5) ? pageParam + 1 : undefined
         };
       }
     } catch (err) {
@@ -60,10 +70,8 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
 
   const {
     data,
-    error,
     fetchNextPage,
     hasNextPage,
-    isFetching,
     isFetchingNextPage,
     status,
     refetch,
@@ -71,8 +79,9 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
     queryKey: ['trendingFeed', activeTab],
     queryFn: ({ pageParam = 1 }) => fetchPage(pageParam),
     initialPageParam: 1,
-    getNextPageParam: (lastPage: any) => lastPage?.nextCursor,
-    staleTime: 60 * 60 * 1000, 
+    getNextPageParam: (lastPage: FeedPage) => lastPage.nextCursor,
+    staleTime: 60 * 60 * 1000,
+    retry: false,
   });
 
   useEffect(() => {
@@ -81,11 +90,14 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
     }
   }, [inView, fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  const allItems = data?.pages.flatMap((page: any) => page.results) || [];
+  const allItems = React.useMemo(
+    () => data?.pages.flatMap((page) => page.results) ?? [],
+    [data],
+  );
 
   // Client-side filtering strategy (FilterLab for anime/animation tabs)
   const filteredItems = React.useMemo(() => {
-    let items = allItems as UniversalMedia[];
+    let items = allItems;
 
     // FilterLab logic strictly for Anime/Animation tabs
     if (activeTab === 'anime' || activeTab === 'animation') {
@@ -105,6 +117,39 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
 
     return items;
   }, [allItems, animationFilters, activeTab]);
+
+  const preferenceTargets = React.useMemo(
+    () => filteredItems.map((item) => ({
+      mediaId: toCanonicalMediaId(item),
+      mediaType: item.type,
+    })),
+    [filteredItems],
+  );
+  const preferenceTargetKey = preferenceTargets.map((item) => `${item.mediaType}:${item.mediaId}`).join('|');
+  const reminderTargets = React.useMemo(
+    () => filteredItems.map((item) => ({
+      mediaId: String(item.sourceId),
+      mediaType: item.type,
+    })),
+    [filteredItems],
+  );
+  const reminderTargetKey = reminderTargets.map((item) => `${item.mediaType}:${item.mediaId}`).join('|');
+
+  const { data: preferenceMap = {} } = useQuery({
+    queryKey: ['media-preferences', user?.id, preferenceTargetKey],
+    queryFn: () => getMediaPreferencesAction(preferenceTargets),
+    enabled: !!user && serviceStatus === 'available' && preferenceTargets.length > 0,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  const { data: reminderMap = {} } = useQuery({
+    queryKey: ['media-reminders', user?.id, reminderTargetKey],
+    queryFn: () => getReminderStatuses(reminderTargets),
+    enabled: !!user && serviceStatus === 'available' && reminderTargets.length > 0,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
 
   return (
     <div className="flex flex-col">
@@ -193,13 +238,16 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
       <div className="flex-1 p-2 md:p-8">
         
         {status === 'pending' ? (
-          <div className="w-full flex flex-col items-center justify-center py-20 opacity-50 space-y-4">
-            <Loader2 className="w-8 h-8 animate-spin text-vibe-cyan" />
-            <p className="font-mono text-sm tracking-widest">Loading...</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-8" aria-label="Loading film recommendations">
+            {Array.from({ length: 8 }).map((_, index) => (
+              <div key={index} className="aspect-2/3 rounded-2xl border border-white/5 bg-white/4 animate-pulse" />
+            ))}
+            <span className="sr-only">Loading film recommendations</span>
           </div>
         ) : status === 'error' ? (
           <div className="w-full flex flex-col items-center justify-center py-20 space-y-4">
-            <p className="text-red-400 font-mono text-sm">Failed to load. Please try again.</p>
+            <p className="text-red-300 font-mono text-sm">Film data did not respond in time.</p>
+            <p className="max-w-md text-center text-xs text-white/45">Account services are not required for discovery. This usually means the external film catalogue is temporarily unavailable.</p>
             <button onClick={() => refetch()} className="px-4 py-2 bg-white/10 hover:bg-white/20 rounded-full text-sm">Try Again</button>
           </div>
         ) : (
@@ -218,20 +266,21 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
               animate="show"
               className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 md:gap-8"
             >
-              {filteredItems.map((item, i) => (
-                <motion.div 
-                  key={`${item.id}-${i}`}
-                  variants={{
-                    hidden: { opacity: 0, y: 20 },
-                    show: { opacity: 1, y: 0 }
-                  }}
-                >
-                  {(activeTab === 'anime' || activeTab === 'animation') 
-                    ? <AnimatrixCard media={item} index={i} />
-                    : <DiscoveryCard media={item} index={i} />
-                  }
-                </motion.div>
-              ))}
+              {filteredItems.map((item, i) => {
+                const preferenceKey = `${item.type}:${toCanonicalMediaId(item)}`;
+                const reminderKey = `${item.type}:${String(item.sourceId)}`;
+                return (
+                  <div
+                    key={`${item.id}-${i}`}
+                    style={{ contentVisibility: 'auto', containIntrinsicSize: '0 420px' }}
+                  >
+                    {(activeTab === 'anime' || activeTab === 'animation')
+                      ? <AnimatrixCard media={item} index={i} initialPreference={preferenceMap[preferenceKey]} initialReminderStatus={!!reminderMap[reminderKey]} />
+                      : <DiscoveryCard media={item} index={i} initialPreference={preferenceMap[preferenceKey]} initialReminderStatus={!!reminderMap[reminderKey]} />
+                    }
+                  </div>
+                );
+              })}
             </motion.div>
 
             {/* InView trigger for Infinite Scroll */}
@@ -251,8 +300,8 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
                          <Sparkles size={20} />
                       </div>
                       <div className="text-center space-y-1">
-                        <h4 className="font-heading text-lg italic tracking-tighter text-white">You've reached the end.</h4>
-                        <p className="font-metadata text-[9px] tracking-[0.3em] text-white/50">You've seen all current entries in this category.</p>
+                        <h4 className="font-heading text-lg italic tracking-tighter text-white">You’ve reached the end.</h4>
+                        <p className="font-metadata text-[9px] tracking-[0.3em] text-white/50">You’ve seen all current entries in this category.</p>
                       </div>
                    </div>
                  )}
@@ -264,5 +313,3 @@ export function TrendingFeed({ isVisible = true }: { isVisible?: boolean }) {
     </div>
   );
 }
-
-

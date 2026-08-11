@@ -21,7 +21,7 @@ export async function getTrendingFeedAction(type: 'movie' | 'tv', page: number =
 export async function getAnimeFeedAction(page: number = 1): Promise<{ results: UniversalMedia[], hasNextPage: boolean }> {
   try {
     const data = await AniListFetcher.getTrendingAnime(page);
-    const results = data.media.map((item: any) => UniversalTransformer.fromAniList(item));
+    const results = data.media.map((item) => UniversalTransformer.fromAniList(item));
     
     return {
       results,
@@ -38,7 +38,7 @@ export async function getAnimeFeedAction(page: number = 1): Promise<{ results: U
  */
 export async function getAnimationFeedAction(page: number = 1): Promise<{ results: UniversalMedia[], totalPages: number }> {
   try {
-    return AnimationFetcher.getTrendingAnimation(page);
+    return await AnimationFetcher.getTrendingAnimation(page);
   } catch (error) {
     console.error("Animation feed error:", error);
     return { results: [], totalPages: 0 };
@@ -50,7 +50,7 @@ export async function getAnimationFeedAction(page: number = 1): Promise<{ result
  */
 export async function getDocumentaryFeedAction(page: number = 1): Promise<{ results: UniversalMedia[], totalPages: number }> {
   try {
-    return DocumentaryFetcher.getTrendingDocumentaries(page);
+    return await DocumentaryFetcher.getTrendingDocumentaries(page);
   } catch (error) {
     console.error("Documentary feed error:", error);
     return { results: [], totalPages: 0 };
@@ -61,62 +61,61 @@ export async function getDocumentaryFeedAction(page: number = 1): Promise<{ resu
  * Release Radar Action
  */
 export async function getReleaseRadarAction(): Promise<UniversalMedia[]> {
-  try {
-    const { season, year } = getNextSeason();
-    // Fetch multiple sources to get a broad "All Time" reach
-    const [upcoming, anime] = await Promise.all([
-      getUpcomingFeedAction(),
-      AniListFetcher.getUpcomingAnime(season, year, 1, 50) // Increase perPage for upcoming anime
-    ]);
-    
-    const animeTransformed = anime.media.map((item: any) => UniversalTransformer.fromAniList(item));
-    
-    // We could also fetch trending TV/Movies as fallback if upcoming is too sparse, 
-    // but the user specifically asked for upcoming.
-    
-    const combinedRaw = [
-      ...upcoming.movies,
-      ...upcoming.tv,
-      ...upcoming.animation,
-      ...animeTransformed
-    ].filter(item => !!item.releaseDate);
+  const { season, year } = getNextSeason();
+  const [upcomingResult, animeResult] = await Promise.allSettled([
+    getUpcomingFeedAction(),
+    AniListFetcher.getUpcomingAnime(season, year, 1, 50),
+  ]);
 
-    // Deduplicate by ID
-    const uniqueMap = new Map<string, UniversalMedia>();
-    combinedRaw.forEach(item => {
-      uniqueMap.set(item.id, item);
-    });
+  const upcoming = upcomingResult.status === 'fulfilled'
+    ? upcomingResult.value
+    : { movies: [], tv: [], animation: [] };
+  const animeTransformed = animeResult.status === 'fulfilled'
+    ? animeResult.value.media.map((item) => UniversalTransformer.fromAniList(item))
+    : [];
+    
+  const combinedRaw = [
+    ...upcoming.movies,
+    ...upcoming.tv,
+    ...upcoming.animation,
+    ...animeTransformed
+  ].filter(item => !!item.releaseDate);
 
-    const combined = Array.from(uniqueMap.values())
-     .sort((a, b) => new Date(a.releaseDate!).getTime() - new Date(b.releaseDate!).getTime());
+  const uniqueMap = new Map<string, UniversalMedia>();
+  combinedRaw.forEach(item => {
+    uniqueMap.set(item.id, item);
+  });
+
+  const combined = Array.from(uniqueMap.values())
+    .sort((a, b) => new Date(a.releaseDate!).getTime() - new Date(b.releaseDate!).getTime());
       
-    return combined;
-  } catch (error) {
-    console.error("Release Radar error:", error);
-    return [];
-  }
+  return combined;
 }
 
 /**
  * Upcoming & Future Horizons Actions
  */
 export async function getUpcomingFeedAction() {
-  const [movies, tv, animation] = await Promise.all([
+  const [movies, tv, animation] = await Promise.allSettled([
     getUpcomingMovies(),
     getUpcomingTv(),
     getUpcomingAnimations()
   ]);
 
   return {
-    movies: movies.results.map((item: any) => UniversalTransformer.fromTMDB(item, 'movie')),
-    tv: tv.results.map((item: any) => UniversalTransformer.fromTMDB(item, 'tv')),
-    animation: animation.results.map((item: any) => UniversalTransformer.fromTMDB(item, 'movie'))
+    movies: movies.status === 'fulfilled' ? movies.value.results.map((item) => UniversalTransformer.fromTMDB(item, 'movie')) : [],
+    tv: tv.status === 'fulfilled' ? tv.value.results.map((item) => UniversalTransformer.fromTMDB(item, 'tv')) : [],
+    animation: animation.status === 'fulfilled' ? animation.value.results.map((item) => UniversalTransformer.fromTMDB(item, 'animation')) : [],
   };
 }
 
 export async function getFutureHorizonsAction(year: number) {
-  const movies = await getFutureHorizonsMovie(year);
-  return movies.results.map((item: any) => UniversalTransformer.fromTMDB(item, 'movie'));
+  try {
+    const movies = await getFutureHorizonsMovie(year);
+    return movies.results.map((item) => UniversalTransformer.fromTMDB(item, 'movie'));
+  } catch {
+    return [];
+  }
 }
 import { createClient } from '@/lib/supabase/server';
 

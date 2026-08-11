@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   User, 
@@ -27,6 +27,18 @@ import LetterboxdImporter from './LetterboxdImporter';
 import { cn, formatUsername } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import Link from 'next/link';
+import { useAuth } from '@/components/providers/AuthProvider';
+import {
+  clearLocalHistory,
+  exportLocalArchive,
+  importLocalArchive,
+  resetLocalArchive,
+  resizeAvatarForLocalStorage,
+  updateLocalProfile,
+  updateLocalSettings,
+  useLocalArchive,
+} from '@/lib/local-archive';
 import {
   AVATAR_ANIMATION_OPTIONS,
   AVATAR_CHARACTER_CONFIG,
@@ -37,30 +49,86 @@ import {
 } from '@/lib/avatar-character';
 
 interface ProfileSettingsUIProps {
-  profile: any;
+  profile?: {
+    id: string;
+    username?: string | null;
+    display_name?: string | null;
+    bio?: string | null;
+    avatar_url?: string | null;
+    avatar_seed?: string | null;
+    avatar_mode?: string | null;
+    avatar_character?: string | null;
+    avatar_animation?: string | null;
+  };
 }
 
 type SettingsTab = 'identity' | 'account' | 'preferences';
 
+const EMPTY_PROFILE = {
+  id: 'pending',
+  username: 'curator',
+  display_name: '',
+  bio: '',
+  avatar_url: '',
+  avatar_seed: '',
+  avatar_mode: 'character',
+  avatar_character: 'cyber-noir',
+  avatar_animation: 'float',
+};
+
 export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
   const router = useRouter();
+  const { user, isLocalMode } = useAuth();
+  const localArchive = useLocalArchive();
+  const resolvedProfile = profile || (isLocalMode ? localArchive.profile : user?.profile) || EMPTY_PROFILE;
   const [activeTab, setActiveTab] = useState<SettingsTab>('identity');
   const [isSaving, setIsSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   
   // Form State
-  const [displayName, setDisplayName] = useState(profile.display_name || '');
-  const [bio, setBio] = useState(profile.bio || '');
-  const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url || '');
-  const [avatarSeed, setAvatarSeed] = useState(profile.avatar_seed || '');
-  const [avatarMode, setAvatarMode] = useState(sanitizeAvatarMode(profile.avatar_mode));
-  const [avatarCharacter, setAvatarCharacter] = useState(sanitizeAvatarCharacter(profile.avatar_character));
-  const [avatarAnimation, setAvatarAnimation] = useState(sanitizeAvatarAnimation(profile.avatar_animation));
+  const [username, setUsername] = useState(resolvedProfile.username || 'curator');
+  const [displayName, setDisplayName] = useState(resolvedProfile.display_name || '');
+  const [bio, setBio] = useState(resolvedProfile.bio || '');
+  const [avatarUrl, setAvatarUrl] = useState(resolvedProfile.avatar_url || '');
+  const [avatarSeed, setAvatarSeed] = useState(resolvedProfile.avatar_seed || '');
+  const [avatarMode, setAvatarMode] = useState(sanitizeAvatarMode(resolvedProfile.avatar_mode));
+  const [avatarCharacter, setAvatarCharacter] = useState(sanitizeAvatarCharacter(resolvedProfile.avatar_character));
+  const [avatarAnimation, setAvatarAnimation] = useState(sanitizeAvatarAnimation(resolvedProfile.avatar_animation));
   const [isUploading, setIsUploading] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(localArchive.settings.reduced_motion);
+  const [compactView, setCompactView] = useState(localArchive.settings.compact_view);
+
+  useEffect(() => {
+    setUsername(resolvedProfile.username || 'curator');
+    setDisplayName(resolvedProfile.display_name || '');
+    setBio(resolvedProfile.bio || '');
+    setAvatarUrl(resolvedProfile.avatar_url || '');
+    setAvatarSeed(resolvedProfile.avatar_seed || '');
+    setAvatarMode(sanitizeAvatarMode(resolvedProfile.avatar_mode));
+    setAvatarCharacter(sanitizeAvatarCharacter(resolvedProfile.avatar_character));
+    setAvatarAnimation(sanitizeAvatarAnimation(resolvedProfile.avatar_animation));
+  }, [resolvedProfile]);
 
   const handleSaveProfile = async () => {
     setIsSaving(true);
     try {
+      if (isLocalMode) {
+        const cleanUsername = username.trim().toLowerCase().replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '') || 'local-curator';
+        updateLocalProfile({
+          username: cleanUsername,
+          display_name: displayName.trim(),
+          bio: bio.trim(),
+          avatar_url: avatarUrl,
+          avatar_seed: avatarSeed,
+          avatar_mode: avatarMode,
+          avatar_character: avatarCharacter,
+          avatar_animation: avatarAnimation,
+        });
+        setUsername(cleanUsername);
+        toast.success('Local profile updated');
+        return;
+      }
+
       const result = await updateProfile({
         display_name: displayName,
         bio: bio,
@@ -77,7 +145,7 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
       } else {
         toast.error(result.error || 'Failed to update profile');
       }
-    } catch (error) {
+    } catch {
       toast.error('An unexpected error occurred');
     } finally {
       setIsSaving(false);
@@ -87,12 +155,19 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
   const handleDeleteAccount = async () => {
     setIsSaving(true);
     try {
+      if (isLocalMode) {
+        resetLocalArchive();
+        toast.success('Local archive reset');
+        setShowDeleteConfirm(false);
+        router.push('/');
+        return;
+      }
       const result = await deleteAccount();
       if (result?.error) {
         toast.error(result.error);
         setIsSaving(false);
       }
-    } catch (e) {
+    } catch {
       toast.error('Failed to delete account');
       setIsSaving(false);
     }
@@ -102,17 +177,20 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Avatar must be under 5MB');
-      return;
-    }
-
     setIsUploading(true);
-    const supabase = createClient();
-    
     try {
+      if (isLocalMode) {
+        const dataUrl = await resizeAvatarForLocalStorage(file);
+        setAvatarUrl(dataUrl);
+        setAvatarMode('image');
+        toast.success('Avatar ready. Save changes to keep it.');
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) throw new Error('Avatar must be under 5MB');
+      const supabase = createClient();
       const fileExt = file.name.split('.').pop();
-      const fileName = `${profile.id}/${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const fileName = `${resolvedProfile.id}/${Math.random().toString(36).substring(2)}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('avatars')
@@ -123,8 +201,8 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
       setAvatarUrl(fileName);
       setAvatarMode('image');
       toast.success('Avatar uploaded successfully');
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to upload image');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Failed to upload image');
     } finally {
       setIsUploading(false);
     }
@@ -141,11 +219,45 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
     toast.success('New vibe generated');
   };
 
+  const handleExport = () => {
+    const blob = new Blob([exportLocalArchive()], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `cinechive-local-archive-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success('Archive exported');
+  };
+
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!window.confirm('Replace the local archive in this browser with the selected backup?')) return;
+    try {
+      importLocalArchive(await file.text());
+      toast.success('Archive imported');
+      router.push('/profile');
+    } catch {
+      toast.error('That file is not a valid CineChive archive');
+    }
+  };
+
   const tabs = [
     { id: 'identity', label: 'Identity', icon: User },
     { id: 'account', label: 'Account', icon: Shield },
     { id: 'preferences', label: 'Preferences', icon: SettingsIcon },
   ];
+
+  if (!isLocalMode && !user && !profile) {
+    return (
+      <div className="flex min-h-[70vh] flex-col items-center justify-center px-6 text-center">
+        <h1 className="font-heading text-3xl text-white">Sign in to manage your synced profile</h1>
+        <Link href="/login?returnTo=/profile/settings" className="mt-6 rounded-full bg-white px-6 py-3 text-xs font-bold text-black">Sign in</Link>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-20 pt-10 px-3 sm:px-4 md:px-10 max-w-5xl mx-auto">
@@ -200,7 +312,7 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
                         <div className="relative group">
                           <CinematicAvatar 
                             src={avatarUrl}
-                            username={profile.username}
+                            username={resolvedProfile.username || 'curator'}
                             seed={avatarSeed}
                             avatarMode={avatarMode}
                             avatarCharacter={avatarCharacter}
@@ -323,6 +435,17 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
                             </div>
                           </div>
                         )}
+                        {isLocalMode && (
+                          <div className="space-y-2">
+                            <label className="text-xs font-data uppercase tracking-widest text-white/40 font-bold">Username</label>
+                            <input
+                              value={username}
+                              onChange={(e) => setUsername(e.target.value)}
+                              placeholder="local-curator"
+                              className="w-full bg-white/5 border border-white/10 rounded-xl px-5 py-3 text-white font-heading focus:outline-none focus:ring-2 focus:ring-white/20 transition-all"
+                            />
+                          </div>
+                        )}
                         <div className="space-y-2">
                           <label className="text-xs font-data uppercase tracking-widest text-white/40 font-bold">Display Name</label>
                           <input 
@@ -366,7 +489,9 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
                       <div className="p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl flex gap-4">
                         <Info className="text-blue-400 shrink-0" size={20} />
                         <p className="text-sm text-blue-100/70 leading-relaxed font-heading">
-                          Your account is protected by your personal password. We use high-grade encryption to ensure your data stays private.
+                          {isLocalMode
+                            ? 'This profile is private to this browser. It uses no password and sends no personal archive data to Supabase.'
+                            : 'Your account is protected by your personal password. We use high-grade encryption to ensure your data stays private.'}
                         </p>
                       </div>
                       
@@ -377,18 +502,34 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
                                   <Lock size={18} />
                                </div>
                                <div>
-                                  <p className="font-heading text-sm font-bold text-white">Authentication</p>
-                                  <p className="text-xs text-white/30">{formatUsername(profile.username)}@enterarchive.com</p>
+                                  <p className="font-heading text-sm font-bold text-white">{isLocalMode ? 'Local identity' : 'Authentication'}</p>
+                                  <p className="text-xs text-white/30">{isLocalMode ? 'Stored on this device' : `${formatUsername(resolvedProfile.username)}@enterarchive.com`}</p>
                                </div>
                             </div>
-                            <button className="text-xs font-data uppercase tracking-widest text-white/40 hover:text-white transition-colors font-bold">Change</button>
+                            {!isLocalMode && <button className="text-xs font-data uppercase tracking-widest text-white/40 hover:text-white transition-colors font-bold">Change</button>}
                          </div>
                       </div>
                     </div>
 
-                    <div className="pt-10 border-t border-white/10 space-y-6">
-                      <LetterboxdImporter />
-                    </div>
+                    {isLocalMode ? (
+                      <div className="pt-10 border-t border-white/10 space-y-5">
+                        <div>
+                          <h3 className="text-xl font-display font-bold text-white">Backup & transfer</h3>
+                          <p className="mt-2 text-sm text-white/40">Export a JSON backup to move this browser archive manually. Imports replace the current local archive.</p>
+                        </div>
+                        <div className="flex flex-col gap-3 sm:flex-row">
+                          <button onClick={handleExport} className="rounded-xl bg-white px-6 py-3 font-heading text-sm font-bold text-black">Export archive</button>
+                          <label className="cursor-pointer rounded-xl border border-white/10 bg-white/5 px-6 py-3 text-center font-heading text-sm font-bold text-white hover:bg-white/10">
+                            Import archive
+                            <input type="file" accept="application/json,.json" className="hidden" onChange={handleImport} />
+                          </label>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="pt-10 border-t border-white/10 space-y-6">
+                        <LetterboxdImporter />
+                      </div>
+                    )}
 
                     <div className="pt-10 border-t border-white/10 space-y-6">
                       <h3 className="text-xl font-display font-bold text-rose-400">Danger Zone</h3>
@@ -398,7 +539,8 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
                         <button 
                           onClick={async () => {
                             if (confirm('Are you sure you want to clear your entire history?')) {
-                              await clearHistory();
+                              if (isLocalMode) clearLocalHistory();
+                              else await clearHistory();
                               toast.success('History cleared');
                             }
                           }}
@@ -414,7 +556,7 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
                             className="flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 font-heading font-bold hover:bg-rose-500/20 transition-all"
                           >
                             <Trash2 size={18} />
-                            Delete Account
+                            {isLocalMode ? 'Reset Local Archive' : 'Delete Account'}
                           </button>
                         ) : (
                           <div className="flex flex-1 items-center gap-3">
@@ -422,7 +564,7 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
                               onClick={handleDeleteAccount}
                               className="flex-1 px-4 py-3 rounded-xl bg-rose-500 text-white font-heading font-bold hover:bg-rose-600 transition-all shadow-xl"
                             >
-                              Final Confirmation (Delete)
+                              Final Confirmation ({isLocalMode ? 'Reset' : 'Delete'})
                             </button>
                             <button 
                               onClick={() => setShowDeleteConfirm(false)}
@@ -453,12 +595,21 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
                                  <p className="text-xs text-white/30">Minimize animations across the app</p>
                               </div>
                            </div>
-                           <div className="w-12 h-6 bg-white/10 rounded-full relative cursor-pointer">
-                              <div className="absolute left-1 top-1 w-4 h-4 bg-white/40 rounded-full" />
-                           </div>
+                           <button
+                             onClick={() => {
+                               const next = !reducedMotion;
+                               setReducedMotion(next);
+                               localStorage.setItem('cinechive-reduce-motion', String(next));
+                               if (isLocalMode) updateLocalSettings({ reduced_motion: next });
+                             }}
+                             aria-pressed={reducedMotion}
+                             className={cn('w-12 h-6 rounded-full relative transition-colors', reducedMotion ? 'bg-white' : 'bg-white/10')}
+                           >
+                              <span className={cn('absolute top-1 w-4 h-4 rounded-full transition-all', reducedMotion ? 'left-7 bg-black' : 'left-1 bg-white/40')} />
+                           </button>
                         </div>
 
-                        <div className="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/5 opacity-50 cursor-not-allowed">
+                        <div className="flex items-center justify-between p-5 bg-white/5 rounded-2xl border border-white/5">
                            <div className="flex items-center gap-4">
                               <div className="p-3 rounded-xl bg-purple-500/10 text-purple-400">
                                  <Eye size={20} />
@@ -468,9 +619,17 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
                                  <p className="text-xs text-white/30">Show more information at once</p>
                               </div>
                            </div>
-                           <div className="w-12 h-6 bg-white/10 rounded-full relative">
-                              <div className="absolute left-1 top-1 w-4 h-4 bg-white/40 rounded-full" />
-                           </div>
+                           <button
+                             onClick={() => {
+                               const next = !compactView;
+                               setCompactView(next);
+                               if (isLocalMode) updateLocalSettings({ compact_view: next });
+                             }}
+                             aria-pressed={compactView}
+                             className={cn('w-12 h-6 rounded-full relative transition-colors', compactView ? 'bg-white' : 'bg-white/10')}
+                           >
+                              <span className={cn('absolute top-1 w-4 h-4 rounded-full transition-all', compactView ? 'left-7 bg-black' : 'left-1 bg-white/40')} />
+                           </button>
                         </div>
                       </div>
                     </div>
@@ -481,7 +640,7 @@ export default function ProfileSettingsUI({ profile }: ProfileSettingsUIProps) {
                        </div>
                        <div className="flex-1">
                           <p className="font-heading text-sm font-bold text-white">More preferences coming soon</p>
-                          <p className="text-xs text-white/30">We're building more ways for you to customize your experience.</p>
+                          <p className="text-xs text-white/30">We&apos;re building more ways for you to customize your experience.</p>
                        </div>
                     </div>
                   </div>

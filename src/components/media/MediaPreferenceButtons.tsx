@@ -6,6 +6,8 @@ import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { getMediaPreferenceAction, setMediaPreferenceAction, type MediaPreference } from '@/lib/media-social-actions';
 import { toast } from 'sonner';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { getLocalPreference, setLocalPreference, useLocalArchive } from '@/lib/local-archive';
 
 interface MediaPreferenceButtonsProps {
   mediaId: string;
@@ -13,6 +15,8 @@ interface MediaPreferenceButtonsProps {
   title?: string;
   posterUrl?: string | null;
   compact?: boolean;
+  initialPreference?: MediaPreference | null;
+  loadInitialPreference?: boolean;
 }
 
 export default function MediaPreferenceButtons({
@@ -20,20 +24,34 @@ export default function MediaPreferenceButtons({
   mediaType,
   title,
   posterUrl,
-  compact = false
+  compact = false,
+  initialPreference = null,
+  loadInitialPreference = false,
 }: MediaPreferenceButtonsProps) {
-  const [reaction, setReaction] = useState<MediaPreference | null>(null);
+  const { user, serviceStatus, isLocalMode } = useAuth();
+  const localArchive = useLocalArchive();
+  const [remoteReactionOverride, setRemoteReactionOverride] = useState<MediaPreference | null | undefined>(undefined);
+  const [loadedRemoteReaction, setLoadedRemoteReaction] = useState<MediaPreference | null | undefined>(undefined);
   const [loading, setLoading] = useState(false);
+  const reaction = isLocalMode
+    ? getLocalPreference(mediaId, mediaType, localArchive)?.reaction || null
+    : remoteReactionOverride !== undefined
+      ? remoteReactionOverride
+      : loadedRemoteReaction !== undefined
+        ? loadedRemoteReaction
+        : initialPreference;
 
   useEffect(() => {
+    if (isLocalMode || !loadInitialPreference || !user || serviceStatus !== 'available') return;
+
     let cancelled = false;
     getMediaPreferenceAction(mediaId, mediaType).then((value) => {
-      if (!cancelled) setReaction(value);
+      if (!cancelled) setLoadedRemoteReaction(value);
     });
     return () => {
       cancelled = true;
     };
-  }, [mediaId, mediaType]);
+  }, [isLocalMode, loadInitialPreference, mediaId, mediaType, serviceStatus, user]);
 
   const applyReaction = async (next: MediaPreference, e: React.MouseEvent) => {
     e.preventDefault();
@@ -42,8 +60,15 @@ export default function MediaPreferenceButtons({
     const target = reaction === next ? null : next;
     setLoading(true);
     const previous = reaction;
-    setReaction(target);
+    if (!isLocalMode) setRemoteReactionOverride(target);
     try {
+      if (isLocalMode) {
+        setLocalPreference({ mediaId, mediaType, reaction: target, title, posterUrl });
+        if (target === 'like') toast.success('Added to your local likes.');
+        if (target === 'dislike') toast.success('Saved locally. We will show less like this.');
+        if (!target) toast.success('Preference cleared.');
+        return;
+      }
       const result = await setMediaPreferenceAction({
         mediaId,
         mediaType,
@@ -52,7 +77,7 @@ export default function MediaPreferenceButtons({
         posterUrl
       });
       if (result && 'error' in result) {
-        setReaction(previous);
+        setRemoteReactionOverride(previous);
         toast.error(result.error as string);
         return;
       }
@@ -60,7 +85,7 @@ export default function MediaPreferenceButtons({
       if (target === 'dislike') toast.success('Disliked. We will show less like this.');
       if (!target) toast.success('Preference cleared.');
     } catch {
-      setReaction(previous);
+      if (!isLocalMode) setRemoteReactionOverride(previous);
       toast.error('Could not update preference.');
     } finally {
       setLoading(false);
@@ -69,6 +94,8 @@ export default function MediaPreferenceButtons({
 
   const buttonBase = 'p-1.5 rounded-full';
 
+  if (!user || (!isLocalMode && serviceStatus !== 'available')) return null;
+
   return (
     <div className="flex items-center gap-2">
       <motion.button
@@ -76,6 +103,7 @@ export default function MediaPreferenceButtons({
         whileTap={{ scale: 0.94 }}
         onClick={(e) => applyReaction('like', e)}
         disabled={loading}
+        aria-label={`${reaction === 'like' ? 'Remove like from' : 'Like'} ${title || 'this title'}`}
         className={cn(
           'transition-all flex items-center justify-center backdrop-blur-md',
           buttonBase,
@@ -94,6 +122,7 @@ export default function MediaPreferenceButtons({
         whileTap={{ scale: 0.94 }}
         onClick={(e) => applyReaction('dislike', e)}
         disabled={loading}
+        aria-label={`${reaction === 'dislike' ? 'Remove dislike from' : 'Dislike'} ${title || 'this title'}`}
         className={cn(
           'transition-all flex items-center justify-center backdrop-blur-md',
           buttonBase,

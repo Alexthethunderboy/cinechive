@@ -13,34 +13,59 @@ import {
 } from 'lucide-react';
 import GlassPanel from '../ui/GlassPanel';
 import { DiscoveryCard } from '../cinema/DiscoveryCard';
-import { UnifiedMedia } from '@/lib/api/mapping';
+import type { UniversalMedia } from '@/lib/api/UniversalTransformer';
 import { cn } from '@/lib/utils';
 import NewCollectionModal from './NewCollectionModal';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useAuth } from '@/components/providers/AuthProvider';
+import { mapLocalMediaEntry, useLocalArchive } from '@/lib/local-archive';
 
 interface VaultClientProps {
-  initialCollections: any[];
-  initialSavedMedia: any[];
+  initialCollections: CollectionCardData[];
+  initialSavedMedia: UniversalMedia[];
+}
+
+interface CollectionCardData {
+  id: string;
+  title: string;
+  description?: string | null;
+  is_public?: boolean;
+  item_count?: number;
+  collection_items?: Array<unknown> | [{ count: number }];
 }
 
 export default function VaultClient({ initialCollections, initialSavedMedia }: VaultClientProps) {
+  const { isLocalMode } = useAuth();
+  const localArchive = useLocalArchive();
   const [activeTab, setActiveTab] = useState<'collections' | 'saved'>('collections');
   const [savedView, setSavedView] = useState<'grid' | 'list'>('grid');
   const [searchQuery, setSearchQuery] = useState('');
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
 
+  const collections = isLocalMode
+    ? localArchive.collections.map((collection) => ({ ...collection, item_count: collection.collection_items.length }))
+    : initialCollections;
+  const savedMedia = isLocalMode
+    ? localArchive.mediaEntries.filter((entry) => entry.is_vault).map(mapLocalMediaEntry)
+    : initialSavedMedia;
+
   // Filter logic
-  const filteredCollections = initialCollections.filter(c => 
+  const filteredCollections = collections.filter(c =>
     c.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredSaved = initialSavedMedia.filter(m => 
-    m.title.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredSaved = savedMedia.filter(m =>
+    m.displayTitle.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="min-h-screen pt-24 pb-20 px-3 sm:px-4 md:px-10 max-w-7xl mx-auto">
+      {isLocalMode && (
+        <div className="mb-8 rounded-2xl border border-emerald-300/20 bg-emerald-300/8 px-4 py-3 text-xs text-emerald-100/80">
+          Local Library · Saves and collections persist in this browser. Export a backup from Profile → Settings before clearing browser data.
+        </div>
+      )}
       {/* Header */}
       <header className="mb-12">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-5 mb-8">
@@ -83,7 +108,7 @@ export default function VaultClient({ initialCollections, initialSavedMedia }: V
               activeTab === 'collections' ? "text-white" : "text-white/30 hover:text-white/60"
             )}
           >
-            Collections ({initialCollections.length})
+            Collections ({collections.length})
             {activeTab === 'collections' && (
               <motion.div layoutId="tab-underline" className="absolute bottom-0 left-0 right-0 h-px bg-white" />
             )}
@@ -95,7 +120,7 @@ export default function VaultClient({ initialCollections, initialSavedMedia }: V
               activeTab === 'saved' ? "text-white" : "text-white/30 hover:text-white/60"
             )}
           >
-            Saved Media ({initialSavedMedia.length})
+            Saved Media ({savedMedia.length})
             {activeTab === 'saved' && (
               <motion.div layoutId="tab-underline" className="absolute bottom-0 left-0 right-0 h-px bg-white" />
             )}
@@ -192,8 +217,12 @@ export default function VaultClient({ initialCollections, initialSavedMedia }: V
   );
 }
 
-function CollectionCard({ collection }: { collection: any }) {
-  const itemCount = collection.item_count ?? collection.collection_items?.[0]?.count ?? 0;
+function CollectionCard({ collection }: { collection: CollectionCardData }) {
+  const firstItem = collection.collection_items?.[0];
+  const nestedCount = firstItem && typeof firstItem === 'object' && 'count' in firstItem && typeof firstItem.count === 'number'
+    ? firstItem.count
+    : 0;
+  const itemCount = collection.item_count ?? nestedCount;
 
   return (
     <Link href={`/vault/collections/${collection.id}`}>

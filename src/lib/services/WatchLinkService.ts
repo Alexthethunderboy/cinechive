@@ -44,7 +44,8 @@ export class WatchLinkService {
       const watchmodeId = `${media.type === 'tv' ? 'tv' : 'movie'}-${media.sourceId}`;
       const detailsUrl = `https://api.watchmode.com/v1/title/${watchmodeId}/details/?apiKey=${encodeURIComponent(apiKey)}&append_to_response=sources`;
       const response = await fetch(detailsUrl, {
-        cache: 'no-store'
+        cache: 'no-store',
+        signal: AbortSignal.timeout(5_000),
       });
       if (!response.ok) return media;
 

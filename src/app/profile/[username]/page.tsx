@@ -6,6 +6,8 @@ import {
 } from '@/lib/social-actions';
 import ProfileDashboard from '@/components/profile/ProfileDashboard';
 import { createClient } from '@/lib/supabase/server';
+
+export const dynamic = 'force-dynamic';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { formatUsername } from '@/lib/utils';

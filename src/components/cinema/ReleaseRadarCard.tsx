@@ -1,34 +1,58 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bell, BellOff, Info, Play, TrendingUp } from 'lucide-react';
+import { Bell, BellOff, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UniversalMedia } from '@/lib/api/UniversalTransformer';
 import { formatDateBadge } from '@/lib/date-utils';
-import { toggleReminder, getReminderStatus } from '@/app/actions/radar-actions';
+import { toggleReminder } from '@/app/actions/radar-actions';
 import Image from 'next/image';
 import { toast } from 'sonner';
 import Link from 'next/link';
 import { buildMediaHref, toCanonicalMediaId } from '@/lib/media-identity';
 import MediaPreferenceButtons from '../media/MediaPreferenceButtons';
+import { useAuth } from '@/components/providers/AuthProvider';
+import type { MediaPreference } from '@/lib/media-social-actions';
+import { getLocalReminder, toggleLocalReminder, useLocalArchive } from '@/lib/local-archive';
 
 interface ReleaseRadarCardProps {
   item: UniversalMedia;
+  index?: number;
+  initialPreference?: MediaPreference | null;
+  initialReminderStatus?: boolean;
 }
 
-export default function ReleaseRadarCard({ item }: ReleaseRadarCardProps) {
-  const [isNotified, setIsNotified] = useState(false);
+export default function ReleaseRadarCard({
+  item,
+  index = 0,
+  initialPreference = null,
+  initialReminderStatus = false,
+}: ReleaseRadarCardProps) {
+  const { user, serviceStatus, isLocalMode } = useAuth();
+  const localArchive = useLocalArchive();
+  const [remoteReminderOverride, setRemoteReminderOverride] = useState<boolean | null>(null);
   const [isHovered, setIsHovered] = useState(false);
   const { day, month } = formatDateBadge(item.targetDate || item.releaseDate);
 
-  useEffect(() => {
-    getReminderStatus(String(item.sourceId), item.type).then(setIsNotified);
-  }, [item.sourceId, item.type]);
+  const isNotified = isLocalMode
+    ? !!getLocalReminder(toCanonicalMediaId(item), item.type, localArchive)
+    : remoteReminderOverride ?? initialReminderStatus;
 
   const handleToggleNotify = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
+      if (isLocalMode) {
+        const added = toggleLocalReminder({
+          mediaId: toCanonicalMediaId(item),
+          mediaType: item.type,
+          title: item.displayTitle,
+          posterUrl: item.posterUrl,
+          releaseDate: item.targetDate || item.releaseDate,
+        });
+        toast.success(added ? 'Reminder set locally.' : 'Reminder dismissed.');
+        return;
+      }
       const result = await toggleReminder(String(item.sourceId), item.type);
       
       if ('error' in result && result.error) {
@@ -36,7 +60,7 @@ export default function ReleaseRadarCard({ item }: ReleaseRadarCardProps) {
         return;
       }
 
-      setIsNotified(result.status === 'added');
+      setRemoteReminderOverride(result.status === 'added');
       if (typeof navigator !== 'undefined' && navigator.vibrate) navigator.vibrate(10);
       toast.success(result.status === 'added' ? "Reminder set." : "Reminder dismissed.");
     } catch (err) {
@@ -68,6 +92,8 @@ export default function ReleaseRadarCard({ item }: ReleaseRadarCardProps) {
             src={item.posterUrl || '/placeholder-poster.jpg'}
             alt={item.displayTitle}
             fill
+            priority={index === 0}
+            sizes="(max-width: 639px) 92vw, (max-width: 1023px) 50vw, 20vw"
             className="object-cover"
           />
         </motion.div>
@@ -148,24 +174,28 @@ export default function ReleaseRadarCard({ item }: ReleaseRadarCardProps) {
               title={item.displayTitle}
               posterUrl={item.posterUrl}
               compact
+              initialPreference={initialPreference}
             />
           </div>
           
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            onClick={handleToggleNotify}
-            className={cn(
-              "flex-1 flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 py-1.5 md:py-2 rounded-xl border transition-all duration-300 min-w-0",
-              isNotified 
-                ? "bg-accent text-black border-accent" 
-                : "bg-white/10 text-white border-white/10 hover:bg-white/20"
-            )}
-          >
-            {isNotified ? <BellOff size={12} className="md:w-[14px] md:h-[14px]" /> : <Bell size={12} className="md:w-[14px] md:h-[14px]" />}
-            <span className="text-[8px] sm:text-[9px] md:text-[10px] font-data font-bold uppercase tracking-wide sm:tracking-widest truncate">
-              {isNotified ? 'Dismiss' : 'Notify Me'}
-            </span>
-          </motion.button>
+          {user && (isLocalMode || serviceStatus === 'available') && (
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={handleToggleNotify}
+              aria-label={`${isNotified ? 'Dismiss reminder for' : 'Set reminder for'} ${item.displayTitle}`}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1 sm:gap-1.5 md:gap-2 py-1.5 md:py-2 rounded-xl border transition-all duration-300 min-w-0",
+                isNotified
+                  ? "bg-accent text-black border-accent"
+                  : "bg-white/10 text-white border-white/10 hover:bg-white/20"
+              )}
+            >
+              {isNotified ? <BellOff size={12} className="md:w-[14px] md:h-[14px]" /> : <Bell size={12} className="md:w-[14px] md:h-[14px]" />}
+              <span className="text-[8px] sm:text-[9px] md:text-[10px] font-data font-bold uppercase tracking-wide sm:tracking-widest truncate">
+                {isNotified ? 'Dismiss' : 'Notify Me'}
+              </span>
+            </motion.button>
+          )}
           
           <Link
             href={buildMediaHref(item)}

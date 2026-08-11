@@ -14,6 +14,7 @@ import {
   sanitizeAvatarCharacter,
   sanitizeAvatarMode,
 } from '@/lib/avatar-character';
+import { resolveSupabasePublicUrl } from '@/lib/supabase/config';
 
 interface CinematicAvatarProps {
   src?: string | null;
@@ -48,14 +49,7 @@ export default function CinematicAvatar({
   
   const vibe = getCinematicVibe(seed, username);
   
-  // Robust image source handling
-  const src = initialSrc?.startsWith('http') 
-    ? initialSrc 
-    : initialSrc?.startsWith('/storage/v1/object/public/')
-      ? `https://crnjvztlpdxsugypctqu.supabase.co${initialSrc}`
-      : initialSrc 
-        ? `https://crnjvztlpdxsugypctqu.supabase.co/storage/v1/object/public/avatars/${initialSrc}`
-        : null;
+  const src = resolveSupabasePublicUrl(initialSrc);
   
   const themeColor = src 
     ? (style === 'Atmospheric' ? 'rgba(255,255,255,0.2)' : CLASSIFICATION_STYLE_COLORS[style as ClassificationName])

@@ -8,6 +8,8 @@ import { useRouter } from 'next/navigation';
 import { DetailedMedia } from '@/lib/api/mapping';
 import { toast } from 'sonner';
 import MediaPreferenceButtons from './MediaPreferenceButtons';
+import Link from 'next/link';
+import type { AuthUser } from '@/components/providers/AuthProvider';
 
 interface MediaHeroProps {
   media: DetailedMedia;
@@ -18,10 +20,11 @@ interface MediaHeroProps {
   onSave: () => void;
   onOpenSaveDialog?: () => void;
   onOpenJournal?: () => void;
-  user?: any;
+  user?: AuthUser | null;
+  accountFeaturesAvailable?: boolean;
 }
 
-export default function MediaHero({ media, mediaId, isSaving, saveStatus, isAlreadySaved = false, onSave, onOpenSaveDialog, onOpenJournal, user }: MediaHeroProps) {
+export default function MediaHero({ media, mediaId, isSaving, saveStatus, isAlreadySaved = false, onSave, onOpenSaveDialog, onOpenJournal, user, accountFeaturesAvailable = false }: MediaHeroProps) {
   const router = useRouter();
   const handleBack = () => {
     if (typeof window !== 'undefined' && window.history.length > 1) {
@@ -56,6 +59,7 @@ export default function MediaHero({ media, mediaId, isSaving, saveStatus, isAlre
           whileHover={{ x: -5 }}
           whileTap={{ scale: 0.95 }}
           onClick={handleBack}
+          aria-label="Go back"
           className="glass p-2.5 rounded-full hover:border-accent/30 transition-colors text-white/40 hover:text-accent"
         >
           <ChevronLeft size={20} />
@@ -105,16 +109,17 @@ export default function MediaHero({ media, mediaId, isSaving, saveStatus, isAlre
 
           <div className="flex flex-wrap items-center gap-2 md:gap-4">
             {media.trailerUrl ? (
-              <a href={media.trailerUrl} target="_blank" rel="noopener noreferrer">
-                <motion.button
+              <motion.a
+                href={media.trailerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                   className="px-4 py-2.5 md:px-6 md:py-3 rounded-card bg-white text-black font-heading text-sm md:text-base flex items-center gap-2 hover:bg-white/90 transition-colors shadow-2xl"
                 >
                   <Play size={16} fill="currentColor" className="md:w-[18px] md:h-[18px]" />
                   Watch Trailer
-                </motion.button>
-              </a>
+              </motion.a>
             ) : (
               <motion.button
                 disabled
@@ -124,17 +129,21 @@ export default function MediaHero({ media, mediaId, isSaving, saveStatus, isAlre
               </motion.button>
             )}
             <div className="flex gap-2">
+              {accountFeaturesAvailable && (
+                <>
               <MediaPreferenceButtons
                 mediaId={mediaId}
                 mediaType={media.type}
                 title={media.displayTitle}
                 posterUrl={media.posterUrl}
+                loadInitialPreference
               />
 
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={onOpenSaveDialog || onSave}
+                aria-label={`${isAlreadySaved ? 'Edit saved entry for' : 'Save'} ${media.displayTitle}`}
                 className={cn(
                   "p-2.5 md:p-3 rounded-xl backdrop-blur-md transition-all flex items-center justify-center border",
                   (saveStatus === 'success' || isAlreadySaved)
@@ -156,11 +165,20 @@ export default function MediaHero({ media, mediaId, isSaving, saveStatus, isAlre
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={onOpenJournal}
+                aria-label={`Log a screening of ${media.displayTitle}`}
                 className="p-2.5 md:p-3 rounded-xl backdrop-blur-md transition-all flex items-center justify-center border bg-black/40 border-white/10 text-white/50 hover:text-white"
                 title="Log Screening"
               >
                 <History className="w-4 h-4 md:w-5 md:h-5" />
               </motion.button>
+                </>
+              )}
+
+              {!user && (
+                <Link href="/login" className="inline-flex items-center rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-xs font-bold text-white/70 hover:text-white">
+                  Sign in to save
+                </Link>
+              )}
 
               <motion.button
                 whileHover={{ scale: 1.1 }}
@@ -193,6 +211,7 @@ export default function MediaHero({ media, mediaId, isSaving, saveStatus, isAlre
                 }}
                 className="p-2.5 md:p-3 rounded-xl backdrop-blur-md transition-all flex items-center justify-center border bg-black/40 border-white/10 text-white/50 hover:text-white"
                 title="Share"
+                aria-label={`Share ${media.displayTitle}`}
               >
                 <Share2 className="w-4 h-4 md:w-5 md:h-5" />
               </motion.button>
