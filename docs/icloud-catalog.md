@@ -43,9 +43,39 @@ several genres without duplicating it.
 ## Sharing
 
 Share `CineChive Share` once with your brother using **View Only**. Every card
-uses `ICLOUD_SHARED_FOLDER_URL` by default. An optional `.cinechive-link` text
-file beside a title can override the parent URL if a stable item-specific link
-is available.
+uses `ICLOUD_SHARED_FOLDER_URL` as a fallback. iCloud does not expose the public
+share URL for a child item through its local filesystem path, so opening the
+exact movie or season requires one small sidecar containing its copied iCloud
+link.
+
+For a loose movie file, create a text file with the same base name and the
+suffix `.icloud-link`:
+
+```text
+Inbox/
+├── Inception.2010.mkv
+└── Inception.2010.icloud-link
+```
+
+For a movie folder or TV season folder, place `.cinechive-link` or
+`icloud-link.txt` inside that folder:
+
+```text
+Inbox/
+└── The Wire/
+    └── Season 1/
+        ├── .cinechive-link
+        ├── The.Wire.S01E01.mkv
+        └── The.Wire.S01E02.mkv
+```
+
+The text file contains only an exact `https://www.icloud.com/...` URL. Apple
+does not let you independently share a child item that is already inside a
+shared folder, so this direct-link option requires the movie or season folder
+to be shared as its own item (outside the shared parent) or an exact URL supplied
+by another workflow. The watcher detects the sidecar, updates the existing card,
+and marks it as a direct link. Without a sidecar, the card is labelled **Shared
+folder** and opens the parent folder instead.
 
 The videos may remain cloud-only with macOS **Optimize Mac Storage** enabled.
 The scanner reads filenames and directory metadata only, so it does not trigger

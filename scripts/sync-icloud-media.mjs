@@ -6,6 +6,7 @@ const MEDIA_EXTENSIONS = new Set([
   '.avi', '.m4v', '.mkv', '.mov', '.mp4', '.mpeg', '.mpg', '.ts', '.webm',
 ]);
 const LINK_FILE_NAMES = ['.cinechive-link', 'icloud-link.txt'];
+const MEDIA_LINK_SUFFIX = '.icloud-link';
 const MAX_SCAN_DEPTH = 6;
 const dryRun = process.argv.includes('--dry-run');
 const watchMode = process.argv.includes('--watch');
@@ -133,6 +134,20 @@ function classifyFile(relativePath) {
 }
 
 async function findItemLink(inboxPath, item) {
+  if (item.media_type === 'movie') {
+    // A loose movie needs a filename-matched sidecar because a generic link
+    // in Inbox would incorrectly point every card at the same destination.
+    const mediaPath = path.join(inboxPath, item.source_name);
+    const mediaSidecar = `${mediaPath.slice(0, -path.extname(mediaPath).length)}${MEDIA_LINK_SUFFIX}`;
+    try {
+      const link = parseIcloudLink(await readFile(mediaSidecar, 'utf8'));
+      if (link) return link;
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+  }
+
+  if (item.linkDirectorySegments.length === 0) return null;
   const directory = path.join(inboxPath, ...item.linkDirectorySegments);
   for (const name of LINK_FILE_NAMES) {
     try {
@@ -167,6 +182,7 @@ async function scanInbox(root, fallbackIcloudLink) {
       source_key: classification.source_key,
       source_name: classification.source_name,
       icloud_link: itemLink ?? fallbackIcloudLink,
+      link_scope: itemLink ? 'item' : 'library',
     });
   }
   return [...grouped.values()];

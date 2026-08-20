@@ -7,6 +7,7 @@ import { get, put } from '@vercel/blob';
 
 export type SharedMediaType = 'movie' | 'tv';
 export type SharedMediaMatchStatus = 'matched' | 'review';
+export type SharedMediaLinkScope = 'item' | 'library';
 
 export interface SharedMedia {
   id: string;
@@ -18,6 +19,7 @@ export interface SharedMedia {
   poster_url: string | null;
   trailer_url: string | null;
   icloud_link: string;
+  link_scope: SharedMediaLinkScope;
   genres: string[];
   release_year: number | null;
   runtime_minutes: number | null;
@@ -30,7 +32,7 @@ export interface SharedMedia {
 }
 
 interface SharedMediaFile {
-  schema_version: 2;
+  schema_version: 3;
   items: SharedMedia[];
 }
 
@@ -54,7 +56,7 @@ function usesBlobStorage() {
 }
 
 function emptyStore(): SharedMediaFile {
-  return { schema_version: 2, items: [] };
+  return { schema_version: 3, items: [] };
 }
 
 function normalizeItem(value: unknown): SharedMedia | null {
@@ -82,6 +84,7 @@ function normalizeItem(value: unknown): SharedMedia | null {
     poster_url: typeof item.poster_url === 'string' ? item.poster_url : null,
     trailer_url: typeof item.trailer_url === 'string' ? item.trailer_url : null,
     icloud_link: item.icloud_link,
+    link_scope: item.link_scope === 'item' ? 'item' : 'library',
     genres: Array.isArray(item.genres) ? item.genres.filter((genre): genre is string => typeof genre === 'string') : [],
     release_year: typeof item.release_year === 'number' ? item.release_year : null,
     runtime_minutes: typeof item.runtime_minutes === 'number' ? item.runtime_minutes : null,
@@ -99,7 +102,7 @@ function parseStore(raw: string): SharedMediaFile {
   if (!Array.isArray(parsed.items)) throw new Error('Shared media data has an invalid schema');
   const items = parsed.items.map(normalizeItem);
   if (items.some((item) => item === null)) throw new Error('Shared media data contains an invalid item');
-  return { schema_version: 2, items: items as SharedMedia[] };
+  return { schema_version: 3, items: items as SharedMedia[] };
 }
 
 async function readLocalStore() {
@@ -166,12 +169,21 @@ export async function findSharedMediaBySourceKey(sourceKey: string) {
   return store.items.find((item) => item.source_key === sourceKey) ?? null;
 }
 
-export function updateSharedMediaLink(sourceKey: string, icloudLink: string) {
+export function updateSharedMediaLink(
+  sourceKey: string,
+  icloudLink: string,
+  linkScope: SharedMediaLinkScope,
+) {
   const operation = writeQueue.then(async () => {
     const store = await readStore();
     const existingIndex = store.items.findIndex((item) => item.source_key === sourceKey);
     if (existingIndex < 0) return null;
-    const item = { ...store.items[existingIndex], icloud_link: icloudLink, updated_at: new Date().toISOString() };
+    const item = {
+      ...store.items[existingIndex],
+      icloud_link: icloudLink,
+      link_scope: linkScope,
+      updated_at: new Date().toISOString(),
+    };
     store.items[existingIndex] = item;
     await writeStore(store);
     return item;

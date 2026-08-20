@@ -4,6 +4,7 @@ import {
   findSharedMediaBySourceKey,
   updateSharedMediaLink,
   upsertSharedMedia,
+  type SharedMediaLinkScope,
   type SharedMediaType,
 } from '@/lib/shared-media-store';
 
@@ -16,6 +17,7 @@ interface IngestBody {
   query?: unknown;
   media_type?: unknown;
   icloud_link?: unknown;
+  link_scope?: unknown;
   season_number?: unknown;
   source_key?: unknown;
   source_name?: unknown;
@@ -161,6 +163,11 @@ export async function POST(request: Request) {
     ? body.media_type
     : null;
   const icloudLink = parseIcloudUrl(body.icloud_link);
+  const linkScope: SharedMediaLinkScope | null = body.link_scope == null
+    ? 'item'
+    : body.link_scope === 'item' || body.link_scope === 'library'
+      ? body.link_scope
+      : null;
   const sourceKey = typeof body.source_key === 'string' && body.source_key.trim()
     ? body.source_key.trim().slice(0, 500)
     : null;
@@ -179,6 +186,9 @@ export async function POST(request: Request) {
   }
   if (!icloudLink) {
     return NextResponse.json({ error: 'icloud_link must be a valid HTTPS iCloud share URL' }, { status: 400 });
+  }
+  if (!linkScope) {
+    return NextResponse.json({ error: 'link_scope must be either item or library' }, { status: 400 });
   }
 
   const explicitSeason = Number.isInteger(body.season_number) && Number(body.season_number) >= 0
@@ -200,9 +210,14 @@ export async function POST(request: Request) {
     if (sourceKey) {
       const existing = await findSharedMediaBySourceKey(sourceKey);
       if (existing && existing.source_name === sourceName) {
-        const data = existing.icloud_link === icloudLink
+        // A library-wide fallback from a later scanner run must never replace
+        // a direct item link previously supplied by a Shortcut or sidecar.
+        if (existing.link_scope === 'item' && linkScope === 'library') {
+          return NextResponse.json({ data: existing, created: false }, { status: 200 });
+        }
+        const data = existing.icloud_link === icloudLink && existing.link_scope === linkScope
           ? existing
-          : await updateSharedMediaLink(sourceKey, icloudLink);
+          : await updateSharedMediaLink(sourceKey, icloudLink, linkScope);
         return NextResponse.json({ data, created: false }, { status: 200 });
       }
     }
@@ -253,6 +268,7 @@ export async function POST(request: Request) {
       poster_url: details.poster_path ? `${TMDB_IMAGE_BASE}${details.poster_path}` : null,
       trailer_url: pickTrailer(details.videos?.results),
       icloud_link: icloudLink,
+      link_scope: linkScope,
       genres: (details.genres ?? []).map((genre) => genre.name),
       release_year: releaseDate ? Number(releaseDate.slice(0, 4)) || null : null,
       runtime_minutes: typeof runtime === 'number' && runtime > 0 ? runtime : null,
