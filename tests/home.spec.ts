@@ -38,6 +38,12 @@ test('shared library opens from the homepage without authentication', async ({ p
   await expect(page.getByText(/username|password/i)).toHaveCount(0);
 });
 
+test('social preview image is publicly available', async ({ request }) => {
+  const response = await request.get('/api/og');
+  expect(response.status()).toBe(200);
+  expect(response.headers()['content-type']).toContain('image/png');
+});
+
 test('personal library opens directly in local mode', async ({ page }) => {
   await page.goto('/vault');
   await expect(page).toHaveURL(/\/vault$/);

@@ -66,7 +66,6 @@ export async function GET(req: NextRequest) {
               alignItems: 'center',
               width: '1000px',
               gap: '60px',
-              zIndex: 10,
             }}
           >
             {/* Poster Card */}

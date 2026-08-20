@@ -25,9 +25,11 @@ export async function proxy(request: NextRequest) {
   // Apple Shortcuts authenticates this webhook with its own shared secret.
   // The route itself performs the check before any external request or write.
   const isIngestionWebhook = pathname === '/api/ingest';
+  const isOgImage = pathname === '/api/og';
   const isPublicPage =
     isAuthPage ||
     isIngestionWebhook ||
+    isOgImage ||
     isSharedCatalog ||
     isLocalArchivePage ||
     isLocalModeInfoPage ||
