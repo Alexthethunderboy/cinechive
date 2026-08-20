@@ -73,6 +73,15 @@ Supabase is opt-in. Unless `NEXT_PUBLIC_SUPABASE_ENABLED=true` is set, CineChive
 
 Local data is private to a browser profile and is removed if that site storage is cleared. Use Profile → Settings → Export archive for backups. To restore Supabase later, set `NEXT_PUBLIC_SUPABASE_ENABLED=true` with valid credentials and run the existing migrations. Leaving `NEXT_PUBLIC_SUPABASE_DISABLED=true` keeps local mode active even when credentials are present.
 
+## Self-hosted iCloud catalog
+
+The private `/shared` catalog can run without Supabase using Private Vercel Blob
+in production and an ignored JSON file during local development. A macOS launch
+agent scans a locally synced iCloud `Inbox` every ten minutes and submits smart
+movie/TV classifications for TMDB enrichment. See
+[docs/icloud-catalog.md](docs/icloud-catalog.md) for the folder convention,
+security settings, and launch-agent setup.
+
 ## Notes
 
 - Shared collections are resolved through the `get_shared_collection` RPC.

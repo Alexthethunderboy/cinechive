@@ -22,6 +22,9 @@
 # production
 /build
 
+# self-hosted shared catalog data
+/data/*.json
+
 # misc
 .DS_Store
 *.pem
