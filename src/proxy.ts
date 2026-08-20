@@ -1,4 +1,3 @@
-import { timingSafeEqual } from 'node:crypto';
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { getSupabaseConfig, isSupabaseConfigured } from '@/lib/supabase/config';
@@ -9,31 +8,6 @@ function withDeviceHeader(response: NextResponse, request: NextRequest) {
   const isMobile = /mobile|iphone|ipad|android/i.test(userAgent);
   response.headers.set('x-is-mobile-agent', isMobile ? 'true' : 'false');
   return response;
-}
-
-function safeEqual(value: string, expected: string) {
-  const valueBuffer = Buffer.from(value);
-  const expectedBuffer = Buffer.from(expected);
-  return valueBuffer.length === expectedBuffer.length && timingSafeEqual(valueBuffer, expectedBuffer);
-}
-
-function protectSharedCatalog(request: NextRequest) {
-  const username = process.env.SHARED_CATALOG_USERNAME?.trim();
-  const password = process.env.SHARED_CATALOG_PASSWORD?.trim();
-  if (!username || !password) {
-    return new NextResponse('Shared catalog access is not configured.', { status: 503 });
-  }
-
-  const expected = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
-  const authorization = request.headers.get('authorization') ?? '';
-  if (!safeEqual(authorization, expected)) {
-    return new NextResponse('Authentication required.', {
-      status: 401,
-      headers: { 'WWW-Authenticate': 'Basic realm="CineChive Shared Library", charset="UTF-8"' },
-    });
-  }
-
-  return withDeviceHeader(NextResponse.next({ request: { headers: request.headers } }), request);
 }
 
 export async function proxy(request: NextRequest) {
@@ -54,6 +28,7 @@ export async function proxy(request: NextRequest) {
   const isPublicPage =
     isAuthPage ||
     isIngestionWebhook ||
+    isSharedCatalog ||
     isLocalArchivePage ||
     isLocalModeInfoPage ||
     pathname === '/' ||
@@ -62,11 +37,6 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith('/media') ||
     pathname.startsWith('/classifications') ||
     pathname.startsWith('/auth');
-
-  // The shared catalog remains private without depending on Supabase Auth.
-  // Serve it only over HTTPS in production because HTTP Basic credentials are
-  // encoded, not encrypted, at the header level.
-  if (isSharedCatalog) return protectSharedCatalog(request);
 
   // Public discovery must never wait for an optional account backend.
   // Server actions and protected pages still enforce authorization themselves.

@@ -10,14 +10,20 @@
     <string>/ABSOLUTE/PATH/TO/node</string>
     <string>--env-file=/ABSOLUTE/PATH/TO/enterarchive/.env.local</string>
     <string>/ABSOLUTE/PATH/TO/enterarchive/scripts/sync-icloud-media.mjs</string>
+    <string>--watch</string>
   </array>
 
   <key>WorkingDirectory</key>
   <string>/ABSOLUTE/PATH/TO/enterarchive</string>
   <key>RunAtLoad</key>
   <true/>
-  <key>StartInterval</key>
-  <integer>600</integer>
+  <key>KeepAlive</key>
+  <dict>
+    <key>SuccessfulExit</key>
+    <false/>
+  </dict>
+  <key>ThrottleInterval</key>
+  <integer>30</integer>
 
   <key>StandardOutPath</key>
   <string>/tmp/cinechive-icloud-sync.log</string>

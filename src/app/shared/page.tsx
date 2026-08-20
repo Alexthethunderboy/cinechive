@@ -6,7 +6,7 @@ import { readSharedMedia, type SharedMedia } from '@/lib/shared-media-store';
 
 export const metadata: Metadata = {
   title: 'Shared Library',
-  description: 'A private library of movies and TV shared through iCloud.',
+  description: 'A family library of movies and TV shared through iCloud.',
   robots: { index: false, follow: false },
 };
 
@@ -133,7 +133,7 @@ export default async function SharedPage({ searchParams }: SharedPageProps) {
       <header className="mb-8 max-w-3xl sm:mb-10">
         <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-zinc-300">
           <Cloud aria-hidden="true" className="size-4" />
-          Private iCloud library
+          Family iCloud library
         </div>
         <h1 className="font-heading text-4xl text-white sm:text-5xl lg:text-6xl">Shared with you.</h1>
         <p className="mt-4 max-w-2xl text-base leading-7 text-zinc-400 sm:text-lg">

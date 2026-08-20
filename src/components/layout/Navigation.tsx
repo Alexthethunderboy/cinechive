@@ -185,9 +185,10 @@ export function Sidebar() {
             <Image
               src="/app-logo.png" 
               alt="CineChive Logo" 
-              width={56}
-              height={56}
-              className="w-14 h-14 object-contain brightness-110 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] md:grayscale md:brightness-90 group-hover:grayscale-0 group-hover:brightness-110 transition-all duration-700" 
+              width={398}
+              height={424}
+              priority
+              className="h-auto w-14 object-contain brightness-110 drop-shadow-[0_0_15px_rgba(255,255,255,0.2)] md:grayscale md:brightness-90 group-hover:grayscale-0 group-hover:brightness-110 transition-all duration-700"
             />
           </motion.div>
         </Link>

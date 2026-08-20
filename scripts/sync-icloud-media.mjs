@@ -1,3 +1,4 @@
+import { watch } from 'node:fs';
 import { access, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -7,6 +8,8 @@ const MEDIA_EXTENSIONS = new Set([
 const LINK_FILE_NAMES = ['.cinechive-link', 'icloud-link.txt'];
 const MAX_SCAN_DEPTH = 6;
 const dryRun = process.argv.includes('--dry-run');
+const watchMode = process.argv.includes('--watch');
+const WATCH_DEBOUNCE_MS = 5_000;
 
 function requireSetting(name) {
   const value = process.env[name]?.trim();
@@ -70,6 +73,18 @@ async function collectMediaFiles(directory, relativeRoot = '', depth = 0) {
     }
   }
   return files;
+}
+
+async function collectDirectories(directory, depth = 0) {
+  if (depth > MAX_SCAN_DEPTH) return [];
+  const entries = await readdir(directory, { withFileTypes: true });
+  const directories = [directory];
+
+  for (const entry of entries) {
+    if (entry.name.startsWith('.') || entry.isSymbolicLink() || !entry.isDirectory()) continue;
+    directories.push(...await collectDirectories(path.join(directory, entry.name), depth + 1));
+  }
+  return directories;
 }
 
 function classifyFile(relativePath) {
@@ -172,7 +187,7 @@ async function ingest(item, ingestUrl, secret) {
   return result;
 }
 
-async function main() {
+async function syncOnce() {
   const root = requireSetting('ICLOUD_MEDIA_FOLDER');
   const configuredFallback = requireSetting('ICLOUD_SHARED_FOLDER_URL');
   const fallbackIcloudLink = parseIcloudLink(configuredFallback);
@@ -210,10 +225,88 @@ async function main() {
 
   console.log(`iCloud sync complete: ${created} added, ${existing} unchanged, ${failures.length} failed.`);
   failures.forEach((failure) => console.error(failure));
-  if (failures.length > 0) process.exitCode = 1;
+  return failures.length;
 }
 
-main().catch((error) => {
+async function watchInbox() {
+  const inboxPath = path.join(requireSetting('ICLOUD_MEDIA_FOLDER'), 'Inbox');
+  await access(inboxPath);
+
+  let debounceTimer;
+  let syncRunning = false;
+  let syncQueued = false;
+  const watchers = new Map();
+
+  const runSync = async () => {
+    if (syncRunning) {
+      syncQueued = true;
+      return;
+    }
+
+    syncRunning = true;
+    try {
+      await syncOnce();
+    } catch (error) {
+      // A temporary network or metadata failure should not stop future events.
+      console.error(`iCloud sync failed: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      syncRunning = false;
+      if (syncQueued) {
+        syncQueued = false;
+        await runSync();
+      }
+    }
+  };
+
+  const scheduleSync = () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(async () => {
+      await refreshWatchers();
+      await runSync();
+    }, WATCH_DEBOUNCE_MS);
+  };
+
+  const refreshWatchers = async () => {
+    const directories = new Set(await collectDirectories(inboxPath));
+    for (const [directory, watcher] of watchers) {
+      if (!directories.has(directory)) {
+        watcher.close();
+        watchers.delete(directory);
+      }
+    }
+
+    for (const directory of directories) {
+      if (watchers.has(directory)) continue;
+      const directoryWatcher = watch(directory, scheduleSync);
+      directoryWatcher.on('error', (error) => {
+        console.error(`iCloud watcher failed for ${directory}: ${error.message}`);
+        process.exitCode = 1;
+        directoryWatcher.close();
+      });
+      watchers.set(directory, directoryWatcher);
+    }
+  };
+
+  await runSync();
+  // Watch only existing directories rather than using recursive fs.watch,
+  // which can exhaust descriptors in large iCloud trees on some macOS builds.
+  await refreshWatchers();
+
+  const shutdown = () => {
+    clearTimeout(debounceTimer);
+    watchers.forEach((watcher) => watcher.close());
+  };
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
+
+  console.log(`Watching ${inboxPath} for iCloud changes.`);
+}
+
+const operation = watchMode ? watchInbox() : syncOnce().then((failures) => {
+  if (failures > 0) process.exitCode = 1;
+});
+
+operation.catch((error) => {
   console.error(`iCloud sync failed: ${error instanceof Error ? error.message : String(error)}`);
   process.exitCode = 1;
 });

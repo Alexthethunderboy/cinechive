@@ -1,7 +1,8 @@
+/* eslint-disable @next/next/no-img-element -- ImageResponse renders remote images directly. */
 import { ImageResponse } from 'next/og';
 import { NextRequest } from 'next/server';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   try {
@@ -35,6 +36,7 @@ export async function GET(req: NextRequest) {
           {backdropUrl && (
             <img
               src={backdropUrl}
+              alt=""
               style={{
                 position: 'absolute',
                 top: '-10%',
@@ -82,6 +84,7 @@ export async function GET(req: NextRequest) {
               >
                 <img
                   src={posterUrl}
+                  alt={`${title} poster`}
                   style={{
                     width: '100%',
                     height: '100%',
@@ -185,8 +188,8 @@ export async function GET(req: NextRequest) {
         height: 630,
       }
     );
-  } catch (e: any) {
-    console.log(`${e.message}`);
+  } catch (error: unknown) {
+    console.error(error instanceof Error ? error.message : 'Failed to generate social image');
     return new Response(`Failed to generate the image`, {
       status: 500,
     });

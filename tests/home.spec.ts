@@ -1,5 +1,13 @@
 import { test, expect } from '@playwright/test';
 
+test.beforeEach(async ({ page }) => {
+  // These journeys exercise the returning-user experience. The product tour
+  // has its own dismissal flow and should not interrupt unrelated controls.
+  await page.addInitScript(() => {
+    window.localStorage.setItem('cinechive_tour_complete', 'true');
+  });
+});
+
 test('public discovery loads when account services are disabled', async ({ page }) => {
   await page.goto('/');
   await expect(page).toHaveTitle(/CineChive/);
@@ -19,6 +27,15 @@ test('public search remains accessible', async ({ page }) => {
     .filter({ visible: true })
     .first();
   await expect(searchEntry).toBeVisible();
+});
+
+test('shared library opens from the homepage without authentication', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('link', { name: 'Shared library' }).click();
+  await expect(page).toHaveURL(/\/shared$/);
+  await expect(page.getByRole('heading', { name: 'Shared with you.' })).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByText(/username|password/i)).toHaveCount(0);
 });
 
 test('personal library opens directly in local mode', async ({ page }) => {

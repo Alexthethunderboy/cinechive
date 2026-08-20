@@ -2,9 +2,10 @@
 
 ## Architecture
 
-The Mac scanner reads the locally synced iCloud `Inbox` and sends only inferred
-names, types, seasons, years, and the configured share URL to CineChive's
-authenticated ingestion API. It never reads or uploads video bytes.
+The Mac scanner watches the locally synced iCloud `Inbox` and sends only
+inferred names, types, seasons, years, and the configured share URL to
+CineChive's authenticated ingestion API when Finder/iCloud reports a change.
+It never reads or uploads video bytes.
 
 Production metadata is stored in a **Private Vercel Blob** named
 `cinechive/shared-media.json`. Local development falls back to the ignored
@@ -80,8 +81,6 @@ npm run sync:icloud
 ```env
 TMDB_API_KEY=
 INGEST_API_SECRET=
-SHARED_CATALOG_USERNAME=
-SHARED_CATALOG_PASSWORD=
 ```
 
 The connected Private Blob store supplies `BLOB_STORE_ID`; the Vercel SDK
@@ -90,7 +89,7 @@ obtains a short-lived OIDC token at runtime. A manually configured
 
 Redeploy CineChive after adding or changing environment variables.
 
-## Run every ten minutes
+## Update when files change
 
 Replace the absolute-path placeholders in
 `scripts/com.cinechive.icloud-sync.plist.example`. The Node executable on this
@@ -101,12 +100,14 @@ Mac is `/opt/homebrew/bin/node`. Then copy the completed file to
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.cinechive.icloud-sync.plist
 ```
 
-The launch agent runs once at login and every 600 seconds afterward.
+The launch agent performs one reconciliation at login, then waits for macOS
+filesystem events. Changes are debounced for five seconds so a single iCloud
+operation produces one sync. Launchd restarts the watcher after failures.
 
 ## Mac performance
 
-Each scan recursively reads directory entries to a maximum depth of six. It
-does not download, hash, decode, copy, or open video files. TMDB requests run on
-Vercel, and ingestion requests are sequential. For a normal personal library,
-the scan should finish in a fraction of a second when nothing new is present
-and have no noticeable sustained CPU, memory, or storage impact.
+The watcher remains idle until macOS reports a change, using a small amount of
+memory and effectively no CPU while waiting. Each triggered scan recursively
+reads directory entries to a maximum depth of six. It does not download, hash,
+decode, copy, or open video files. TMDB requests run on Vercel, and ingestion
+requests are sequential.

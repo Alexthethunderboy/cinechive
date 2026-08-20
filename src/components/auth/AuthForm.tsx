@@ -112,9 +112,9 @@ export default function AuthForm({ mode }: AuthFormProps) {
             <Image
               src="/app-logo.png"
               alt="CineChive Logo"
-              width={64}
-              height={64}
-              className="w-16 h-16 object-contain mb-6 drop-shadow-xl brightness-110"
+              width={398}
+              height={424}
+              className="mb-6 h-auto w-16 object-contain drop-shadow-xl brightness-110"
             />
             <motion.h1
               initial={{ scale: 0.9 }}

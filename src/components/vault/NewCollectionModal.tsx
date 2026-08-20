@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2 } from 'lucide-react';
 import { createCollectionAction } from '@/lib/collection-actions';
@@ -45,28 +46,32 @@ export default function NewCollectionModal({ isOpen, onClose }: NewCollectionMod
     }
   };
 
-  return (
+  if (!isOpen || typeof document === 'undefined') return null;
+
+  return createPortal(
     <AnimatePresence>
-      {isOpen && (
-        <>
+      <>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 cursor-pointer"
+            className="fixed inset-0 z-[90] cursor-pointer bg-black/80 backdrop-blur-sm"
           />
           <motion.div
             initial={{ scale: 0.95, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg z-[60] p-6 focus:outline-none"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="new-collection-title"
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 focus:outline-none sm:p-6"
           >
-            <div className="bg-[#0A0A0A] border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
+            <div className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-3xl border border-white/10 bg-[#0A0A0A] shadow-2xl">
               <div className="p-8">
                 <div className="flex justify-between items-start mb-8">
                   <div>
-                    <h2 className="font-heading text-4xl text-white uppercase italic tracking-tighter leading-none mb-1">
+                    <h2 id="new-collection-title" className="font-heading text-4xl text-white uppercase italic tracking-tighter leading-none mb-1">
                       New Collection
                     </h2>
                     <p className="font-metadata text-[10px] text-white/30 uppercase tracking-widest">Create a custom editorial volume</p>
@@ -136,7 +141,7 @@ export default function NewCollectionModal({ isOpen, onClose }: NewCollectionMod
             </div>
           </motion.div>
         </>
-      )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }

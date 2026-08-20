@@ -196,7 +196,7 @@ export async function POST(request: Request) {
 
   try {
     // The scanner sends a stable path-derived key. Return before hitting TMDB when
-    // the same iCloud folder is observed again during the next ten-minute scan.
+    // the same iCloud folder is observed again during a later scan.
     if (sourceKey) {
       const existing = await findSharedMediaBySourceKey(sourceKey);
       if (existing && existing.source_name === sourceName) {

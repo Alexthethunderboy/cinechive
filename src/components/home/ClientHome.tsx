@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Flame, Calendar, type LucideIcon } from 'lucide-react';
+import { ArrowRight, Calendar, Cloud, Flame, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -81,9 +81,10 @@ export default function ClientHome() {
           <Image
             src="/app-logo.png" 
             alt="CineChive Logo" 
-            width={40}
-            height={40}
-            className="w-10 h-10 md:hidden object-contain brightness-110 drop-shadow-xl" 
+            width={398}
+            height={424}
+            priority
+            className="h-auto w-10 md:hidden object-contain brightness-110 drop-shadow-xl"
           />
           <div className="space-y-0.5">
             <h1 className="font-heading text-fluid-h2 md:text-fluid-h1 tracking-tighter text-white italic leading-none">
@@ -94,6 +95,14 @@ export default function ClientHome() {
             </p>
           </div>
         </motion.div>
+        <Link
+          href="/shared"
+          className="group inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-white/15 bg-white px-3.5 py-2 text-black shadow-[0_12px_35px_rgba(255,255,255,0.12)] transition hover:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:px-4"
+        >
+          <Cloud aria-hidden="true" className="size-4" />
+          <span className="text-[10px] font-extrabold uppercase tracking-[0.12em] sm:text-xs">Shared library</span>
+          <ArrowRight aria-hidden="true" className="hidden size-4 transition-transform group-hover:translate-x-0.5 sm:block" />
+        </Link>
       </motion.header>
 
       {isLocalMode ? (

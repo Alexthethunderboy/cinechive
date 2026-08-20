@@ -22,7 +22,7 @@ A cinematic archive and social discovery app built with Next.js App Router. It c
 1. Install dependencies:
    - `npm install`
 2. Create local env file:
-   - `cp .env.local.example .env.local`
+   - `cp .env.example .env.local`
 3. Fill required variables in `.env.local`:
    - `TMDB_API_KEY` for movies, television, search, and most discovery pages
    - No Supabase variables are required for the default local archive mode
@@ -75,10 +75,10 @@ Local data is private to a browser profile and is removed if that site storage i
 
 ## Self-hosted iCloud catalog
 
-The private `/shared` catalog can run without Supabase using Private Vercel Blob
+The public, no-login `/shared` catalog can run without Supabase using Private Vercel Blob
 in production and an ignored JSON file during local development. A macOS launch
-agent scans a locally synced iCloud `Inbox` every ten minutes and submits smart
-movie/TV classifications for TMDB enrichment. See
+agent watches a locally synced iCloud `Inbox` and submits smart movie/TV
+classifications for TMDB enrichment when files change. See
 [docs/icloud-catalog.md](docs/icloud-catalog.md) for the folder convention,
 security settings, and launch-agent setup.
 
