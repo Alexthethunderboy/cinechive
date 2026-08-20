@@ -194,33 +194,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'year must be a plausible four-digit year' }, { status: 400 });
   }
 
-  // The scanner sends a stable path-derived key. Return before hitting TMDB when
-  // the same iCloud folder is observed again during the next ten-minute scan.
-  if (sourceKey) {
-    const existing = await findSharedMediaBySourceKey(sourceKey);
-    if (existing && existing.source_name === sourceName) {
-      const data = existing.icloud_link === icloudLink
-        ? existing
-        : await updateSharedMediaLink(sourceKey, icloudLink);
-      return NextResponse.json({ data, created: false }, { status: 200 });
-    }
-  }
-
-  const seasonSuffix = mediaType === 'tv' ? rawQuery.match(/\s+season\s+(\d+)\s*$/i) : null;
-  const inferredSeason = seasonSuffix ? Number(seasonSuffix[1]) : null;
-  const seasonNumber = mediaType === 'tv' ? (explicitSeason ?? inferredSeason) : null;
-  const queryWithoutSeason = seasonSuffix ? rawQuery.slice(0, seasonSuffix.index).trim() : rawQuery;
-  const yearSuffix = queryWithoutSeason.match(/\s*\((\d{4})\)\s*$/);
-  const searchQuery = yearSuffix
-    ? queryWithoutSeason.slice(0, yearSuffix.index).trim()
-    : queryWithoutSeason;
-  const searchParams: Record<string, string> = { query: searchQuery, include_adult: 'false' };
-  const requestedYear = explicitYear ?? (yearSuffix ? Number(yearSuffix[1]) : null);
-  if (requestedYear) {
-    searchParams[mediaType === 'movie' ? 'primary_release_year' : 'first_air_date_year'] = String(requestedYear);
-  }
-
   try {
+    // The scanner sends a stable path-derived key. Return before hitting TMDB when
+    // the same iCloud folder is observed again during the next ten-minute scan.
+    if (sourceKey) {
+      const existing = await findSharedMediaBySourceKey(sourceKey);
+      if (existing && existing.source_name === sourceName) {
+        const data = existing.icloud_link === icloudLink
+          ? existing
+          : await updateSharedMediaLink(sourceKey, icloudLink);
+        return NextResponse.json({ data, created: false }, { status: 200 });
+      }
+    }
+
+    const seasonSuffix = mediaType === 'tv' ? rawQuery.match(/\s+season\s+(\d+)\s*$/i) : null;
+    const inferredSeason = seasonSuffix ? Number(seasonSuffix[1]) : null;
+    const seasonNumber = mediaType === 'tv' ? (explicitSeason ?? inferredSeason) : null;
+    const queryWithoutSeason = seasonSuffix ? rawQuery.slice(0, seasonSuffix.index).trim() : rawQuery;
+    const yearSuffix = queryWithoutSeason.match(/\s*\((\d{4})\)\s*$/);
+    const searchQuery = yearSuffix
+      ? queryWithoutSeason.slice(0, yearSuffix.index).trim()
+      : queryWithoutSeason;
+    const searchParams: Record<string, string> = { query: searchQuery, include_adult: 'false' };
+    const requestedYear = explicitYear ?? (yearSuffix ? Number(yearSuffix[1]) : null);
+    if (requestedYear) {
+      searchParams[mediaType === 'movie' ? 'primary_release_year' : 'first_air_date_year'] = String(requestedYear);
+    }
+
     const search = await fetchTmdb<{ results?: TmdbSearchResult[] }>(
       `/search/${mediaType}`,
       tmdbApiKey,

@@ -84,8 +84,9 @@ SHARED_CATALOG_USERNAME=
 SHARED_CATALOG_PASSWORD=
 ```
 
-The connected Private Blob store supplies `BLOB_READ_WRITE_TOKEN`, or the OIDC
-equivalents `BLOB_STORE_ID` and `VERCEL_OIDC_TOKEN`.
+The connected Private Blob store supplies `BLOB_STORE_ID`; the Vercel SDK
+obtains a short-lived OIDC token at runtime. A manually configured
+`BLOB_READ_WRITE_TOKEN` remains supported for local or non-Vercel runtimes.
 
 Redeploy CineChive after adding or changing environment variables.
 
