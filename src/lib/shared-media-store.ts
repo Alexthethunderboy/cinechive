@@ -173,42 +173,68 @@ export function updateSharedMediaLink(
   sourceKey: string,
   icloudLink: string,
   linkScope: SharedMediaLinkScope,
+  replacesSourceKeys: string[] = [],
 ) {
   const operation = writeQueue.then(async () => {
     const store = await readStore();
     const existingIndex = store.items.findIndex((item) => item.source_key === sourceKey);
     if (existingIndex < 0) return null;
+    const existing = store.items[existingIndex];
+    const preserveDirectLink = existing.link_scope === 'item' && linkScope === 'library';
     const item = {
-      ...store.items[existingIndex],
-      icloud_link: icloudLink,
-      link_scope: linkScope,
+      ...existing,
+      icloud_link: preserveDirectLink ? existing.icloud_link : icloudLink,
+      link_scope: preserveDirectLink ? existing.link_scope : linkScope,
       updated_at: new Date().toISOString(),
     };
     store.items[existingIndex] = item;
+    const replacementKeys = new Set(replacesSourceKeys);
+    store.items = store.items.filter((candidate, index) => (
+      index === existingIndex ||
+      candidate.source_key === null ||
+      !replacementKeys.has(candidate.source_key)
+    ));
     await writeStore(store);
     return item;
   });
   writeQueue = operation.then(() => undefined, () => undefined);
   return operation;
 }
-export function upsertSharedMedia(input: SharedMediaInput) {
+export function upsertSharedMedia(input: SharedMediaInput, replacesSourceKeys: string[] = []) {
   const operation = writeQueue.then(async () => {
     const store = await readStore();
     const identity = `${input.media_type}:${input.tmdb_id}:${input.season_number ?? 'all'}`;
+    const replacementKeys = new Set(replacesSourceKeys);
     const existingIndex = store.items.findIndex((item) => {
       const itemIdentity = `${item.media_type}:${item.tmdb_id}:${item.season_number ?? 'all'}`;
-      return (input.source_key && item.source_key === input.source_key) || itemIdentity === identity;
+      return (input.source_key && item.source_key === input.source_key) ||
+        itemIdentity === identity ||
+        (item.source_key !== null && replacementKeys.has(item.source_key));
     });
     const timestamp = new Date().toISOString();
     const existing = existingIndex >= 0 ? store.items[existingIndex] : null;
+    const preserveDirectLink = existing?.link_scope === 'item' && input.link_scope === 'library';
     const item: SharedMedia = {
       ...input,
+      icloud_link: preserveDirectLink ? existing.icloud_link : input.icloud_link,
+      link_scope: preserveDirectLink ? existing.link_scope : input.link_scope,
       id: existing?.id ?? randomUUID(),
       created_at: existing?.created_at ?? timestamp,
       updated_at: timestamp,
     };
 
-    if (existingIndex >= 0) store.items[existingIndex] = item;
+    // A corrected classification may replace several legacy source keys. Keep
+    // the first matching record's stable ID and remove only explicitly named
+    // scanner records or duplicate TMDB identities; manual entries have no key.
+    store.items = store.items.filter((candidate, index) => {
+      if (index === existingIndex) return true;
+      const candidateIdentity = `${candidate.media_type}:${candidate.tmdb_id}:${candidate.season_number ?? 'all'}`;
+      if (candidateIdentity === identity) return false;
+      return candidate.source_key === null || !replacementKeys.has(candidate.source_key);
+    });
+
+    const retainedIndex = existing ? store.items.indexOf(existing) : -1;
+    if (retainedIndex >= 0) store.items[retainedIndex] = item;
     else store.items.push(item);
     await writeStore(store);
     return { item, created: existingIndex < 0 };

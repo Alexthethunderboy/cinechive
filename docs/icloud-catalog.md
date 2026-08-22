@@ -82,6 +82,51 @@ The scanner reads filenames and directory metadata only, so it does not trigger
 video downloads. iCloud Drive must still be signed in and allowed to synchronize
 the folder listing while the Mac is awake.
 
+## Naming and folder detection
+
+The scanner visits every non-hidden directory below `Inbox`; organizational
+folders such as `Movies`, `Feature Films`, `TV Shows`, `Animation`, `Anime`, and
+`Documentaries` are treated as collections and never become catalog titles.
+
+Preferred movie layout:
+
+```text
+Inbox/
+└── Animation/
+    └── Song of the Sea (2014)/
+        └── Song of the Sea (2014).mp4
+```
+
+Preferred series layout:
+
+```text
+Inbox/
+└── Anime/
+    └── Dr. Stone (2019)/
+        ├── Season 01/
+        │   └── Dr. Stone - S01E01.mkv
+        └── Season 02/
+            └── Dr. Stone - S02E01.mkv
+```
+
+Torrent-style names remain supported. Episode patterns such as `S01E01` and
+`1x01` take priority over folder hints, and episodes are grouped into one card
+per season. Small trilogy folders can contain several movies; each distinct
+movie filename becomes its own card. Large non-episodic bundles are skipped to
+avoid mistaking courses or archives for films.
+
+Optional marker files provide deterministic overrides:
+
+- `.cinechive-ignore` skips the directory and its entire subtree.
+- `.cinechive-collection` makes that directory organizational, so each child
+  is scanned as a separate media bundle.
+- `.cinechive-title` contains a manual TMDB search title for a difficult movie
+  or show folder.
+
+`Extras`, `Samples`, `Featurettes`, `Trailers`, and common sample/opening/ending
+filenames are ignored automatically. Symbolic links and hidden directories are
+not traversed.
+
 ## Local scanner configuration
 
 ```env

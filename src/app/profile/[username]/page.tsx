@@ -13,7 +13,7 @@ import { Metadata } from 'next';
 import { formatUsername } from '@/lib/utils';
 
 interface ProfilePageProps {
-  params: { username: string };
+  params: Promise<{ username: string }>;
 }
 
 export async function generateMetadata({ params }: ProfilePageProps): Promise<Metadata> {
@@ -57,7 +57,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
       onboardingTastes={data.onboardingTastes}
       isOwnProfile={isOwnProfile}
       initialFollowStatus={!!followStatus}
-      followCounts={(data as any).followCounts}
+      followCounts={data.followCounts}
       followers={followers}
       following={following}
     />

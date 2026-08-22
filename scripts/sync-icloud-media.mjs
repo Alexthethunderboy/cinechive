@@ -1,13 +1,13 @@
 import { watch } from 'node:fs';
 import { access, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { classifyMediaPaths, isMediaFile } from './lib/icloud-media-classifier.mjs';
 
-const MEDIA_EXTENSIONS = new Set([
-  '.avi', '.m4v', '.mkv', '.mov', '.mp4', '.mpeg', '.mpg', '.ts', '.webm',
-]);
 const LINK_FILE_NAMES = ['.cinechive-link', 'icloud-link.txt'];
 const MEDIA_LINK_SUFFIX = '.icloud-link';
-const MAX_SCAN_DEPTH = 6;
+const IGNORE_MARKER = '.cinechive-ignore';
+const COLLECTION_MARKER = '.cinechive-collection';
+const TITLE_OVERRIDE_FILE = '.cinechive-title';
 const dryRun = process.argv.includes('--dry-run');
 const watchMode = process.argv.includes('--watch');
 const WATCH_DEBOUNCE_MS = 5_000;
@@ -16,10 +16,6 @@ function requireSetting(name) {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is required`);
   return value;
-}
-
-function isMediaFile(name) {
-  return MEDIA_EXTENSIONS.has(path.extname(name).toLowerCase());
 }
 
 function parseIcloudLink(value) {
@@ -32,105 +28,43 @@ function parseIcloudLink(value) {
   }
 }
 
-function cleanTitle(value) {
-  return value
-    .replace(path.extname(value), '')
-    .replace(/[._]+/g, ' ')
-    .replace(/[\[(](?:2160p|1080p|720p|480p|uhd|bluray|blu-ray|webrip|web-dl|x26[45]|hevc)[^\])]*[\])]/gi, ' ')
-    .replace(/\s+(?:2160p|1080p|720p|480p|uhd|bluray|blu-ray|webrip|web-dl|hdr|dv|x26[45]|hevc|aac|dts).*$/i, '')
-    .replace(/\s+/g, ' ')
-    .replace(/^[-\s]+|[-\s]+$/g, '')
-    .trim();
-}
+async function discoverInbox(inboxPath) {
+  const queue = [{ absolutePath: inboxPath, relativePath: '' }];
+  const directories = [];
+  const mediaPaths = [];
+  const collectionDirectories = [];
+  const titleOverrides = [];
+  let queueIndex = 0;
 
-function normalizeKey(value) {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-}
+  while (queueIndex < queue.length) {
+    const current = queue[queueIndex];
+    queueIndex += 1;
+    const entries = await readdir(current.absolutePath, { withFileTypes: true });
+    if (entries.some((entry) => entry.isFile() && entry.name === IGNORE_MARKER)) continue;
 
-function extractYear(value) {
-  const match = value.match(/(?:^|[^0-9])((?:19|20)\d{2})(?:[^0-9]|$)/);
-  return match ? Number(match[1]) : null;
-}
+    directories.push(current.absolutePath);
+    if (current.relativePath && entries.some((entry) => entry.isFile() && entry.name === COLLECTION_MARKER)) {
+      collectionDirectories.push(current.relativePath);
+    }
 
-function stripYear(value, year) {
-  return year
-    ? value.replace(new RegExp(`\\s*[\\[(]?${year}[\\])]?(?:\\s|$)`), ' ').replace(/\s+/g, ' ').trim()
-    : value;
-}
+    const titleEntry = entries.find((entry) => entry.isFile() && entry.name === TITLE_OVERRIDE_FILE);
+    if (titleEntry && current.relativePath) {
+      const title = (await readFile(path.join(current.absolutePath, titleEntry.name), 'utf8')).trim();
+      if (title && title.length <= 200) titleOverrides.push([current.relativePath, title]);
+    }
 
-async function collectMediaFiles(directory, relativeRoot = '', depth = 0) {
-  if (depth > MAX_SCAN_DEPTH) return [];
-  const entries = await readdir(directory, { withFileTypes: true });
-  const files = [];
-
-  for (const entry of entries) {
-    if (entry.name.startsWith('.') || entry.isSymbolicLink()) continue;
-    const absolutePath = path.join(directory, entry.name);
-    const relativePath = path.join(relativeRoot, entry.name);
-    if (entry.isFile() && isMediaFile(entry.name)) {
-      files.push({ absolutePath, relativePath });
-    } else if (entry.isDirectory()) {
-      files.push(...await collectMediaFiles(absolutePath, relativePath, depth + 1));
+    for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
+      if (entry.name.startsWith('.') || entry.isSymbolicLink()) continue;
+      const absolutePath = path.join(current.absolutePath, entry.name);
+      const relativePath = current.relativePath
+        ? path.join(current.relativePath, entry.name)
+        : entry.name;
+      if (entry.isFile() && isMediaFile(entry.name)) mediaPaths.push(relativePath);
+      else if (entry.isDirectory()) queue.push({ absolutePath, relativePath });
     }
   }
-  return files;
-}
 
-async function collectDirectories(directory, depth = 0) {
-  if (depth > MAX_SCAN_DEPTH) return [];
-  const entries = await readdir(directory, { withFileTypes: true });
-  const directories = [directory];
-
-  for (const entry of entries) {
-    if (entry.name.startsWith('.') || entry.isSymbolicLink() || !entry.isDirectory()) continue;
-    directories.push(...await collectDirectories(path.join(directory, entry.name), depth + 1));
-  }
-  return directories;
-}
-
-function classifyFile(relativePath) {
-  const segments = relativePath.split(path.sep);
-  const fileName = segments.at(-1) ?? relativePath;
-  const stem = fileName.slice(0, -path.extname(fileName).length);
-  const episodeMatch = stem.match(/^(.*?)(?:[. _-]+)s(\d{1,3})e\d{1,3}(?:[. _-]|$)/i)
-    ?? stem.match(/^(.*?)(?:[. _-]+)(\d{1,3})x\d{1,3}(?:[. _-]|$)/i);
-  const seasonSegmentIndex = segments.findIndex((segment) => /^(?:season\s*|s)(\d{1,3})$/i.test(segment));
-
-  if (episodeMatch || seasonSegmentIndex > 0) {
-    const seasonFromPath = seasonSegmentIndex > 0
-      ? Number(segments[seasonSegmentIndex].match(/\d+/)?.[0])
-      : null;
-    const seasonNumber = seasonFromPath ?? Number(episodeMatch?.[2] ?? 0);
-    const rawShowTitle = seasonSegmentIndex > 0
-      ? segments[seasonSegmentIndex - 1]
-      : episodeMatch?.[1] ?? stem;
-    const year = extractYear(rawShowTitle);
-    const query = stripYear(cleanTitle(rawShowTitle), year);
-    return {
-      query,
-      media_type: 'tv',
-      season_number: seasonNumber,
-      year,
-      source_key: `tv:${normalizeKey(query)}:${year ?? 'unknown'}:season:${seasonNumber}`,
-      source_name: relativePath,
-      linkDirectorySegments: seasonSegmentIndex > 0 ? segments.slice(0, seasonSegmentIndex + 1) : segments.slice(0, -1),
-    };
-  }
-
-  // A top-level folder is treated as the movie identity; otherwise the file
-  // name is used. This supports both Inbox/Heat.mkv and Inbox/Heat/Heat.mkv.
-  const rawMovieTitle = segments.length > 1 ? segments[0] : stem;
-  const year = extractYear(rawMovieTitle);
-  const query = stripYear(cleanTitle(rawMovieTitle), year);
-  return {
-    query,
-    media_type: 'movie',
-    season_number: null,
-    year,
-    source_key: `movie:${normalizeKey(query)}:${year ?? 'unknown'}`,
-    source_name: relativePath,
-    linkDirectorySegments: segments.slice(0, -1),
-  };
+  return { directories, mediaPaths, collectionDirectories, titleOverrides };
 }
 
 async function findItemLink(inboxPath, item) {
@@ -168,24 +102,27 @@ async function scanInbox(root, fallbackIcloudLink) {
     throw new Error(`Inbox folder is missing at ${inboxPath}`);
   }
 
-  const files = await collectMediaFiles(inboxPath);
-  const grouped = new Map();
-  for (const file of files) {
-    const classification = classifyFile(file.relativePath);
-    if (!classification.query || grouped.has(classification.source_key)) continue;
-    const itemLink = await findItemLink(inboxPath, classification);
-    grouped.set(classification.source_key, {
-      query: classification.query,
-      media_type: classification.media_type,
-      season_number: classification.season_number,
-      year: classification.year,
-      source_key: classification.source_key,
-      source_name: classification.source_name,
+  const discovery = await discoverInbox(inboxPath);
+  const classification = classifyMediaPaths(discovery.mediaPaths, {
+    collectionDirectories: discovery.collectionDirectories,
+    titleOverrides: discovery.titleOverrides,
+  });
+  const items = [];
+  for (const classifiedItem of classification.items) {
+    const itemLink = await findItemLink(inboxPath, classifiedItem);
+    items.push({
+      query: classifiedItem.query,
+      media_type: classifiedItem.media_type,
+      season_number: classifiedItem.season_number,
+      year: classifiedItem.year,
+      source_key: classifiedItem.source_key,
+      source_name: classifiedItem.source_name,
       icloud_link: itemLink ?? fallbackIcloudLink,
       link_scope: itemLink ? 'item' : 'library',
+      replaces_source_keys: classifiedItem.replaces_source_keys,
     });
   }
-  return [...grouped.values()];
+  return { items, skipped: classification.skipped, directories: discovery.directories };
 }
 
 async function ingest(item, ingestUrl, secret) {
@@ -209,7 +146,8 @@ async function syncOnce() {
   const fallbackIcloudLink = parseIcloudLink(configuredFallback);
   if (!fallbackIcloudLink) throw new Error('ICLOUD_SHARED_FOLDER_URL must be a valid HTTPS iCloud URL');
 
-  const items = await scanInbox(root, fallbackIcloudLink);
+  const scan = await scanInbox(root, fallbackIcloudLink);
+  const { items } = scan;
   if (dryRun) {
     // Keep share URLs out of terminal logs while showing every inferred match.
     const preview = items.map((item) => {
@@ -217,7 +155,12 @@ async function syncOnce() {
       delete safeItem.icloud_link;
       return safeItem;
     });
-    console.log(JSON.stringify({ inbox: path.join(root, 'Inbox'), items: preview }, null, 2));
+    console.log(JSON.stringify({
+      inbox: path.join(root, 'Inbox'),
+      media_items: items.length,
+      skipped_bundles: scan.skipped,
+      items: preview,
+    }, null, 2));
     return;
   }
 
@@ -283,7 +226,8 @@ async function watchInbox() {
   };
 
   const refreshWatchers = async () => {
-    const directories = new Set(await collectDirectories(inboxPath));
+    const discovery = await discoverInbox(inboxPath);
+    const directories = new Set(discovery.directories);
     for (const [directory, watcher] of watchers) {
       if (!directories.has(directory)) {
         watcher.close();

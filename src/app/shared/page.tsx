@@ -29,18 +29,57 @@ const CARD_PALETTES = [
   { glow: 'from-amber-300/25 via-orange-500/10', line: 'bg-amber-200' },
 ] as const;
 
-function MediaCard({ item, index, featured }: { item: SharedMedia; index: number; featured: boolean }) {
+interface SharedMediaGroup {
+  key: string;
+  items: SharedMedia[];
+  primary: SharedMedia;
+}
+
+function groupSharedMedia(items: SharedMedia[]): SharedMediaGroup[] {
+  const groups = new Map<string, SharedMedia[]>();
+
+  for (const item of items) {
+    const key = `${item.media_type}:${item.tmdb_id}`;
+    const group = groups.get(key);
+    if (group) group.push(item);
+    else groups.set(key, [item]);
+  }
+
+  return [...groups.entries()].map(([key, groupedItems]) => {
+    // Keep season links in viewing order while retaining the newest record as the
+    // primary source of title-level metadata and catalog ordering.
+    const itemsBySeason = [...groupedItems].sort((a, b) =>
+      (a.season_number ?? Number.MAX_SAFE_INTEGER) - (b.season_number ?? Number.MAX_SAFE_INTEGER),
+    );
+    const primary = groupedItems.find((item) => item.poster_url && item.overview) ?? groupedItems[0];
+    return { key, items: itemsBySeason, primary };
+  });
+}
+
+function MediaCard({ group, index, featured }: { group: SharedMediaGroup; index: number; featured: boolean }) {
+  const { items, primary: item } = group;
   const mediaLabel = item.media_type === 'movie' ? 'Movie' : 'TV series';
   const Icon = item.media_type === 'movie' ? Film : Tv;
   const palette = CARD_PALETTES[index % CARD_PALETTES.length];
-  const hasDirectLink = item.link_scope === 'item';
-  const openLabel = hasDirectLink
-    ? item.media_type === 'tv' ? 'Open season' : 'Open movie'
+  const allDirect = items.every((entry) => entry.link_scope === 'item');
+  const someDirect = items.some((entry) => entry.link_scope === 'item');
+  const uniqueTargets = [...new Map(items.map((entry) => [entry.icloud_link, entry])).values()];
+  const hasSingleTarget = uniqueTargets.length === 1;
+  const seasons = [...new Set(items.flatMap((entry) =>
+    entry.season_number === null ? [] : [entry.season_number],
+  ))];
+  const trailerUrl = items.find((entry) => entry.trailer_url)?.trailer_url;
+  const needsReview = items.some((entry) => entry.match_status === 'review');
+  const openLabel = allDirect
+    ? item.media_type === 'tv' ? seasons.length > 1 ? 'Open series' : 'Open season' : 'Open movie'
     : 'Open shared folder';
+  const collectionLabel = item.media_type === 'tv' && seasons.length > 1
+    ? `${seasons.length} seasons`
+    : seasons.length === 1 ? `S${seasons[0]}` : null;
 
   return (
     <article className={`group relative isolate min-h-[38rem] overflow-hidden rounded-[1.75rem] border bg-zinc-950 shadow-[0_32px_100px_rgba(0,0,0,0.45)] transition-[transform,border-color,box-shadow] duration-500 hover:-translate-y-1 hover:border-white/30 hover:shadow-[0_40px_120px_rgba(0,0,0,0.65)] ${
-      hasDirectLink ? 'border-emerald-300/20' : 'border-white/10'
+      allDirect ? 'border-emerald-300/20' : 'border-white/10'
     } ${featured ? 'sm:col-span-2 2xl:col-span-6 2xl:min-h-[40rem]' : '2xl:col-span-3 2xl:min-h-[40rem]'}`}>
       {item.poster_url ? (
         <Image
@@ -64,26 +103,30 @@ function MediaCard({ item, index, featured }: { item: SharedMedia; index: number
       <div aria-hidden="true" className="absolute inset-0 opacity-25 [background-image:radial-gradient(rgba(255,255,255,0.2)_0.7px,transparent_0.7px)] [background-size:5px_5px]" />
       <div aria-hidden="true" className={`absolute inset-x-0 top-0 h-1 ${palette.line}`} />
 
-      <a
-        href={item.icloud_link}
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label={`${openLabel} for ${item.title} in iCloud`}
-        className="absolute inset-0 z-10 rounded-[1.75rem] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
-      />
+      {hasSingleTarget && (
+        <a
+          href={uniqueTargets[0].icloud_link}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`${openLabel} for ${item.title} in iCloud`}
+          className="absolute inset-0 z-10 rounded-[1.75rem] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white"
+        />
+      )}
 
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-3 p-5 sm:p-6">
         <div className="flex items-center gap-2 rounded-full border border-white/15 bg-black/45 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white backdrop-blur-xl">
           <Icon aria-hidden="true" className="size-3.5" />
-          {mediaLabel}{item.season_number !== null ? ` · S${item.season_number}` : ''}
+          {mediaLabel}{collectionLabel ? ` · ${collectionLabel}` : ''}
         </div>
         <div className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] backdrop-blur-xl ${
-          hasDirectLink
+          allDirect
             ? 'border-emerald-300/25 bg-emerald-950/60 text-emerald-200'
+            : someDirect
+              ? 'border-cyan-300/25 bg-cyan-950/60 text-cyan-100'
             : 'border-amber-200/20 bg-amber-950/60 text-amber-100'
         }`}>
-          <span className={`size-1.5 rounded-full ${hasDirectLink ? 'bg-emerald-300' : 'bg-amber-200'}`} />
-          {hasDirectLink ? 'Direct link' : 'Shared folder'}
+          <span className={`size-1.5 rounded-full ${allDirect ? 'bg-emerald-300' : someDirect ? 'bg-cyan-200' : 'bg-amber-200'}`} />
+          {allDirect ? uniqueTargets.length > 1 ? 'Direct links' : 'Direct link' : someDirect ? 'Mixed links' : 'Shared folder'}
         </div>
       </div>
 
@@ -98,34 +141,56 @@ function MediaCard({ item, index, featured }: { item: SharedMedia; index: number
         <h2 className={`max-w-3xl font-heading uppercase text-white drop-shadow-2xl ${featured ? 'text-4xl sm:text-6xl' : 'text-3xl sm:text-4xl'}`}>
           {item.title}
         </h2>
-        {item.season_number !== null && <p className="mt-2 text-sm font-bold uppercase tracking-[0.18em] text-white/55">Season {item.season_number}</p>}
+        {seasons.length > 0 && (
+          <p className="mt-2 text-sm font-bold uppercase tracking-[0.18em] text-white/55">
+            {seasons.length === 1 ? `Season ${seasons[0]}` : `Seasons ${seasons.join(' · ')}`}
+          </p>
+        )}
         <p className={`mt-4 max-w-2xl text-sm leading-6 text-white/68 ${featured ? 'line-clamp-3 sm:text-base sm:leading-7' : 'line-clamp-2'}`}>
           {item.overview || 'No overview is available for this title.'}
         </p>
 
-        {item.match_status === 'review' && (
+        {needsReview && (
           <p className="mt-3 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-200">
             <AlertTriangle aria-hidden="true" className="size-3.5" /> Metadata match needs review
           </p>
         )}
 
-        <div className="pointer-events-auto mt-5 flex flex-col gap-2 sm:flex-row">
-          <a
-            href={item.icloud_link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex min-h-12 flex-1 touch-manipulation items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-black text-black shadow-[0_16px_40px_rgba(255,255,255,0.15)] transition hover:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-[0.98]"
-          >
-            <span className="inline-flex items-center gap-2"><Cloud aria-hidden="true" className="size-5 fill-current" />{openLabel}</span>
-            <ArrowUpRight aria-hidden="true" className="size-4" />
-          </a>
-          {item.trailer_url && (
+        <div className="pointer-events-auto mt-5 space-y-2">
+          {hasSingleTarget ? (
             <a
-              href={item.trailer_url}
+              href={uniqueTargets[0].icloud_link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-12 w-full touch-manipulation items-center justify-between gap-3 rounded-2xl bg-white px-4 py-3 text-sm font-black text-black shadow-[0_16px_40px_rgba(255,255,255,0.15)] transition hover:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-[0.98]"
+            >
+              <span className="inline-flex items-center gap-2"><Cloud aria-hidden="true" className="size-5 fill-current" />{openLabel}</span>
+              <ArrowUpRight aria-hidden="true" className="size-4" />
+            </a>
+          ) : (
+            <div className="flex snap-x gap-2 overflow-x-auto pb-1" aria-label={`Open ${item.title} in iCloud`}>
+              {uniqueTargets.map((target, targetIndex) => (
+                <a
+                  key={`${target.icloud_link}:${target.season_number ?? targetIndex}`}
+                  href={target.icloud_link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex min-h-12 shrink-0 snap-start touch-manipulation items-center gap-2 rounded-2xl bg-white px-4 py-3 text-sm font-black text-black transition hover:bg-zinc-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-[0.98]"
+                >
+                  <Cloud aria-hidden="true" className="size-4 fill-current" />
+                  {target.season_number !== null ? `Season ${target.season_number}` : `Copy ${targetIndex + 1}`}
+                  <ArrowUpRight aria-hidden="true" className="size-4" />
+                </a>
+              ))}
+            </div>
+          )}
+          {trailerUrl && (
+            <a
+              href={trailerUrl}
               target="_blank"
               rel="noopener noreferrer"
               aria-label={`Watch ${item.title} trailer`}
-              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-white/15 bg-black/50 px-4 py-3 text-sm font-bold text-white backdrop-blur-xl transition hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-[0.98]"
+              className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-white/15 bg-black/50 px-4 py-3 text-sm font-bold text-white backdrop-blur-xl transition hover:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white active:scale-[0.98]"
             >
               <Play aria-hidden="true" className="size-4 fill-current" /> Trailer
             </a>
@@ -162,13 +227,15 @@ export default async function SharedPage({ searchParams }: SharedPageProps) {
     console.error('Shared catalog read failed:', error instanceof Error ? error.message : 'Unknown error');
   }
 
+  const groupedData = groupSharedMedia(data);
   const genres = [...new Set(data.flatMap((item) => item.genres))].sort((a, b) => a.localeCompare(b));
-  const directLinkCount = data.filter((item) => item.link_scope === 'item').length;
-  const filteredData = data.filter((item) => {
+  const directLinkCount = groupedData.filter((group) => group.items.every((item) => item.link_scope === 'item')).length;
+  const filteredData = groupedData.filter((group) => {
+    const { items, primary } = group;
     const matchesType = typeFilter === 'all' ||
-      item.media_type === typeFilter ||
-      (typeFilter === 'review' && item.match_status === 'review');
-    return matchesType && (!genreFilter || item.genres.includes(genreFilter));
+      primary.media_type === typeFilter ||
+      (typeFilter === 'review' && items.some((item) => item.match_status === 'review'));
+    return matchesType && (!genreFilter || items.some((item) => item.genres.includes(genreFilter)));
   });
 
   return (
@@ -186,13 +253,13 @@ export default async function SharedPage({ searchParams }: SharedPageProps) {
             </div>
             <h1 className="max-w-4xl font-heading text-5xl uppercase text-white sm:text-7xl lg:text-[6.5rem]">Shared with you.</h1>
             <p className="mt-5 max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base">
-              Tap any poster to jump into iCloud. Direct links open the exact movie or season; folder links open the shared library.
+              Tap a poster to open its iCloud destination, or choose a season when a series has more than one link.
             </p>
           </div>
           <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-white/10 bg-white/10 text-center">
             <div className="min-w-28 bg-zinc-950/85 px-5 py-4">
               <dt className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500">Titles</dt>
-              <dd className="mt-1 font-heading text-3xl text-white">{data.length}</dd>
+              <dd className="mt-1 font-heading text-3xl text-white">{groupedData.length}</dd>
             </div>
             <div className="min-w-28 bg-zinc-950/85 px-5 py-4">
               <dt className="text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-500">Direct</dt>
@@ -272,7 +339,7 @@ export default async function SharedPage({ searchParams }: SharedPageProps) {
         </section>
       ) : (
         <section aria-label="Shared media" className="relative grid grid-cols-1 gap-5 sm:grid-cols-2 2xl:grid-cols-12">
-          {filteredData.map((item, index) => <MediaCard key={item.id} item={item} index={index} featured={index === 0} />)}
+          {filteredData.map((group, index) => <MediaCard key={group.key} group={group} index={index} featured={index === 0} />)}
         </section>
       )}
     </div>

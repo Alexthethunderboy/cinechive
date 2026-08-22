@@ -21,6 +21,7 @@ interface IngestBody {
   season_number?: unknown;
   source_key?: unknown;
   source_name?: unknown;
+  replaces_source_keys?: unknown;
   year?: unknown;
 }
 
@@ -174,6 +175,13 @@ export async function POST(request: Request) {
   const sourceName = typeof body.source_name === 'string' && body.source_name.trim()
     ? body.source_name.trim().slice(0, 500)
     : null;
+  const rawReplacementKeys = Array.isArray(body.replaces_source_keys) ? body.replaces_source_keys : [];
+  const replacesSourceKeys = Array.isArray(body.replaces_source_keys)
+    ? [...new Set(rawReplacementKeys
+      .filter((value): value is string => typeof value === 'string')
+      .map((value) => value.trim().slice(0, 500))
+      .filter(Boolean))]
+    : [];
   const explicitYear = Number.isInteger(body.year) && Number(body.year) >= 1870 && Number(body.year) <= new Date().getFullYear() + 5
     ? Number(body.year)
     : null;
@@ -203,6 +211,15 @@ export async function POST(request: Request) {
   if (body.year != null && explicitYear === null) {
     return NextResponse.json({ error: 'year must be a plausible four-digit year' }, { status: 400 });
   }
+  if (body.replaces_source_keys != null && !Array.isArray(body.replaces_source_keys)) {
+    return NextResponse.json({ error: 'replaces_source_keys must be an array of strings' }, { status: 400 });
+  }
+  if (rawReplacementKeys.some((value) => typeof value !== 'string' || value.trim().length === 0)) {
+    return NextResponse.json({ error: 'replaces_source_keys must contain only non-empty strings' }, { status: 400 });
+  }
+  if (replacesSourceKeys.length > 100) {
+    return NextResponse.json({ error: 'replaces_source_keys cannot contain more than 100 values' }, { status: 400 });
+  }
 
   try {
     // The scanner sends a stable path-derived key. Return before hitting TMDB when
@@ -210,14 +227,14 @@ export async function POST(request: Request) {
     if (sourceKey) {
       const existing = await findSharedMediaBySourceKey(sourceKey);
       if (existing && existing.source_name === sourceName) {
-        // A library-wide fallback from a later scanner run must never replace
-        // a direct item link previously supplied by a Shortcut or sidecar.
-        if (existing.link_scope === 'item' && linkScope === 'library') {
-          return NextResponse.json({ data: existing, created: false }, { status: 200 });
-        }
-        const data = existing.icloud_link === icloudLink && existing.link_scope === linkScope
+        const hasLegacyKeysToReplace = replacesSourceKeys.some((key) => key !== sourceKey);
+        const preservesExistingDirectLink = existing.link_scope === 'item' && linkScope === 'library';
+        const linkIsUnchanged = preservesExistingDirectLink || (
+          existing.icloud_link === icloudLink && existing.link_scope === linkScope
+        );
+        const data = linkIsUnchanged && !hasLegacyKeysToReplace
           ? existing
-          : await updateSharedMediaLink(sourceKey, icloudLink, linkScope);
+          : await updateSharedMediaLink(sourceKey, icloudLink, linkScope, replacesSourceKeys);
         return NextResponse.json({ data, created: false }, { status: 200 });
       }
     }
@@ -242,9 +259,9 @@ export async function POST(request: Request) {
       searchParams,
     );
     const match = pickBestMatch(search.results ?? [], searchQuery, mediaType, requestedYear);
-    if (!match) {
+    if (!match || match.confidence < 0.45) {
       return NextResponse.json(
-        { error: `No ${mediaType === 'movie' ? 'movie' : 'TV series'} found for “${searchQuery}”` },
+        { error: `No confident ${mediaType === 'movie' ? 'movie' : 'TV series'} match found for “${searchQuery}”` },
         { status: 404 },
       );
     }
@@ -276,7 +293,7 @@ export async function POST(request: Request) {
       match_status: match.confidence >= 0.7 ? 'matched' : 'review',
       source_key: sourceKey,
       source_name: sourceName,
-    });
+    }, replacesSourceKeys);
 
     return NextResponse.json(
       { data: result.item, created: result.created },
