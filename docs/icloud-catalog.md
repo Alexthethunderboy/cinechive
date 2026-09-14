@@ -7,14 +7,17 @@ inferred names, types, seasons, years, and the configured share URL to
 CineChive's authenticated ingestion API when Finder/iCloud reports a change.
 It never reads or uploads video bytes.
 
-Production metadata is stored in a **Private Vercel Blob** named
-`cinechive/shared-media.json`. Local development falls back to the ignored
-`data/shared-media.json` file. Vercel deployments deliberately fail instead of
-writing to their temporary function filesystem when Blob is not configured.
+Production metadata is stored as one private JSON value in **Upstash Redis**.
+The Mac sends the complete classification in one authenticated request; the API
+reads the catalogue once and writes once only when its contents change. Local
+development falls back to the ignored `data/shared-media.json` file. Vercel
+deployments deliberately fail instead of writing to temporary function storage
+when neither Upstash nor the legacy Blob rollback store is configured.
 
-Create a Private Blob store from the CineChive project under **Vercel → Storage
-→ Create Database → Blob → Private**. Vercel injects the required credentials
-into the project. See [Vercel Private Blob setup](https://vercel.com/docs/vercel-blob/private-storage).
+Create an Upstash Redis database, then copy its REST URL and REST token into the
+CineChive project's server-only environment variables. The app uses the legacy
+Vercel Blob store only when the Upstash variables are absent, so the paused store
+remains available as a rollback source without affecting normal operation.
 
 ## Inbox convention
 
@@ -156,13 +159,24 @@ npm run sync:icloud
 ```env
 TMDB_API_KEY=
 INGEST_API_SECRET=
+UPSTASH_REDIS_REST_URL=
+UPSTASH_REDIS_REST_TOKEN=
 ```
 
-The connected Private Blob store supplies `BLOB_STORE_ID`; the Vercel SDK
-obtains a short-lived OIDC token at runtime. A manually configured
-`BLOB_READ_WRITE_TOKEN` remains supported for local or non-Vercel runtimes.
+Both Upstash values are server-only and must never use the `NEXT_PUBLIC_`
+prefix. `BLOB_READ_WRITE_TOKEN` or the OIDC Blob variables remain supported for
+rollback, but Upstash takes precedence whenever both REST values are present.
 
 Redeploy CineChive after adding or changing environment variables.
+
+## Sync request budget
+
+The scanner sends one bulk request per changed filesystem snapshot instead of
+one request per title. During that request, existing records reuse their TMDB
+metadata. The API performs one catalogue read and no write when the resulting
+records are unchanged; a changed catalogue produces one write. While the watch
+process remains alive, repeated Finder events with an identical snapshot are
+discarded locally before any network request.
 
 ## Update when files change
 

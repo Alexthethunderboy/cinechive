@@ -38,7 +38,22 @@ interface SharedMediaFile {
 
 export type SharedMediaInput = Omit<SharedMedia, 'id' | 'created_at' | 'updated_at'>;
 
+export interface SharedMediaUpsert {
+  input: SharedMediaInput;
+  replacesSourceKeys?: string[];
+}
+
+export interface SharedMediaReconcileResult {
+  items: SharedMedia[];
+  created: number;
+  updated: number;
+  unchanged: number;
+  changed: boolean;
+}
+
+const REDIS_CATALOG_KEY = 'cinechive:shared-media:v3';
 const BLOB_PATHNAME = 'cinechive/shared-media.json';
+const STORE_TIMEOUT_MS = 10_000;
 let writeQueue: Promise<void> = Promise.resolve();
 
 function getLocalStorePath() {
@@ -46,6 +61,15 @@ function getLocalStorePath() {
   return configuredPath
     ? path.resolve(configuredPath)
     : path.join(process.cwd(), 'data', 'shared-media.json');
+}
+
+function getUpstashCredentials() {
+  const url = process.env.UPSTASH_REDIS_REST_URL?.trim().replace(/\/$/, '');
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
+  if (Boolean(url) !== Boolean(token)) {
+    throw new Error('Upstash catalogue storage requires both REST environment variables');
+  }
+  return url && token ? { url, token } : null;
 }
 
 function usesBlobStorage() {
@@ -105,6 +129,28 @@ function parseStore(raw: string): SharedMediaFile {
   return { schema_version: 3, items: items as SharedMedia[] };
 }
 
+async function runRedisCommand<T>(command: unknown[]): Promise<T> {
+  const credentials = getUpstashCredentials();
+  if (!credentials) throw new Error('Upstash catalogue storage is not configured');
+
+  const response = await fetch(credentials.url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${credentials.token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(command),
+    cache: 'no-store',
+    signal: AbortSignal.timeout(STORE_TIMEOUT_MS),
+  });
+
+  const payload = await response.json().catch(() => null) as { result?: T; error?: string } | null;
+  if (!response.ok || !payload || payload.error) {
+    throw new Error(`Upstash catalogue request failed with status ${response.status}`);
+  }
+  return payload.result as T;
+}
+
 async function readLocalStore() {
   try {
     return parseStore(await readFile(getLocalStorePath(), 'utf8'));
@@ -124,6 +170,13 @@ async function writeLocalStore(store: SharedMediaFile) {
 }
 
 async function readStore(): Promise<SharedMediaFile> {
+  const upstash = getUpstashCredentials();
+  if (upstash) {
+    const raw = await runRedisCommand<string | null>(['GET', REDIS_CATALOG_KEY]);
+    return raw === null ? emptyStore() : parseStore(raw);
+  }
+
+  // Keep the former Blob path available as a rollback source during migration.
   if (usesBlobStorage()) {
     const result = await get(BLOB_PATHNAME, { access: 'private', useCache: false });
     if (!result) return emptyStore();
@@ -133,15 +186,21 @@ async function readStore(): Promise<SharedMediaFile> {
     return parseStore(await new Response(result.stream).text());
   }
 
-  // Never silently write catalog data to Vercel's temporary filesystem.
+  // Never silently write catalogue data to Vercel's temporary filesystem.
   if (process.env.VERCEL) {
-    throw new Error('Private Vercel Blob is not configured for the shared catalog');
+    throw new Error('Upstash Redis is not configured for the shared catalogue');
   }
   return readLocalStore();
 }
 
 async function writeStore(store: SharedMediaFile) {
   const serialized = `${JSON.stringify(store, null, 2)}\n`;
+  const upstash = getUpstashCredentials();
+  if (upstash) {
+    await runRedisCommand<'OK'>(['SET', REDIS_CATALOG_KEY, serialized]);
+    return;
+  }
+
   if (usesBlobStorage()) {
     await put(BLOB_PATHNAME, serialized, {
       access: 'private',
@@ -154,9 +213,32 @@ async function writeStore(store: SharedMediaFile) {
   }
 
   if (process.env.VERCEL) {
-    throw new Error('Private Vercel Blob is not configured for the shared catalog');
+    throw new Error('Upstash Redis is not configured for the shared catalogue');
   }
   await writeLocalStore(store);
+}
+
+function mediaIdentity(item: Pick<SharedMediaInput, 'media_type' | 'tmdb_id' | 'season_number'>) {
+  return `${item.media_type}:${item.tmdb_id}:${item.season_number ?? 'all'}`;
+}
+
+function hasSamePayload(item: SharedMedia, input: SharedMediaInput) {
+  return item.tmdb_id === input.tmdb_id &&
+    item.media_type === input.media_type &&
+    item.season_number === input.season_number &&
+    item.title === input.title &&
+    item.overview === input.overview &&
+    item.poster_url === input.poster_url &&
+    item.trailer_url === input.trailer_url &&
+    item.icloud_link === input.icloud_link &&
+    item.link_scope === input.link_scope &&
+    JSON.stringify(item.genres) === JSON.stringify(input.genres) &&
+    item.release_year === input.release_year &&
+    item.runtime_minutes === input.runtime_minutes &&
+    item.match_confidence === input.match_confidence &&
+    item.match_status === input.match_status &&
+    item.source_key === input.source_key &&
+    item.source_name === input.source_name;
 }
 
 export async function readSharedMedia() {
@@ -164,84 +246,82 @@ export async function readSharedMedia() {
   return [...store.items].sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
-export async function findSharedMediaBySourceKey(sourceKey: string) {
-  const store = await readStore();
-  return store.items.find((item) => item.source_key === sourceKey) ?? null;
-}
-
-export function updateSharedMediaLink(
-  sourceKey: string,
-  icloudLink: string,
-  linkScope: SharedMediaLinkScope,
-  replacesSourceKeys: string[] = [],
-) {
+export function reconcileSharedMedia(
+  upserts: SharedMediaUpsert[],
+  currentItems?: SharedMedia[],
+): Promise<SharedMediaReconcileResult> {
   const operation = writeQueue.then(async () => {
-    const store = await readStore();
-    const existingIndex = store.items.findIndex((item) => item.source_key === sourceKey);
-    if (existingIndex < 0) return null;
-    const existing = store.items[existingIndex];
-    const preserveDirectLink = existing.link_scope === 'item' && linkScope === 'library';
-    const item = {
-      ...existing,
-      icloud_link: preserveDirectLink ? existing.icloud_link : icloudLink,
-      link_scope: preserveDirectLink ? existing.link_scope : linkScope,
-      updated_at: new Date().toISOString(),
-    };
-    store.items[existingIndex] = item;
-    const replacementKeys = new Set(replacesSourceKeys);
-    store.items = store.items.filter((candidate, index) => (
-      index === existingIndex ||
-      candidate.source_key === null ||
-      !replacementKeys.has(candidate.source_key)
-    ));
-    await writeStore(store);
-    return item;
+    // Bulk ingestion already has a fresh snapshot for metadata reuse. Accepting
+    // it here prevents a second Redis read during the same request.
+    const store: SharedMediaFile = currentItems
+      ? { schema_version: 3, items: [...currentItems] }
+      : await readStore();
+    const resultItems: SharedMedia[] = [];
+    let created = 0;
+    let updated = 0;
+    let unchanged = 0;
+    let changed = false;
+
+    for (const { input: rawInput, replacesSourceKeys = [] } of upserts) {
+      const identity = mediaIdentity(rawInput);
+      const replacementKeys = new Set(replacesSourceKeys.filter((key) => key !== rawInput.source_key));
+      const sourceIndex = rawInput.source_key
+        ? store.items.findIndex((item) => item.source_key === rawInput.source_key)
+        : -1;
+      const identityIndex = store.items.findIndex((item) => mediaIdentity(item) === identity);
+      const replacementIndex = store.items.findIndex((item) => item.source_key !== null && replacementKeys.has(item.source_key));
+      const existingIndex = sourceIndex >= 0 ? sourceIndex : identityIndex >= 0 ? identityIndex : replacementIndex;
+      const existing = existingIndex >= 0 ? store.items[existingIndex] : null;
+      const preserveDirectLink = existing?.link_scope === 'item' && rawInput.link_scope === 'library';
+      const input: SharedMediaInput = {
+        ...rawInput,
+        icloud_link: preserveDirectLink ? existing.icloud_link : rawInput.icloud_link,
+        link_scope: preserveDirectLink ? existing.link_scope : rawInput.link_scope,
+      };
+      const duplicateIndexes = new Set<number>();
+
+      store.items.forEach((candidate, index) => {
+        if (index === existingIndex) return;
+        const isDuplicateIdentity = mediaIdentity(candidate) === identity;
+        const isReplacedSource = candidate.source_key !== null && replacementKeys.has(candidate.source_key);
+        if (isDuplicateIdentity || isReplacedSource) duplicateIndexes.add(index);
+      });
+
+      if (existing && hasSamePayload(existing, input) && duplicateIndexes.size === 0) {
+        unchanged += 1;
+        resultItems.push(existing);
+        continue;
+      }
+
+      const timestamp = new Date().toISOString();
+      const item: SharedMedia = {
+        ...input,
+        id: existing?.id ?? randomUUID(),
+        created_at: existing?.created_at ?? timestamp,
+        updated_at: timestamp,
+      };
+
+      if (existingIndex >= 0) store.items[existingIndex] = item;
+      else store.items.push(item);
+      if (duplicateIndexes.size > 0) {
+        store.items = store.items.filter((_, index) => !duplicateIndexes.has(index));
+      }
+
+      changed = true;
+      if (existing) updated += 1;
+      else created += 1;
+      resultItems.push(item);
+    }
+
+    if (changed) await writeStore(store);
+    return { items: resultItems, created, updated, unchanged, changed };
   });
+
   writeQueue = operation.then(() => undefined, () => undefined);
   return operation;
 }
-export function upsertSharedMedia(input: SharedMediaInput, replacesSourceKeys: string[] = []) {
-  const operation = writeQueue.then(async () => {
-    const store = await readStore();
-    const identity = `${input.media_type}:${input.tmdb_id}:${input.season_number ?? 'all'}`;
-    const replacementKeys = new Set(replacesSourceKeys);
-    const existingIndex = store.items.findIndex((item) => {
-      const itemIdentity = `${item.media_type}:${item.tmdb_id}:${item.season_number ?? 'all'}`;
-      return (input.source_key && item.source_key === input.source_key) ||
-        itemIdentity === identity ||
-        (item.source_key !== null && replacementKeys.has(item.source_key));
-    });
-    const timestamp = new Date().toISOString();
-    const existing = existingIndex >= 0 ? store.items[existingIndex] : null;
-    const preserveDirectLink = existing?.link_scope === 'item' && input.link_scope === 'library';
-    const item: SharedMedia = {
-      ...input,
-      icloud_link: preserveDirectLink ? existing.icloud_link : input.icloud_link,
-      link_scope: preserveDirectLink ? existing.link_scope : input.link_scope,
-      id: existing?.id ?? randomUUID(),
-      created_at: existing?.created_at ?? timestamp,
-      updated_at: timestamp,
-    };
 
-    // A corrected classification may replace several legacy source keys. Keep
-    // the first matching record's stable ID and remove only explicitly named
-    // scanner records or duplicate TMDB identities; manual entries have no key.
-    store.items = store.items.filter((candidate, index) => {
-      if (index === existingIndex) return true;
-      const candidateIdentity = `${candidate.media_type}:${candidate.tmdb_id}:${candidate.season_number ?? 'all'}`;
-      if (candidateIdentity === identity) return false;
-      return candidate.source_key === null || !replacementKeys.has(candidate.source_key);
-    });
-
-    const retainedIndex = existing ? store.items.indexOf(existing) : -1;
-    if (retainedIndex >= 0) store.items[retainedIndex] = item;
-    else store.items.push(item);
-    await writeStore(store);
-    return { item, created: existingIndex < 0 };
-  });
-
-  // The scanner sends sequential requests. This queue also protects concurrent
-  // writes handled by the same local or Vercel function instance.
-  writeQueue = operation.then(() => undefined, () => undefined);
-  return operation;
+export async function upsertSharedMedia(input: SharedMediaInput, replacesSourceKeys: string[] = []) {
+  const result = await reconcileSharedMedia([{ input, replacesSourceKeys }]);
+  return { item: result.items[0], created: result.created === 1, changed: result.changed };
 }

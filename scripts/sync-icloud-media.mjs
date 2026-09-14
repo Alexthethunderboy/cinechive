@@ -1,5 +1,6 @@
 import { watch } from 'node:fs';
 import { access, readFile, readdir } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { classifyMediaPaths, isMediaFile } from './lib/icloud-media-classifier.mjs';
 
@@ -11,6 +12,7 @@ const TITLE_OVERRIDE_FILE = '.cinechive-title';
 const dryRun = process.argv.includes('--dry-run');
 const watchMode = process.argv.includes('--watch');
 const WATCH_DEBOUNCE_MS = 5_000;
+let lastSuccessfulFingerprint = null;
 
 function requireSetting(name) {
   const value = process.env[name]?.trim();
@@ -125,18 +127,22 @@ async function scanInbox(root, fallbackIcloudLink) {
   return { items, skipped: classification.skipped, directories: discovery.directories };
 }
 
-async function ingest(item, ingestUrl, secret) {
+function fingerprintItems(items) {
+  return createHash('sha256').update(JSON.stringify(items)).digest('hex');
+}
+
+async function ingestBatch(items, ingestUrl, secret) {
   const response = await fetch(ingestUrl, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${secret}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(item),
-    signal: AbortSignal.timeout(20_000),
+    body: JSON.stringify({ items }),
+    signal: AbortSignal.timeout(65_000),
   });
   const result = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(`${item.source_key}: ${result.error ?? `HTTP ${response.status}`}`);
+  if (!response.ok) throw new Error(result.error ?? `Ingestion failed with HTTP ${response.status}`);
   return result;
 }
 
@@ -166,25 +172,37 @@ async function syncOnce() {
 
   const ingestUrl = process.env.CINECHIVE_INGEST_URL?.trim() || 'https://cinechive.vercel.app/api/ingest';
   const secret = requireSetting('INGEST_API_SECRET');
-  let created = 0;
-  let existing = 0;
-  const failures = [];
-
-  // Only names and tiny link files are inspected. Video bytes are never read.
-  // Requests stay sequential to minimize CPU/network use on older Macs.
-  for (const item of items) {
-    try {
-      const result = await ingest(item, ingestUrl, secret);
-      if (result.created) created += 1;
-      else existing += 1;
-    } catch (error) {
-      failures.push(error instanceof Error ? error.message : String(error));
-    }
+  if (items.length === 0) {
+    console.log('iCloud sync complete: no media found.');
+    return 0;
   }
 
-  console.log(`iCloud sync complete: ${created} added, ${existing} unchanged, ${failures.length} failed.`);
-  failures.forEach((failure) => console.error(failure));
-  return failures.length;
+  // Finder can emit several events for one iCloud operation. After a successful
+  // upload, identical snapshots are ignored for the lifetime of the watcher.
+  const fingerprint = fingerprintItems(items);
+  if (watchMode && fingerprint === lastSuccessfulFingerprint) return 0;
+
+  // Send the complete classification in one request. The server reads the
+  // catalogue once and writes once only when its contents actually change.
+  const result = await ingestBatch(items, ingestUrl, secret);
+  const failures = Array.isArray(result.failures) ? result.failures : [];
+  const failed = Number.isInteger(result.failed) ? result.failed : failures.length;
+  const created = Number.isInteger(result.created) ? result.created : 0;
+  const updated = Number.isInteger(result.updated) ? result.updated : 0;
+  const unchanged = Number.isInteger(result.unchanged) ? result.unchanged : 0;
+
+  console.log(`iCloud sync complete: ${created} added, ${updated} updated, ${unchanged} unchanged, ${failed} failed.`);
+  failures.forEach((failure) => {
+    const source = typeof failure?.source_key === 'string' ? failure.source_key : 'unknown item';
+    const message = typeof failure?.error === 'string' ? failure.error : 'Unknown ingestion error';
+    console.error(`${source}: ${message}`);
+  });
+  if (failed === 0) {
+    lastSuccessfulFingerprint = fingerprint;
+  } else if (failures.length === 0) {
+    console.error('The ingestion API reported failures without item details.');
+  }
+  return failed;
 }
 
 async function watchInbox() {

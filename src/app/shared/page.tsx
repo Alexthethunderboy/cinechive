@@ -20,7 +20,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-// Production reads Private Vercel Blob; local development uses the JSON file.
+// Production reads Upstash Redis; local development uses the JSON file.
 export const dynamic = 'force-dynamic';
 
 interface SharedMediaGroup {

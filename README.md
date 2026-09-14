@@ -75,10 +75,10 @@ Local data is private to a browser profile and is removed if that site storage i
 
 ## Self-hosted iCloud catalog
 
-The public, no-login `/shared` catalog can run without Supabase using Private Vercel Blob
-in production and an ignored JSON file during local development. A macOS launch
-agent watches a locally synced iCloud `Inbox` and submits smart movie/TV
-classifications for TMDB enrichment when files change. See
+The public, no-login `/shared` catalog can run without Supabase using Upstash
+Redis in production and an ignored JSON file during local development. A macOS
+launch agent watches a locally synced iCloud `Inbox` and submits one bulk set of
+smart movie/TV classifications for TMDB enrichment when files change. See
 [docs/icloud-catalog.md](docs/icloud-catalog.md) for the folder convention,
 security settings, and launch-agent setup.
 
