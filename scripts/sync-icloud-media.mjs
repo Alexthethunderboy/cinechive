@@ -11,6 +11,7 @@ const COLLECTION_MARKER = '.cinechive-collection';
 const TITLE_OVERRIDE_FILE = '.cinechive-title';
 const dryRun = process.argv.includes('--dry-run');
 const watchMode = process.argv.includes('--watch');
+const suppressNotifications = process.argv.includes('--mute-notifications');
 const WATCH_DEBOUNCE_MS = 5_000;
 let lastSuccessfulFingerprint = null;
 
@@ -138,7 +139,7 @@ async function ingestBatch(items, ingestUrl, secret) {
       Authorization: `Bearer ${secret}`,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ items }),
+    body: JSON.stringify({ items, suppress_notifications: suppressNotifications }),
     signal: AbortSignal.timeout(65_000),
   });
   const result = await response.json().catch(() => ({}));
@@ -190,8 +191,14 @@ async function syncOnce() {
   const created = Number.isInteger(result.created) ? result.created : 0;
   const updated = Number.isInteger(result.updated) ? result.updated : 0;
   const unchanged = Number.isInteger(result.unchanged) ? result.unchanged : 0;
+  const notificationFailures = Number.isInteger(result.notifications?.failed)
+    ? result.notifications.failed
+    : 0;
 
   console.log(`iCloud sync complete: ${created} added, ${updated} updated, ${unchanged} unchanged, ${failed} failed.`);
+  if (notificationFailures > 0) {
+    console.error(`${notificationFailures} new-media notification delivery attempt(s) failed; catalogue changes were saved.`);
+  }
   failures.forEach((failure) => {
     const source = typeof failure?.source_key === 'string' ? failure.source_key : 'unknown item';
     const message = typeof failure?.error === 'string' ? failure.error : 'Unknown ingestion error';

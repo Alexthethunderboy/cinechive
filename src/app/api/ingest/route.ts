@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import { NextResponse } from 'next/server';
+import { notifyNewSharedMedia, type NotificationDeliveryResult } from '@/lib/media-notifications';
 import {
   readSharedMedia,
   reconcileSharedMedia,
@@ -350,8 +351,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Request body must be a JSON object' }, { status: 400 });
   }
 
-  const envelope = rawBody as IngestBody & { items?: unknown };
+  const envelope = rawBody as IngestBody & { items?: unknown; suppress_notifications?: unknown };
   const isBatch = envelope.items !== undefined;
+  const suppressNotifications = envelope.suppress_notifications === true;
   const rawItems = isBatch ? envelope.items : [envelope];
   if (!Array.isArray(rawItems) || rawItems.length === 0 || rawItems.length > MAX_BATCH_SIZE) {
     return NextResponse.json(
@@ -415,6 +417,27 @@ export async function POST(request: Request) {
       error,
     }] : []);
     const result = await reconcileSharedMedia(upserts, existingItems);
+    let notifications: NotificationDeliveryResult = {
+      enabled: false,
+      titles: result.createdItems.length,
+      sent: 0,
+      failed: 0,
+    };
+    if (!suppressNotifications && result.createdItems.length > 0) {
+      try {
+        // The catalogue is already durable at this point. A push or email
+        // outage must never turn a successful media import into a failed one.
+        notifications = await notifyNewSharedMedia(result.createdItems);
+      } catch (error) {
+        notifications = {
+          enabled: true,
+          titles: result.createdItems.length,
+          sent: 0,
+          failed: result.createdItems.length,
+        };
+        console.error('New-media notification delivery failed:', error instanceof Error ? error.message : 'Unknown error');
+      }
+    }
 
     if (!isBatch) {
       if (failures[0]) {
@@ -423,7 +446,12 @@ export async function POST(request: Request) {
         return NextResponse.json({ error }, { status });
       }
       return NextResponse.json(
-        { data: result.items[0], created: result.created === 1, changed: result.changed },
+        {
+          data: result.items[0],
+          created: result.created === 1,
+          changed: result.changed,
+          notifications,
+        },
         { status: result.created === 1 ? 201 : 200 },
       );
     }
@@ -435,6 +463,7 @@ export async function POST(request: Request) {
       failed: failures.length,
       changed: result.changed,
       failures,
+      notifications,
     });
   } catch (error) {
     const timedOut = error instanceof DOMException && error.name === 'TimeoutError';

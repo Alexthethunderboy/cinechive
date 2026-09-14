@@ -68,7 +68,8 @@ Supabase is opt-in. Unless `NEXT_PUBLIC_SUPABASE_ENABLED=true` is set, CineChive
 | Local reminder activity and journal history | Yes | Calculated from the browser archive |
 | Backup and manual transfer | Yes | JSON export/import in Profile → Settings |
 | Community, follows, comments, reposts, and reactions between people | No | Requires a shared database and trusted identity |
-| Cross-device sync, account recovery, email/push notifications | No | Requires a backend and delivery service |
+| Cross-device sync and account recovery | No | Requires a shared identity backend |
+| New-title alerts for the `/shared` family catalogue | Yes | Upstash, Web Push; optional Resend fallback |
 | Durable public collection links | No | Requires server storage; local mode supports text sharing and JSON export |
 
 Local data is private to a browser profile and is removed if that site storage is cleared. Use Profile → Settings → Export archive for backups. To restore Supabase later, set `NEXT_PUBLIC_SUPABASE_ENABLED=true` with valid credentials and run the existing migrations. Leaving `NEXT_PUBLIC_SUPABASE_DISABLED=true` keeps local mode active even when credentials are present.
@@ -80,7 +81,7 @@ Redis in production and an ignored JSON file during local development. A macOS
 launch agent watches a locally synced iCloud `Inbox` and submits one bulk set of
 smart movie/TV classifications for TMDB enrichment when files change. See
 [docs/icloud-catalog.md](docs/icloud-catalog.md) for the folder convention,
-security settings, and launch-agent setup.
+security settings, launch-agent setup, and exact-title notification flow.
 
 ## Notes
 

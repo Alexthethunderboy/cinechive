@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { readSharedMedia, type SharedMedia } from '@/lib/shared-media-store';
 import MediaDetailsDialog from './media-details-dialog';
+import NotificationEnrollment from './notification-enrollment';
 
 export const metadata: Metadata = {
   title: 'Shared Library',
@@ -183,6 +184,10 @@ export default async function SharedPage({ searchParams }: SharedPageProps) {
   const params = await searchParams;
   const typeFilter = ['movie', 'tv', 'review'].includes(params.type ?? '') ? params.type : 'all';
   const genreFilter = params.genre?.trim() || null;
+  const pushPublicKey = process.env.WEB_PUSH_VAPID_PUBLIC_KEY?.trim() ?? '';
+  const notificationsConfigured = process.env.MEDIA_NOTIFICATIONS_ENABLED?.trim().toLowerCase() === 'true' &&
+    Boolean(pushPublicKey) &&
+    Boolean(process.env.MEDIA_NOTIFICATION_SETUP_CODE?.trim());
 
   try {
     data = await readSharedMedia();
@@ -219,6 +224,7 @@ export default async function SharedPage({ searchParams }: SharedPageProps) {
             <p className="mt-4 max-w-2xl text-sm leading-6 text-zinc-400 sm:text-base sm:leading-7">
               Browse the posters, check the details, then open your pick in iCloud.
             </p>
+            {notificationsConfigured && <NotificationEnrollment publicKey={pushPublicKey} />}
           </div>
           <dl className="flex w-fit divide-x divide-white/10 rounded-2xl border border-white/10 bg-white/[0.035] text-left">
             <div className="min-w-24 px-4 py-3 sm:min-w-28 sm:px-5 sm:py-4">

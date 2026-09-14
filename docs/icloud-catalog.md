@@ -169,6 +169,57 @@ rollback, but Upstash takes precedence whenever both REST values are present.
 
 Redeploy CineChive after adding or changing environment variables.
 
+## Exact-title notifications
+
+New catalogue records can trigger an iPhone Web Push alert and an optional
+Resend email. Notifications run only after the catalogue write succeeds, and a
+provider outage never removes or rolls back a title. Updates and unchanged
+rescans do not notify.
+
+Generate one VAPID key pair:
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+Add these server-side Vercel Production variables:
+
+```env
+MEDIA_NOTIFICATIONS_ENABLED=true
+CINECHIVE_SITE_URL=https://cinechive.vercel.app
+WEB_PUSH_VAPID_PUBLIC_KEY=
+WEB_PUSH_VAPID_PRIVATE_KEY=
+WEB_PUSH_VAPID_SUBJECT=mailto:your-address@example.com
+MEDIA_NOTIFICATION_SETUP_CODE=
+```
+
+`MEDIA_NOTIFICATION_SETUP_CODE` is a private pairing code for subscribing a
+device; it does not protect or password-lock the catalogue. Share the code only
+with the intended recipient.
+
+For email fallback, verify a sender domain in Resend and add:
+
+```env
+RESEND_API_KEY=
+MEDIA_NOTIFICATION_EMAIL=brother@example.com
+MEDIA_NOTIFICATION_FROM=CineChive <notifications@your-domain.example>
+```
+
+Before enabling subscriptions, import an existing library without alerts:
+
+```bash
+node --env-file=.env.local scripts/sync-icloud-media.mjs --mute-notifications
+```
+
+On an iPhone, open CineChive in Safari, use **Share → Add to Home Screen**,
+launch it from the new Home Screen icon, select **Get new-title alerts**, enter
+the family notification code, and allow notifications. Each later alert opens
+the exact CineChive title page; its primary button opens the corresponding
+iCloud item or shared-folder fallback.
+
+Web Push delivery still follows the recipient's iOS notification and Focus
+settings. Email is the independent fallback when configured.
+
 ## Sync request budget
 
 The scanner sends one bulk request per changed filesystem snapshot instead of

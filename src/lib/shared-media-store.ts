@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { get, put } from '@vercel/blob';
+import { hasUpstashStorage, runUpstashCommand } from '@/lib/upstash-rest';
 
 export type SharedMediaType = 'movie' | 'tv';
 export type SharedMediaMatchStatus = 'matched' | 'review';
@@ -45,6 +46,7 @@ export interface SharedMediaUpsert {
 
 export interface SharedMediaReconcileResult {
   items: SharedMedia[];
+  createdItems: SharedMedia[];
   created: number;
   updated: number;
   unchanged: number;
@@ -53,7 +55,6 @@ export interface SharedMediaReconcileResult {
 
 const REDIS_CATALOG_KEY = 'cinechive:shared-media:v3';
 const BLOB_PATHNAME = 'cinechive/shared-media.json';
-const STORE_TIMEOUT_MS = 10_000;
 let writeQueue: Promise<void> = Promise.resolve();
 
 function getLocalStorePath() {
@@ -61,15 +62,6 @@ function getLocalStorePath() {
   return configuredPath
     ? path.resolve(configuredPath)
     : path.join(process.cwd(), 'data', 'shared-media.json');
-}
-
-function getUpstashCredentials() {
-  const url = process.env.UPSTASH_REDIS_REST_URL?.trim().replace(/\/$/, '');
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
-  if (Boolean(url) !== Boolean(token)) {
-    throw new Error('Upstash catalogue storage requires both REST environment variables');
-  }
-  return url && token ? { url, token } : null;
 }
 
 function usesBlobStorage() {
@@ -129,28 +121,6 @@ function parseStore(raw: string): SharedMediaFile {
   return { schema_version: 3, items: items as SharedMedia[] };
 }
 
-async function runRedisCommand<T>(command: unknown[]): Promise<T> {
-  const credentials = getUpstashCredentials();
-  if (!credentials) throw new Error('Upstash catalogue storage is not configured');
-
-  const response = await fetch(credentials.url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${credentials.token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(command),
-    cache: 'no-store',
-    signal: AbortSignal.timeout(STORE_TIMEOUT_MS),
-  });
-
-  const payload = await response.json().catch(() => null) as { result?: T; error?: string } | null;
-  if (!response.ok || !payload || payload.error) {
-    throw new Error(`Upstash catalogue request failed with status ${response.status}`);
-  }
-  return payload.result as T;
-}
-
 async function readLocalStore() {
   try {
     return parseStore(await readFile(getLocalStorePath(), 'utf8'));
@@ -170,9 +140,8 @@ async function writeLocalStore(store: SharedMediaFile) {
 }
 
 async function readStore(): Promise<SharedMediaFile> {
-  const upstash = getUpstashCredentials();
-  if (upstash) {
-    const raw = await runRedisCommand<string | null>(['GET', REDIS_CATALOG_KEY]);
+  if (hasUpstashStorage()) {
+    const raw = await runUpstashCommand<string | null>(['GET', REDIS_CATALOG_KEY]);
     return raw === null ? emptyStore() : parseStore(raw);
   }
 
@@ -195,9 +164,8 @@ async function readStore(): Promise<SharedMediaFile> {
 
 async function writeStore(store: SharedMediaFile) {
   const serialized = `${JSON.stringify(store, null, 2)}\n`;
-  const upstash = getUpstashCredentials();
-  if (upstash) {
-    await runRedisCommand<'OK'>(['SET', REDIS_CATALOG_KEY, serialized]);
+  if (hasUpstashStorage()) {
+    await runUpstashCommand<'OK'>(['SET', REDIS_CATALOG_KEY, serialized]);
     return;
   }
 
@@ -257,6 +225,7 @@ export function reconcileSharedMedia(
       ? { schema_version: 3, items: [...currentItems] }
       : await readStore();
     const resultItems: SharedMedia[] = [];
+    const createdItems: SharedMedia[] = [];
     let created = 0;
     let updated = 0;
     let unchanged = 0;
@@ -309,12 +278,15 @@ export function reconcileSharedMedia(
 
       changed = true;
       if (existing) updated += 1;
-      else created += 1;
+      else {
+        created += 1;
+        createdItems.push(item);
+      }
       resultItems.push(item);
     }
 
     if (changed) await writeStore(store);
-    return { items: resultItems, created, updated, unchanged, changed };
+    return { items: resultItems, createdItems, created, updated, unchanged, changed };
   });
 
   writeQueue = operation.then(() => undefined, () => undefined);
