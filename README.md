@@ -1,11 +1,19 @@
-# Enterarchive (CineChive)
+# CineChive
 
 A cinematic archive and social discovery app built with Next.js App Router. It currently defaults to a local-first browser archive; Supabase can be re-enabled later for synced accounts and social data.
+
+[Try CineChive](https://cinechive.vercel.app)
+
+![cinechive — existing portfolio capture](https://raw.githubusercontent.com/Alexthethunderboy/Portfolio/b4c8f605bdb311f2be00d14855b4914a3d662cf9/public/projects/previews/cinechive.webp)
+
+Existing portfolio capture, verified 8 October 2026; not evidence of current uptime or completed validation.
+
+**Walkthrough:** discover a title → save it → add a journal entry → export your archive from Profile → Settings.
 
 ## Tech Stack
 
 - Next.js 16 + React 19 + TypeScript
-- Supabase (Auth, Postgres, RLS, Realtime)
+- Optional Supabase backend for shared identity and social features; disabled by default
 - TanStack React Query
 - Tailwind CSS v4 + Framer Motion
 
@@ -33,7 +41,7 @@ A cinematic archive and social discovery app built with Next.js App Router. It c
 
 ## Database Migrations
 
-Run SQL files in `supabase/migrations` in timestamp order.
+Optional backend only. The migration sequence has not been verified as a fresh-database bootstrap in this documentation work. Review the schema, migration dependencies and authorization policies in an isolated development database before enabling shared accounts. Do not run migrations against a hosted database merely to preview the default local archive.
 
 Recent contract-hardening migration:
 - `supabase/migrations/20260408_contract_hardening.sql`
@@ -51,6 +59,8 @@ It includes:
 - `npm run build`: production build
 - `npm run start`: run production build
 - `npm run lint`: lint workspace
+- `npm run test:scanner`: iCloud filename classifier unit tests
+- `npx playwright test`: existing home journeys on Chromium and Mobile Chrome; install dependencies and Playwright browsers first and configure catalogue access. The Playwright config starts the dev server with Supabase disabled by default. These checks were not run for this documentation change.
 
 ## Local archive mode
 
@@ -88,3 +98,7 @@ security settings, launch-agent setup, and exact-title notification flow.
 - Shared collections are resolved through the `get_shared_collection` RPC.
 - Auth and route access are enforced in `src/proxy.ts`.
 - Community features (follow/reaction/comment notifications) rely on RLS policies in Supabase.
+
+---
+
+Built by [Thunderboy](https://thunderboy.vercel.app).
